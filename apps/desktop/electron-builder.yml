@@ -33,7 +33,10 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
 # Update feed / release host: GitHub Releases (generates latest.yml for electron-updater).
+# releaseType: release publishes directly (not a draft) so electron-updater can see it —
+# a draft release is invisible to the updater.
 publish:
   provider: github
   owner: dawid-ai
   repo: sift
+  releaseType: release
