@@ -9,7 +9,7 @@ export const IPC = {
   updateDownload: "update:download",
   updateInstall: "update:install",
   updateEvent: "update:event",
-  updateSimulate: "update:__simulate",
+  updateSimulate: "update:simulate",
   dbIsReady: "db:isReady",
   binariesList: "binaries:list",
   binariesCheck: "binaries:check",
