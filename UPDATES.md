@@ -1,5 +1,11 @@
 # Updates
 
+## v0.0.5 — 2026-07-31
+
+- Add tags to a video right from the Home screen when you download it.
+- Summarizing with Ollama now checks it's running first, and offers to start it (or a link
+  to install it) instead of failing silently.
+
 ## v0.0.4 — 2026-07-30
 
 - In-app auto-updates: Sift checks for a new version on launch and offers a one-click
