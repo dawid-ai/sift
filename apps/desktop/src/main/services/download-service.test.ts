@@ -15,6 +15,7 @@ import {
   listDownloadsByMediaId,
   listMedia,
   runMigrations,
+  tagsForMedia,
   upsertAsset,
 } from "@sift/db";
 import type { DownloadOption, DownloadProgress, MediaMetadata } from "@sift/ipc-contract";
@@ -601,6 +602,20 @@ describe("DownloadService", () => {
     expect(list.find((i) => i.media.id === rec.id)?.tags).toEqual(["Music"]);
     const detail = await svc.detail(rec.id);
     expect(detail.tags).toEqual(["Music"]);
+
+    db.close();
+  });
+
+  it("applies tags to the media row on download", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    const { service } = makeService({ db, runner, downloadsDir });
+
+    const rec = await service.start({ metadata, option: OPTION, tags: ["news", "ai"] });
+    expect(new Set(tagsForMedia(db, rec.id))).toEqual(new Set(["news", "ai"]));
 
     db.close();
   });

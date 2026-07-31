@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { buildOutputBaseName, sanitizeFilename } from "@sift/core";
 import type { DownloadRow, MediaRow, NewMedia, SiftDatabase } from "@sift/db";
 import {
+  addTag,
   deleteDownload,
   deleteMedia,
   deleteSummary,
@@ -160,7 +161,7 @@ export class DownloadService {
    * path for the same format) or "error" (rethrowing) on completion.
    */
   async start(
-    input: { metadata: MediaMetadata; option: DownloadOption },
+    input: { metadata: MediaMetadata; option: DownloadOption; tags?: string[] },
     onProgress?: (p: DownloadProgress) => void,
   ): Promise<MediaRecord> {
     const { db, runner } = this.opts;
@@ -174,6 +175,7 @@ export class DownloadService {
     const nm = fromMetadata(metadata);
     const existing = getMediaBySourceUrl(db, nm.source_url);
     const media = existing ?? insertMedia(db, nm);
+    for (const name of input.tags ?? []) addTag(db, media.id, name);
 
     const prior = getDownloadByMediaAndFormat(db, media.id, option.id);
     const dl = upsertDownload(db, {
