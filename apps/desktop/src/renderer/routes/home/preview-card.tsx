@@ -12,6 +12,7 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TagChip } from "@/components/tag-chip";
 
 const TIER_LABELS: Record<MediaMetadata["platform"]["tier"], string> = {
   tested: "Tested",
@@ -82,7 +83,7 @@ export interface PreviewCardProps {
   metadata: MediaMetadata;
   /** Existing library entry for this source URL, if any (Task 5 already-captured notice). */
   existing: MediaListItem | null;
-  onDownload: (option: DownloadOption) => void;
+  onDownload: (option: DownloadOption, tags: string[]) => void;
   downloading: boolean;
   progress: DownloadProgress | null;
   onTranscribe: () => void;
@@ -129,6 +130,59 @@ export function PreviewCard({
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedPromptId, setSelectedPromptId] = useState<number | "">("");
+
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagDraft, setTagDraft] = useState("");
+  const [ollamaState, setOllamaState] = useState<"idle" | "checking" | "down" | "not-installed">("idle");
+
+  function addTag(raw: string) {
+    const t = raw.trim().toLowerCase();
+    if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
+  }
+
+  function doSummarize() {
+    if (selectedProviderId && selectedModel && selectedPromptId !== "") {
+      onSummarize(selectedProviderId, selectedModel, selectedPromptId);
+    }
+  }
+
+  async function runSummarizeChecked() {
+    if (selectedProviderId !== "ollama") {
+      doSummarize();
+      return;
+    }
+    setOllamaState("checking");
+    if (await window.sift.ollama.health()) {
+      setOllamaState("idle");
+      doSummarize();
+    } else {
+      setOllamaState("down");
+    }
+  }
+
+  async function handleStartOllama() {
+    const r = await window.sift.ollama.start();
+    if (r.reason === "not-installed") {
+      setOllamaState("not-installed");
+      return;
+    }
+    await new Promise((res) => setTimeout(res, 1500));
+    if (await window.sift.ollama.health()) {
+      setOllamaState("idle");
+      doSummarize();
+    } else {
+      setOllamaState("down");
+    }
+  }
+
+  async function handleRecheckOllama() {
+    if (await window.sift.ollama.health()) {
+      setOllamaState("idle");
+      doSummarize();
+    } else {
+      setOllamaState("down");
+    }
+  }
 
   const models = providers.find((p) => p.id === selectedProviderId)?.models ?? NO_MODELS;
   const noProviderReady = defaultProviderId === null;
@@ -214,7 +268,7 @@ export function PreviewCard({
             <Button
               data-testid="download-button"
               disabled={downloading || !selected}
-              onClick={() => selected && onDownload(selected)}
+              onClick={() => selected && onDownload(selected, tags)}
             >
               {downloading
                 ? "Downloading…"
@@ -230,6 +284,31 @@ export function PreviewCard({
             >
               {transcribing ? (transcriptStageLabel ?? "Transcribing…") : "Get transcript"}
             </Button>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <input
+              data-testid="download-tag-input"
+              value={tagDraft}
+              disabled={downloading}
+              placeholder="Add tags (Enter or comma)…"
+              onChange={(e) => setTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === ",") {
+                  e.preventDefault();
+                  addTag(tagDraft);
+                  setTagDraft("");
+                }
+              }}
+              className="flex h-9 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {tags.map((t) => (
+                  <TagChip key={t} name={t} onRemove={() => setTags((prev) => prev.filter((x) => x !== t))} />
+                ))}
+              </div>
+            )}
           </div>
 
           <AnimatePresence>
@@ -322,16 +401,38 @@ export function PreviewCard({
                 selectedModel === "" ||
                 selectedPromptId === ""
               }
-              onClick={() =>
-                selectedProviderId &&
-                selectedModel &&
-                selectedPromptId !== "" &&
-                onSummarize(selectedProviderId, selectedModel, selectedPromptId)
-              }
+              onClick={() => void runSummarizeChecked()}
             >
               {summarizing ? "Summarizing…" : "Summarize"}
             </Button>
           </div>
+          {(ollamaState === "down" || ollamaState === "not-installed") && (
+            <div data-testid="ollama-down-panel" className="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-3">
+              <p className="text-sm text-warning">
+                {ollamaState === "not-installed" ? "Ollama isn't installed." : "Ollama isn't running."}
+              </p>
+              <div className="flex items-center gap-2">
+                {ollamaState === "down" && (
+                  <Button size="sm" data-testid="ollama-start" onClick={() => void handleStartOllama()}>
+                    Start Ollama
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" data-testid="ollama-recheck" onClick={() => void handleRecheckOllama()}>
+                  Recheck
+                </Button>
+                {ollamaState === "not-installed" && (
+                  <button
+                    type="button"
+                    data-testid="ollama-install-link"
+                    className="text-sm text-primary underline"
+                    onClick={() => void window.sift.library.openExternal("https://ollama.com")}
+                  >
+                    Get Ollama
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           {!transcript && (
             <p className="text-xs text-foreground/50">Get a transcript first</p>
           )}

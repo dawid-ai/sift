@@ -126,13 +126,13 @@ function HomeView() {
 
   // one active download at a time; concurrency/queue is Phase 7.
   const handleDownload = useCallback(
-    async (option: DownloadOption) => {
+    async (option: DownloadOption, tags: string[]) => {
       if (!metadata) return;
       setDownloading(true);
       setDownloadDone(false);
       setError(null);
       try {
-        await window.sift.download.start({ metadata, option });
+        await window.sift.download.start({ metadata, option, tags });
         setDownloadDone(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -305,7 +305,7 @@ function HomeView() {
         <PreviewCard
           metadata={metadata}
           existing={existingItem}
-          onDownload={(option) => void handleDownload(option)}
+          onDownload={(option, tags) => void handleDownload(option, tags)}
           downloading={downloading}
           progress={progress}
           onTranscribe={() => void handleTranscribe()}
