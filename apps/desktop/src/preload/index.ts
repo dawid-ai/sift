@@ -63,6 +63,10 @@ const api: SiftApi = {
       return () => ipcRenderer.removeListener(IPC.downloadProgress, listener);
     },
   },
+  ollama: {
+    health: () => ipcRenderer.invoke(IPC.ollamaHealth),
+    start: () => ipcRenderer.invoke(IPC.ollamaStart),
+  },
   library: {
     list: () => ipcRenderer.invoke(IPC.libraryList),
     reveal: (path: string) => ipcRenderer.invoke(IPC.libraryReveal, path),

@@ -10,6 +10,8 @@ export const IPC = {
   updateInstall: "update:install",
   updateEvent: "update:event",
   updateSimulate: "update:simulate",
+  ollamaHealth: "ollama:health",
+  ollamaStart: "ollama:start",
   dbIsReady: "db:isReady",
   binariesList: "binaries:list",
   binariesCheck: "binaries:check",
@@ -457,9 +459,14 @@ export interface SiftApi {
     start(input: {
       metadata: MediaMetadata;
       option: DownloadOption;
+      tags?: string[];
     }): Promise<MediaRecord>;
     /** Subscribes to download progress events. Returns an unsubscribe function. */
     onProgress(cb: (p: DownloadProgress) => void): () => void;
+  };
+  ollama: {
+    health(): Promise<boolean>;
+    start(): Promise<{ launched: boolean; reason?: "not-installed" }>;
   };
   library: {
     /** Lists persisted media, newest first, each with a per-video capture summary
