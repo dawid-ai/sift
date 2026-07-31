@@ -1,5 +1,9 @@
 # Updates
 
+## v0.0.7 — 2026-07-31
+
+- Update prompts now show release notes as clean text (raw HTML tags no longer leak through).
+
 ## v0.0.6 — 2026-07-31
 
 - More reliable update detection on launch — an update found at startup now consistently
