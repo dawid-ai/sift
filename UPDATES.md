@@ -1,5 +1,10 @@
 # Updates
 
+## v0.0.6 — 2026-07-31
+
+- More reliable update detection on launch — an update found at startup now consistently
+  shows the prompt (previously it could be missed on a fast check).
+
 ## v0.0.5 — 2026-07-31
 
 - Add tags to a video right from the Home screen when you download it.
