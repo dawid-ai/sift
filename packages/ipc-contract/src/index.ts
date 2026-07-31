@@ -10,6 +10,7 @@ export const IPC = {
   updateInstall: "update:install",
   updateEvent: "update:event",
   updateSimulate: "update:simulate",
+  updateCurrent: "update:current",
   ollamaHealth: "ollama:health",
   ollamaStart: "ollama:start",
   dbIsReady: "db:isReady",
@@ -423,6 +424,9 @@ export interface SiftApi {
     check(): Promise<void>;
     download(): Promise<void>;
     install(): Promise<void>;
+    /** The most recent update event the main process emitted, or null. Lets a freshly
+     * mounted renderer recover an event that fired before it subscribed (startup race). */
+    current(): Promise<UpdateEvent | null>;
     onEvent(cb: (e: UpdateEvent) => void): () => void;
     simulate(e: UpdateEvent): Promise<void>;
   };

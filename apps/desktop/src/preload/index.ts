@@ -22,6 +22,7 @@ const api: SiftApi = {
     check: () => ipcRenderer.invoke(IPC.updateCheck),
     download: () => ipcRenderer.invoke(IPC.updateDownload),
     install: () => ipcRenderer.invoke(IPC.updateInstall),
+    current: () => ipcRenderer.invoke(IPC.updateCurrent),
     onEvent: (cb: (e: UpdateEvent) => void) => {
       const listener = (_event: IpcRendererEvent, e: UpdateEvent) => cb(e);
       ipcRenderer.on(IPC.updateEvent, listener);

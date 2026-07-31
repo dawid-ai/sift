@@ -15,8 +15,12 @@ export function registerUpdatesIpc(getWindows: () => BrowserWindow[]): void {
   autoUpdater.autoDownload = false;
 
   let userInitiated = false;
+  // Cache the last event so a renderer that mounts AFTER the startup check fired can
+  // recover it via update:current (closes the startup timing race).
+  let last: UpdateEvent | null = null;
 
   const send = (e: UpdateEvent) => {
+    last = e;
     for (const win of getWindows()) win.webContents.send(IPC.updateEvent, e);
   };
 
@@ -52,6 +56,7 @@ export function registerUpdatesIpc(getWindows: () => BrowserWindow[]): void {
   ipcMain.handle(IPC.updateInstall, () => {
     autoUpdater.quitAndInstall();
   });
+  ipcMain.handle(IPC.updateCurrent, () => last);
 
   // Dev/e2e only: inject a fake event to drive the UI without a live GitHub feed.
   if (!app.isPackaged) {
