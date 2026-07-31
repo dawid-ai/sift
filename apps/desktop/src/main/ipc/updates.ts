@@ -1,13 +1,7 @@
 import { app, ipcMain, type BrowserWindow } from "electron";
 import { autoUpdater } from "electron-updater";
 import { IPC, type UpdateEvent } from "@sift/ipc-contract";
-
-// electron-updater's releaseNotes is string | {version, note}[] | null. Flatten to text.
-function notesToText(notes: string | Array<{ version: string; note: string | null }> | null | undefined): string {
-  if (!notes) return "";
-  if (typeof notes === "string") return notes;
-  return notes.map((n) => n.note ?? "").filter(Boolean).join("\n\n");
-}
+import { notesToText } from "../updates-notes";
 
 /** Wire electron-updater to the renderer. autoDownload is off so the user chooses.
  * Events are forwarded to every open window as one UpdateEvent. Safe to call once. */
