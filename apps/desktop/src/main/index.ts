@@ -511,7 +511,7 @@ app.whenReady().then(() => {
   initDb();
   registerAppIpc();
   registerUpdatesIpc(() => BrowserWindow.getAllWindows());
-  registerOllamaIpc();
+  registerOllamaIpc(!!e2eFixtureDir);
   registerDbIpc(() => dbReady);
   // Binaries IPC needs a live, migrated DB handle; skip wiring it if initDb() failed
   // or migrations didn't complete (dbReady false covers that case in the renderer
