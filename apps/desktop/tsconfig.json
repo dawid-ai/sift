@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@sift/core": ["../../packages/core/src/index.ts"],
+      "@sift/ipc-contract": ["../../packages/ipc-contract/src/index.ts"],
+      "@sift/db": ["../../packages/db/src/index.ts"],
+      "@sift/binaries": ["../../packages/binaries/src/index.ts"],
+      "@/*": ["src/renderer/*"]
+    }
+  },
+  "include": ["src/renderer", "src/preload/sift-api.d.ts"]
+}

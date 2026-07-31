@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Dark-only: the .dark class is applied permanently on <html> (see index.html).
+     :root stays as an inert light fallback — no toggle is wired. */
+  :root {
+    --background: 0 0% 100%;
+    --surface: 0 0% 98%;
+    --surface-2: 0 0% 95%;
+    --foreground: 222 47% 11%;
+    --muted-foreground: 215 15% 45%;
+    --primary: 178 70% 40%;
+    --primary-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --ring: 178 70% 40%;
+    --success: 152 60% 40%;
+    --warning: 38 92% 50%;
+    --danger: 0 72% 50%;
+  }
+  .dark {
+    --background: 222 24% 8%;
+    --surface: 222 20% 12%;
+    --surface-2: 222 18% 16%;
+    --foreground: 210 20% 96%;
+    --muted-foreground: 215 15% 62%;
+    --primary: 178 70% 45%;
+    --primary-foreground: 222 47% 8%;
+    --border: 222 14% 22%;
+    --ring: 178 70% 45%;
+    --success: 152 60% 45%;
+    --warning: 38 92% 55%;
+    --danger: 0 84% 68%;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -1,0 +1,39 @@
+appId: app.sift.desktop
+productName: Sift
+# electron's devDependency range ("^31.4.0") isn't a fixed version, and electron-builder's
+# monorepo-unaware installed-version probe can't find node_modules/electron under pnpm's
+# hoisted root node_modules. Pin it explicitly to the version actually installed
+# (node -p "require('electron/package.json').version") so builds don't depend on probing.
+electronVersion: 31.7.7
+directories:
+  output: dist
+  buildResources: build
+# electron-vite emits main/preload/renderer under out/. Ship those + prod deps.
+files:
+  - out/**/*
+  - package.json
+# better-sqlite3 is a native addon and MUST run unpacked (not inside app.asar).
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+  - "**/*.node"
+# Windows target: NSIS installer.
+win:
+  target:
+    - nsis
+  # icon is optional — omit `icon:` to use Electron's default; add build/icon.ico to override.
+  # Signing: read from env (CSC_LINK + CSC_KEY_PASSWORD). Absent → unsigned build (no failure).
+  # Update-signature verification pulls electron-builder's winCodeSign bundle, which contains
+  # macOS dylibs stored as symlinks; extracting those requires Windows Developer Mode/admin and
+  # fails otherwise with "Cannot create symbolic link". Irrelevant for an unsigned build, so
+  # disable it here (re-enable once CSC_LINK signing is actually wired up).
+  verifyUpdateCodeSignature: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+# Update feed / release host: GitHub Releases (generates latest.yml for electron-updater).
+publish:
+  provider: github
+  owner: dawid-ai
+  repo: sift

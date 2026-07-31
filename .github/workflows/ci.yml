@@ -1,0 +1,22 @@
+# .github/workflows/ci.yml
+# INERT until a GitHub remote exists. Runs the full gate on push/PR.
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+jobs:
+  gate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm lint
+      - run: pnpm build

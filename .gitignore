@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+release/
+*.log
+.DS_Store
+coverage/
+playwright-report/
+test-results/
+# Sift-managed binaries/models are never committed
+.sift-cache/
+.superpowers/
+# Local tooling & internal process docs (not part of the product)
+.claude/
+docs/superpowers/

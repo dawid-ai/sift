@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "electron"],
+    "baseUrl": ".",
+    "paths": {
+      "@sift/core": ["../../packages/core/src/index.ts"],
+      "@sift/ipc-contract": ["../../packages/ipc-contract/src/index.ts"],
+      "@sift/db/testing": ["../../packages/db/src/testing.ts"],
+      "@sift/db": ["../../packages/db/src/index.ts"],
+      "@sift/binaries": ["../../packages/binaries/src/index.ts"]
+    }
+  },
+  "include": ["src/main", "src/preload", "electron.vite.config.ts"]
+}

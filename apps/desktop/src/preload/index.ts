@@ -1,0 +1,172 @@
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
+import {
+  IPC,
+  type BinaryProgress,
+  type ChannelVideosQuery,
+  type DownloadProgress,
+  type QueueItem,
+  type QueueSpec,
+  type SiftApi,
+  type SummaryToken,
+  type TranscriptProgress,
+  type UpdateEvent,
+  type WhisperProgress,
+} from "@sift/ipc-contract";
+
+const api: SiftApi = {
+  app: {
+    getVersion: () => ipcRenderer.invoke(IPC.appGetVersion),
+    quit: () => ipcRenderer.invoke(IPC.appQuit),
+  },
+  updates: {
+    check: () => ipcRenderer.invoke(IPC.updateCheck),
+    download: () => ipcRenderer.invoke(IPC.updateDownload),
+    install: () => ipcRenderer.invoke(IPC.updateInstall),
+    onEvent: (cb: (e: UpdateEvent) => void) => {
+      const listener = (_event: IpcRendererEvent, e: UpdateEvent) => cb(e);
+      ipcRenderer.on(IPC.updateEvent, listener);
+      return () => ipcRenderer.removeListener(IPC.updateEvent, listener);
+    },
+    simulate: (e: UpdateEvent) => ipcRenderer.invoke(IPC.updateSimulate, e),
+  },
+  db: {
+    isReady: () => ipcRenderer.invoke(IPC.dbIsReady),
+  },
+  binaries: {
+    list: () => ipcRenderer.invoke(IPC.binariesList),
+    check: (kind) => ipcRenderer.invoke(IPC.binariesCheck, kind),
+    install: (kind) => ipcRenderer.invoke(IPC.binariesInstall, kind),
+    onProgress: (cb: (p: BinaryProgress) => void) => {
+      const listener = (_event: IpcRendererEvent, p: BinaryProgress) => cb(p);
+      ipcRenderer.on(IPC.binariesProgress, listener);
+      return () => ipcRenderer.removeListener(IPC.binariesProgress, listener);
+    },
+  },
+  whisper: {
+    status: () => ipcRenderer.invoke(IPC.whisperStatus),
+    install: () => ipcRenderer.invoke(IPC.whisperInstall),
+    onProgress: (cb: (p: WhisperProgress) => void) => {
+      const listener = (_event: IpcRendererEvent, p: WhisperProgress) => cb(p);
+      ipcRenderer.on(IPC.whisperProgress, listener);
+      return () => ipcRenderer.removeListener(IPC.whisperProgress, listener);
+    },
+  },
+  metadata: {
+    fetch: (url: string) => ipcRenderer.invoke(IPC.metadataFetch, url),
+    listExtractors: () => ipcRenderer.invoke(IPC.metadataListExtractors),
+  },
+  download: {
+    start: (input) => ipcRenderer.invoke(IPC.downloadStart, input),
+    onProgress: (cb: (p: DownloadProgress) => void) => {
+      const listener = (_event: IpcRendererEvent, p: DownloadProgress) => cb(p);
+      ipcRenderer.on(IPC.downloadProgress, listener);
+      return () => ipcRenderer.removeListener(IPC.downloadProgress, listener);
+    },
+  },
+  library: {
+    list: () => ipcRenderer.invoke(IPC.libraryList),
+    reveal: (path: string) => ipcRenderer.invoke(IPC.libraryReveal, path),
+    remove: (id: number) => ipcRenderer.invoke(IPC.libraryRemove, id),
+    detail: (id: number) => ipcRenderer.invoke(IPC.libraryDetail, id),
+    removeDownload: (id: number) => ipcRenderer.invoke(IPC.libraryRemoveDownload, id),
+    removeTranscript: (id: number) => ipcRenderer.invoke(IPC.libraryRemoveTranscript, id),
+    removeSummary: (id: number) => ipcRenderer.invoke(IPC.libraryRemoveSummary, id),
+    openExternal: (url: string) => ipcRenderer.invoke(IPC.libraryOpenExternal, url),
+    search: (query: string) => ipcRenderer.invoke(IPC.librarySearch, query),
+    exportPlaylist: (mediaIds: number[], name: string) =>
+      ipcRenderer.invoke(IPC.libraryExportPlaylist, mediaIds, name),
+  },
+  tags: {
+    add: (mediaId: number, name: string) => ipcRenderer.invoke(IPC.tagsAdd, mediaId, name),
+    remove: (mediaId: number, name: string) => ipcRenderer.invoke(IPC.tagsRemove, mediaId, name),
+    listAll: () => ipcRenderer.invoke(IPC.tagsListAll),
+  },
+  settings: {
+    getTranscriptLanguages: () => ipcRenderer.invoke(IPC.settingsGetTranscriptLanguages),
+    setTranscriptLanguages: (langs: string[]) =>
+      ipcRenderer.invoke(IPC.settingsSetTranscriptLanguages, langs),
+  },
+  downloads: {
+    getPath: () => ipcRenderer.invoke(IPC.downloadsGetPath),
+    setPath: (path: string) => ipcRenderer.invoke(IPC.downloadsSetPath, path),
+    pickPath: () => ipcRenderer.invoke(IPC.downloadsPickPath),
+  },
+  auth: {
+    openBrowser: () => ipcRenderer.invoke(IPC.authOpenBrowser),
+    listSites: () => ipcRenderer.invoke(IPC.authListSites),
+    removeSite: (domain: string) => ipcRenderer.invoke(IPC.authRemoveSite, domain),
+  },
+  queue: {
+    add: (urls: string[], spec: QueueSpec) => ipcRenderer.invoke(IPC.queueAdd, urls, spec),
+    list: () => ipcRenderer.invoke(IPC.queueList),
+    remove: (id: number) => ipcRenderer.invoke(IPC.queueRemove, id),
+    reorder: (id: number, dir: "up" | "down") => ipcRenderer.invoke(IPC.queueReorder, id, dir),
+    retry: (id: number) => ipcRenderer.invoke(IPC.queueRetry, id),
+    cancel: (id: number) => ipcRenderer.invoke(IPC.queueCancel, id),
+    pause: () => ipcRenderer.invoke(IPC.queuePause),
+    resume: () => ipcRenderer.invoke(IPC.queueResume),
+    isPaused: () => ipcRenderer.invoke(IPC.queueIsPaused),
+    onUpdate: (cb: (items: QueueItem[]) => void) => {
+      const listener = (_event: IpcRendererEvent, items: QueueItem[]) => cb(items);
+      ipcRenderer.on(IPC.queueUpdate, listener);
+      return () => ipcRenderer.removeListener(IPC.queueUpdate, listener);
+    },
+  },
+  channels: {
+    add: (url: string) => ipcRenderer.invoke(IPC.channelAdd, url),
+    list: () => ipcRenderer.invoke(IPC.channelList),
+    remove: (id: number) => ipcRenderer.invoke(IPC.channelRemove, id),
+    refresh: (id: number) => ipcRenderer.invoke(IPC.channelRefresh, id),
+    refreshAll: () => ipcRenderer.invoke(IPC.channelRefreshAll),
+    listVideos: (id: number, query: ChannelVideosQuery) =>
+      ipcRenderer.invoke(IPC.channelListVideos, id, query),
+    openForMedia: (mediaId: number) => ipcRenderer.invoke(IPC.channelOpenForMedia, mediaId),
+    videoStatuses: (urls: string[]) => ipcRenderer.invoke(IPC.channelVideoStatuses, urls),
+    downloadedMedia: (channelId: string) => ipcRenderer.invoke(IPC.channelDownloadedMedia, channelId),
+  },
+  subscriptions: {
+    list: () => ipcRenderer.invoke(IPC.subscriptionList),
+    sync: () => ipcRenderer.invoke(IPC.subscriptionSync),
+  },
+  transcript: {
+    get: (input) => ipcRenderer.invoke(IPC.transcriptGet, input),
+    onProgress: (cb: (p: TranscriptProgress) => void) => {
+      const listener = (_event: IpcRendererEvent, p: TranscriptProgress) => cb(p);
+      ipcRenderer.on(IPC.transcriptProgress, listener);
+      return () => ipcRenderer.removeListener(IPC.transcriptProgress, listener);
+    },
+    getMethod: () => ipcRenderer.invoke(IPC.transcriptGetMethod),
+    setMethod: (m) => ipcRenderer.invoke(IPC.transcriptSetMethod, m),
+  },
+  summarize: {
+    start: (input) => ipcRenderer.invoke(IPC.summarizeStart, input),
+    onToken: (cb: (t: SummaryToken) => void) => {
+      const listener = (_event: IpcRendererEvent, t: SummaryToken) => cb(t);
+      ipcRenderer.on(IPC.summarizeToken, listener);
+      return () => ipcRenderer.removeListener(IPC.summarizeToken, listener);
+    },
+    export: (summaryId: number) =>
+      ipcRenderer.invoke(IPC.summarizeExport, summaryId),
+  },
+  prompts: {
+    list: () => ipcRenderer.invoke(IPC.promptsList),
+    create: (input: { name: string; body: string }) =>
+      ipcRenderer.invoke(IPC.promptsCreate, input),
+    update: (id: number, input: { name: string; body: string }) =>
+      ipcRenderer.invoke(IPC.promptsUpdate, id, input),
+    delete: (id: number) => ipcRenderer.invoke(IPC.promptsDelete, id),
+  },
+  aiProviders: {
+    list: () => ipcRenderer.invoke(IPC.aiProvidersList),
+    keyStatus: (providerId: string) =>
+      ipcRenderer.invoke(IPC.aiKeyStatus, providerId),
+    setKey: (providerId: string, key: string) =>
+      ipcRenderer.invoke(IPC.aiKeySet, providerId, key),
+    clearKey: (providerId: string) =>
+      ipcRenderer.invoke(IPC.aiKeyClear, providerId),
+    getCustomConfig: () => ipcRenderer.invoke(IPC.aiCustomConfigGet),
+    setCustomConfig: (cfg) => ipcRenderer.invoke(IPC.aiCustomConfigSet, cfg),
+  },
+};
+
+contextBridge.exposeInMainWorld("sift", api);

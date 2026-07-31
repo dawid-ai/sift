@@ -1,0 +1,28 @@
+# .github/workflows/release.yml
+# INERT until a GitHub remote + the electron-builder.yml publish owner are set.
+# Tag a commit `v0.0.1` (etc.) to build + publish the Windows installer to GitHub Releases.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  build-win:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @sift/desktop run rebuild
+      # Publishes the NSIS installer + latest.yml to the GitHub Release for this tag.
+      # Signing activates automatically if CSC_LINK / CSC_KEY_PASSWORD secrets are set.
+      - run: pnpm --filter @sift/desktop exec electron-vite build && pnpm --filter @sift/desktop exec electron-builder --win --publish always
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
