@@ -20,6 +20,7 @@ import { normalizeAssetPaths, resolveAssetPath } from "./asset-path";
 import { parseRange, mediaContentType } from "./media-range";
 import { registerAppIpc } from "./ipc/app";
 import { registerUpdatesIpc } from "./ipc/updates";
+import { registerOllamaIpc } from "./ipc/ollama";
 import { registerDbIpc } from "./ipc/db";
 import { registerBinariesIpc } from "./ipc/binaries";
 import { registerMetadataIpc } from "./ipc/metadata";
@@ -510,6 +511,7 @@ app.whenReady().then(() => {
   initDb();
   registerAppIpc();
   registerUpdatesIpc(() => BrowserWindow.getAllWindows());
+  registerOllamaIpc();
   registerDbIpc(() => dbReady);
   // Binaries IPC needs a live, migrated DB handle; skip wiring it if initDb() failed
   // or migrations didn't complete (dbReady false covers that case in the renderer
