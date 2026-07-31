@@ -397,6 +397,7 @@ export function PreviewCard({
               disabled={
                 !transcript ||
                 summarizing ||
+                ollamaState === "checking" ||
                 selectedProviderId === "" ||
                 selectedModel === "" ||
                 selectedPromptId === ""

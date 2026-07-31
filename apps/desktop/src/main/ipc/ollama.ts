@@ -10,5 +10,8 @@ export function registerOllamaIpc(isE2E: boolean): void {
     if (isE2E) return process.env.SIFT_E2E_OLLAMA_DOWN !== "1";
     return ollamaReachable(DEFAULT_OLLAMA_BASE_URL);
   });
-  ipcMain.handle(IPC.ollamaStart, () => startOllama());
+  ipcMain.handle(IPC.ollamaStart, () => {
+    if (isE2E) return { launched: true };
+    return startOllama();
+  });
 }
