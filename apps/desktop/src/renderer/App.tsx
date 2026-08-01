@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { branding } from "@sift/core";
 import type {
   AiProviderInfo,
   ChannelRecord,
@@ -269,13 +270,12 @@ function HomeView() {
 
   return (
     <main className="flex flex-1 flex-col items-center gap-4 p-8">
-      {/* TODO(phase-2): source from branding.appName */}
       <motion.h1
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-4xl font-bold tracking-tight"
       >
-        Sift
+        {branding.appName}
       </motion.h1>
       <p data-testid="app-version" className="text-sm text-foreground/60">
         v{version}

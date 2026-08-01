@@ -112,6 +112,106 @@ export function listMedia(db: SiftDatabase): MediaRow[] {
   return db.prepare<MediaRow>("SELECT * FROM media ORDER BY created_at DESC, id DESC").all();
 }
 
+/** Filters for the paged library list. All optional; omitted/null fields don't constrain.
+ * `ids: []` matches nothing (an empty search result); `ids: [n,…]` restricts to those rows. */
+export interface MediaFilter {
+  tag?: string | null; // media_tag.name, case-insensitive
+  channel?: string | null; // exact uploader
+  platform?: string | null; // exact platform_id
+  from?: number | null; // created_at >= (inclusive ms epoch)
+  to?: number | null; // created_at <= (inclusive ms epoch)
+  ids?: number[] | null; // restrict to these media ids (e.g. search results)
+}
+
+/** Builds a WHERE clause + named params from a MediaFilter. Empty string when nothing is set. */
+function mediaWhere(f: MediaFilter): { where: string; params: Record<string, unknown> } {
+  const clauses: string[] = [];
+  const params: Record<string, unknown> = {};
+  if (f.tag) {
+    clauses.push(
+      "EXISTS (SELECT 1 FROM media_tag mt WHERE mt.media_id = m.id AND mt.name = @tag COLLATE NOCASE)",
+    );
+    params.tag = f.tag;
+  }
+  if (f.channel) {
+    clauses.push("m.uploader = @channel");
+    params.channel = f.channel;
+  }
+  if (f.platform) {
+    clauses.push("m.platform_id = @platform");
+    params.platform = f.platform;
+  }
+  if (f.from != null) {
+    clauses.push("m.created_at >= @from");
+    params.from = f.from;
+  }
+  if (f.to != null) {
+    clauses.push("m.created_at <= @to");
+    params.to = f.to;
+  }
+  if (f.ids != null) {
+    if (f.ids.length === 0) {
+      clauses.push("0"); // empty allowlist → match nothing
+    } else {
+      const ph = f.ids
+        .map((id, i) => {
+          params[`mid${i}`] = id;
+          return `@mid${i}`;
+        })
+        .join(",");
+      clauses.push(`m.id IN (${ph})`);
+    }
+  }
+  return { where: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "", params };
+}
+
+/** One page of media matching `filter`, newest first, plus the total match count (for the pager). */
+export function listMediaPage(
+  db: SiftDatabase,
+  filter: MediaFilter,
+  limit: number,
+  offset: number,
+): { rows: MediaRow[]; total: number } {
+  const { where, params } = mediaWhere(filter);
+  const countStmt = db.prepare<{ n: number }>(`SELECT COUNT(*) AS n FROM media m ${where}`);
+  const total = (where ? countStmt.get(params) : countStmt.get())!.n;
+  const rows = db
+    .prepare<MediaRow>(
+      `SELECT m.* FROM media m ${where} ORDER BY m.created_at DESC, m.id DESC LIMIT @limit OFFSET @offset`,
+    )
+    .all({ ...params, limit, offset });
+  return { rows, total };
+}
+
+/** All media ids matching `filter`, newest first (e.g. to export the whole filtered set, not one page). */
+export function listMediaIds(db: SiftDatabase, filter: MediaFilter): number[] {
+  const { where, params } = mediaWhere(filter);
+  const stmt = db.prepare<{ id: number }>(
+    `SELECT m.id FROM media m ${where} ORDER BY m.created_at DESC, m.id DESC`,
+  );
+  return (where ? stmt.all(params) : stmt.all()).map((r) => r.id);
+}
+
+/** Distinct uploaders present in the library, alphabetical — powers the channel filter dropdown. */
+export function listMediaChannels(db: SiftDatabase): string[] {
+  return db
+    .prepare<{ uploader: string }>(
+      "SELECT DISTINCT uploader FROM media WHERE uploader IS NOT NULL AND uploader <> '' ORDER BY uploader COLLATE NOCASE",
+    )
+    .all()
+    .map((r) => r.uploader);
+}
+
+/** Distinct platform ids present in the library, alphabetical — powers the platform filter dropdown. */
+export function listMediaPlatforms(db: SiftDatabase): string[] {
+  return db
+    .prepare<{ platform_id: string }>(
+      "SELECT DISTINCT platform_id FROM media WHERE platform_id IS NOT NULL AND platform_id <> '' ORDER BY platform_id",
+    )
+    .all()
+    .map((r) => r.platform_id);
+}
+
 export function getMediaBySourceUrl(db: SiftDatabase, sourceUrl: string): MediaRow | undefined {
   return db
     .prepare<MediaRow>("SELECT * FROM media WHERE source_url = @sourceUrl ORDER BY id DESC LIMIT 1")

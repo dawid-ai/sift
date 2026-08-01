@@ -4,6 +4,7 @@ import {
   type BinaryProgress,
   type ChannelVideosQuery,
   type DownloadProgress,
+  type MediaFilter,
   type QueueItem,
   type QueueSpec,
   type SiftApi,
@@ -70,6 +71,10 @@ const api: SiftApi = {
   },
   library: {
     list: () => ipcRenderer.invoke(IPC.libraryList),
+    listPage: (filter: MediaFilter, page: number, pageSize: number) =>
+      ipcRenderer.invoke(IPC.libraryListPage, filter, page, pageSize),
+    facets: () => ipcRenderer.invoke(IPC.libraryFacets),
+    listIds: (filter: MediaFilter) => ipcRenderer.invoke(IPC.libraryListIds, filter),
     reveal: (path: string) => ipcRenderer.invoke(IPC.libraryReveal, path),
     remove: (id: number) => ipcRenderer.invoke(IPC.libraryRemove, id),
     detail: (id: number) => ipcRenderer.invoke(IPC.libraryDetail, id),

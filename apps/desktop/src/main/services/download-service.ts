@@ -16,8 +16,13 @@ import {
   getSummariesByMediaId,
   getTranscriptsByMediaId,
   insertMedia,
+  listAllTags,
+  listMediaChannels,
   listDownloadsByMediaId,
   listMedia,
+  listMediaIds,
+  listMediaPage,
+  listMediaPlatforms,
   listPlaylistEntries,
   searchMedia,
   setDownloadStatus,
@@ -25,13 +30,16 @@ import {
   tagsForMediaIds,
   upsertDownload,
 } from "@sift/db";
+import type { MediaFilter } from "@sift/db";
 import type {
   DownloadOption,
   DownloadProgress,
   DownloadRecord,
+  LibraryFacets,
   MediaDetail,
   MediaListItem,
   MediaMetadata,
+  MediaPage,
   MediaRecord,
   PlaylistExportResult,
   SearchHit,
@@ -240,8 +248,33 @@ export class DownloadService {
   /** Lists persisted media, newest first, each with a per-video capture summary
    * (transcript count/newest language, per-format status chips, summary count). No network. */
   async list(): Promise<MediaListItem[]> {
+    return this.toListItems(listMedia(this.opts.db));
+  }
+
+  /** One page of the library matching `filter`, newest first, with the total match count
+   * for the pager. Filtering (tag/channel/platform/date/id-set) happens in SQL, so only the
+   * page's rows are enriched — the library no longer loads every row to render one screen. */
+  async listPage(filter: MediaFilter, page: number, pageSize: number): Promise<MediaPage> {
+    const { rows, total } = listMediaPage(this.opts.db, filter, pageSize, page * pageSize);
+    return { items: this.toListItems(rows), total };
+  }
+
+  /** Distinct filter values across the WHOLE library (not just the current page) so the
+   * channel/platform/tag dropdowns stay complete under pagination. */
+  async facets(): Promise<LibraryFacets> {
     const { db } = this.opts;
-    const rows = listMedia(db);
+    return { channels: listMediaChannels(db), platforms: listMediaPlatforms(db), tags: listAllTags(db) };
+  }
+
+  /** All media ids matching `filter` (newest first) — used to export the whole filtered set. */
+  async listIds(filter: MediaFilter): Promise<number[]> {
+    return listMediaIds(this.opts.db, filter);
+  }
+
+  /** Enriches media rows into list items (tags + per-video capture summary). Shared by
+   * `list()` and `listPage()`. */
+  private toListItems(rows: MediaRow[]): MediaListItem[] {
+    const { db } = this.opts;
     const tagMap = tagsForMediaIds(db, rows.map((m) => m.id));
     return rows.map((m) => {
       const downloads = listDownloadsByMediaId(db, m.id);

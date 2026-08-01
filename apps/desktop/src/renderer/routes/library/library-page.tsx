@@ -1,11 +1,22 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import type { MediaListItem, PlaylistExportResult, SearchHit } from "@sift/ipc-contract";
+import { useEffect, useState, type FormEvent } from "react";
+import type {
+  LibraryFacets,
+  MediaFilter,
+  MediaListItem,
+  PlaylistExportResult,
+  SearchHit,
+} from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
-import { getLibraryView, setLibraryView, type LibraryView } from "@/lib/library-view";
-import { unionTags } from "@/lib/library-tags";
-import { filterLibrary } from "@/lib/library-filter";
+import {
+  getLibraryView,
+  setLibraryView,
+  getPageSize,
+  setPageSize,
+  PAGE_SIZE_OPTIONS,
+  type LibraryView,
+} from "@/lib/library-view";
+import { pageWindow } from "@/lib/page-window";
 import { platformLabel } from "@/lib/platform-label";
 import { LibraryTable } from "@/routes/library/library-table";
 import { MediaCard } from "@/routes/library/media-card";
@@ -20,6 +31,11 @@ export interface LibraryPageProps {
 
 export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }: LibraryPageProps) {
   const [items, setItems] = useState<MediaListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSizeState] = useState(getPageSize());
+  const [jump, setJump] = useState(""); // jump-to-page input value
+  const [facets, setFacets] = useState<LibraryFacets>({ channels: [], platforms: [], tags: [] });
   const [selectedId, setSelectedId] = useState<number | null>(focusMediaId ?? null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<LibraryView>(getLibraryView());
@@ -30,11 +46,31 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
   const [platform, setPlatform] = useState<string | null>(null);
   const [from, setFrom] = useState<string>(""); // yyyy-mm-dd
   const [to, setTo] = useState<string>("");
+  const [reloadKey, setReloadKey] = useState(0); // bump to force a refetch after a mutation
   const [exportResult, setExportResult] = useState<PlaylistExportResult | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
+  // The active filter, sent to the DB. Search contributes its matched ids (null = no search).
+  const filter: MediaFilter = {
+    tag: activeTag,
+    channel,
+    platform,
+    from: from ? Date.parse(`${from}T00:00:00`) : null,
+    to: to ? Date.parse(`${to}T23:59:59.999`) : null,
+    ids: searchHits ? [...searchHits.keys()] : null,
+  };
+
+  const anyFilter = !!(activeTag || channel || platform || from || to || searchHits);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
   function refresh() {
-    return window.sift.library.list().then(setItems);
+    setReloadKey((k) => k + 1);
+  }
+
+  function changePageSize(n: number) {
+    setPageSizeState(n);
+    setPageSize(n);
+    setPage(0); // keep the first row of the current view in sight
   }
 
   function changeView(v: LibraryView) {
@@ -42,9 +78,11 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
     setLibraryView(v);
   }
 
+  // Facets span the whole library, so they only change when rows are added/removed —
+  // refetch on mount and after any mutation (reloadKey), not on every filter change.
   useEffect(() => {
-    void refresh();
-  }, []);
+    void window.sift.library.facets().then(setFacets).catch((e) => setError(String(e)));
+  }, [reloadKey]);
 
   // Consumed the cross-route focus (selectedId was seeded from it) — clear it in the parent so
   // returning to Library later doesn't re-open the same detail.
@@ -52,17 +90,6 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
     if (focusMediaId != null) onFocusMediaHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Computed before any early return so this stays a stable hook order
-  // regardless of `selectedId`/`items.length` (rules of hooks).
-  const allTags = unionTags(items);
-  const channels = Array.from(
-    new Set(items.map((i) => i.media.uploader).filter((u): u is string => !!u)),
-  ).sort((a, b) => a.localeCompare(b));
-  // Platform filter options adapt to what's actually in the library (not all yt-dlp extractors).
-  const platforms = Array.from(
-    new Set(items.map((i) => i.media.platformId).filter((p): p is string => !!p)),
-  ).sort((a, b) => platformLabel(a).localeCompare(platformLabel(b)));
 
   // Debounced DB search: empty query clears hits without an IPC round-trip.
   useEffect(() => {
@@ -79,21 +106,42 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
     return () => clearTimeout(t);
   }, [search]);
 
+  // Any filter/search change returns to the first page.
   useEffect(() => {
-    // A tag can vanish from the union (e.g. its last remaining video had
-    // the tag removed) while `activeTag` still references it. Left alone,
-    // that strands the view on an empty filtered list with no visible way
-    // to clear it, since the filter bar only renders when allTags.length > 0.
-    if (activeTag && !allTags.some((t) => t.toLowerCase() === activeTag.toLowerCase())) {
+    setPage(0);
+  }, [activeTag, channel, platform, from, to, searchHits]);
+
+  // A filtered value can vanish (its last video removed/retagged) while the filter still
+  // references it — clear it so the view isn't stranded on an empty result with no visible reset.
+  useEffect(() => {
+    if (activeTag && !facets.tags.some((t) => t.name.toLowerCase() === activeTag.toLowerCase())) {
       setActiveTag(null);
     }
-  }, [allTags, activeTag]);
-
-  // Same stranding guard for the platform filter: clear it if its platform is no
-  // longer present (e.g. the last video of that platform was removed).
+  }, [facets.tags, activeTag]);
   useEffect(() => {
-    if (platform && !platforms.includes(platform)) setPlatform(null);
-  }, [platforms, platform]);
+    if (channel && !facets.channels.includes(channel)) setChannel(null);
+  }, [facets.channels, channel]);
+  useEffect(() => {
+    if (platform && !facets.platforms.includes(platform)) setPlatform(null);
+  }, [facets.platforms, platform]);
+
+  // Removing the last row on a page can push `page` past the end — clamp back into range.
+  useEffect(() => {
+    if (page > pageCount - 1) setPage(pageCount - 1);
+  }, [pageCount, page]);
+
+  // Fetch the current page whenever the filter, page, or a mutation changes it.
+  useEffect(() => {
+    void window.sift.library
+      .listPage(filter, page, pageSize)
+      .then((r) => {
+        setItems(r.items);
+        setTotal(r.total);
+      })
+      .catch((e) => setError(String(e)));
+    // filter is rebuilt each render; depend on its primitive parts instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTag, channel, platform, from, to, searchHits, page, pageSize, reloadKey]);
 
   if (selectedId != null) {
     return (
@@ -104,18 +152,19 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
           // Refresh so edits made in the detail view (tags, transcripts,
           // summaries, downloads) reflect in the list, not just on remove.
           setSelectedId(null);
-          void refresh();
+          refresh();
         }}
         onRemoved={() => {
           setSelectedId(null);
-          void refresh();
+          refresh();
         }}
         onOpenChannel={onOpenChannel}
       />
     );
   }
 
-  if (items.length === 0) {
+  // Nothing in the library at all (no filter active) — the first-run empty state.
+  if (total === 0 && !anyFilter) {
     return (
       <main className="flex flex-1 items-center justify-center p-8">
         <p data-testid="library-empty" className="text-sm text-foreground/60">
@@ -129,26 +178,25 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
     setSelectedId(id);
   }
 
+  function handleJump(e: FormEvent) {
+    e.preventDefault();
+    const n = Number(jump);
+    if (Number.isInteger(n) && n >= 1 && n <= pageCount) setPage(n - 1);
+    setJump("");
+  }
+
   function handleRemove(id: number) {
     void window.sift.library
       .remove(id)
-      .then(refresh)
+      .then(() => refresh())
       .catch((e) => setError(String(e)));
   }
-
-  const shown = filterLibrary(items, {
-    activeTag,
-    channel,
-    platform,
-    from: from ? Date.parse(`${from}T00:00:00`) : null,
-    to: to ? Date.parse(`${to}T23:59:59.999`) : null,
-    searchIds: searchHits ? new Set(searchHits.keys()) : null,
-  });
 
   async function handleExportM3U() {
     setExportError(null);
     try {
-      const ids = shown.map((i) => i.media.id);
+      // Export the whole filtered set, not just the visible page.
+      const ids = await window.sift.library.listIds(filter);
       const name = activeTag ?? channel ?? "sift-library";
       setExportResult(await window.sift.library.exportPlaylist(ids, name));
     } catch (e) {
@@ -184,7 +232,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
           size="sm"
           variant="outline"
           data-testid="export-m3u"
-          disabled={shown.length === 0}
+          disabled={total === 0}
           onClick={handleExportM3U}
         >
           Export M3U
@@ -224,13 +272,13 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
           className="rounded border border-border bg-transparent px-2 py-1 text-sm"
         >
           <option value="">All channels</option>
-          {channels.map((c) => (
+          {facets.channels.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
           ))}
         </select>
-        {platforms.length > 1 && (
+        {facets.platforms.length > 1 && (
           <select
             data-testid="library-platform-filter"
             value={platform ?? ""}
@@ -238,7 +286,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
             className="rounded border border-border bg-transparent px-2 py-1 text-sm"
           >
             <option value="">All platforms</option>
-            {platforms.map((p) => (
+            {facets.platforms.map((p) => (
               <option key={p} value={p}>
                 {platformLabel(p)}
               </option>
@@ -262,19 +310,19 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
           aria-label="To date"
         />
       </div>
-      {allTags.length > 0 && (
+      {facets.tags.length > 0 && (
         <div
           data-testid="tag-filter-bar"
           className="flex flex-wrap items-center gap-1.5 pb-2"
         >
-          {allTags.map((t) => (
+          {facets.tags.map((t) => (
             <button
-              key={t}
+              key={t.name}
               type="button"
-              onClick={() => setActiveTag(activeTag === t ? null : t)}
-              className={activeTag === t ? "ring-1 ring-ring rounded" : ""}
+              onClick={() => setActiveTag(activeTag === t.name ? null : t.name)}
+              className={activeTag === t.name ? "ring-1 ring-ring rounded" : ""}
             >
-              <TagChip name={t} />
+              <TagChip name={t.name} />
             </button>
           ))}
           {activeTag && (
@@ -289,9 +337,13 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
           )}
         </div>
       )}
-      {view === "table" ? (
+      {total === 0 ? (
+        <p data-testid="library-no-matches" className="py-8 text-center text-sm text-foreground/60">
+          No matches
+        </p>
+      ) : view === "table" ? (
         <LibraryTable
-          items={shown}
+          items={items}
           onOpen={handleOpen}
           onRemove={handleRemove}
           onTagClick={setActiveTag}
@@ -303,23 +355,120 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
           data-testid="library-grid"
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
         >
-          {shown.map((item, index) => (
-            <motion.div
+          {items.map((item) => (
+            <MediaCard
               key={item.media.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03, ease: "easeOut" }}
-            >
-              <MediaCard
-                item={item}
-                onOpen={handleOpen}
-                onRemove={handleRemove}
-                onTagClick={setActiveTag}
-                hit={searchHits?.get(item.media.id)}
-                query={search.trim()}
-              />
-            </motion.div>
+              item={item}
+              onOpen={handleOpen}
+              onRemove={handleRemove}
+              onTagClick={setActiveTag}
+              hit={searchHits?.get(item.media.id)}
+              query={search.trim()}
+            />
           ))}
+        </div>
+      )}
+      {total > 0 && (
+        <div className="mt-4 flex flex-col items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-foreground/60">
+            <p data-testid="library-result-count">
+              Showing {page * pageSize + 1}–{Math.min(total, (page + 1) * pageSize)} of {total}
+            </p>
+            <label className="flex items-center gap-1">
+              <span className="sr-only">Per page</span>
+              <select
+                data-testid="library-page-size"
+                value={pageSize}
+                onChange={(e) => changePageSize(Number(e.target.value))}
+                className="rounded border border-border bg-transparent px-1 py-0.5 text-xs"
+                aria-label="Results per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}/page
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {pageCount > 1 && (
+            <div data-testid="library-pager" className="flex flex-wrap items-center justify-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="library-page-first"
+                disabled={page === 0}
+                onClick={() => setPage(0)}
+              >
+                First
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="library-page-prev"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                Prev
+              </Button>
+              {pageWindow(page + 1, pageCount).map((tok, i) =>
+                tok === "…" ? (
+                  <span key={`gap-${i}`} className="px-1 text-foreground/40" aria-hidden>
+                    …
+                  </span>
+                ) : (
+                  <Button
+                    key={tok}
+                    size="sm"
+                    variant={tok - 1 === page ? "default" : "outline"}
+                    data-testid={`library-page-${tok}`}
+                    aria-current={tok - 1 === page ? "page" : undefined}
+                    aria-label={`Page ${tok}`}
+                    onClick={() => setPage(tok - 1)}
+                  >
+                    {tok}
+                  </Button>
+                ),
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="library-page-next"
+                disabled={page >= pageCount - 1}
+                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              >
+                Next
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="library-page-last"
+                disabled={page >= pageCount - 1}
+                onClick={() => setPage(pageCount - 1)}
+              >
+                Last
+              </Button>
+              {pageCount > 5 && (
+                <form onSubmit={handleJump} className="ml-2 flex items-center gap-1">
+                  <label htmlFor="library-jump" className="text-foreground/60">
+                    Go to
+                  </label>
+                  <input
+                    id="library-jump"
+                    data-testid="library-page-jump"
+                    type="number"
+                    min={1}
+                    max={pageCount}
+                    value={jump}
+                    onChange={(e) => setJump(e.target.value)}
+                    placeholder={String(page + 1)}
+                    className="w-16 rounded border border-border bg-transparent px-1 py-0.5 text-sm"
+                    aria-label={`Jump to page (1–${pageCount})`}
+                  />
+                </form>
+              )}
+            </div>
+          )}
         </div>
       )}
     </main>

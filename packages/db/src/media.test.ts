@@ -10,6 +10,11 @@ import {
   getMediaBySourceUrl,
   backfillMediaChannelIds,
   listMediaByChannelId,
+  listMediaPage,
+  listMediaIds,
+  listMediaChannels,
+  listMediaPlatforms,
+  addTag,
 } from "./index";
 import type { SiftDatabase, NewMedia } from "./index";
 
@@ -83,6 +88,48 @@ describe("media queries", () => {
     deleteMedia(db, a.id);
     expect(getMediaById(db, a.id)).toBeUndefined();
     expect(listMedia(db).map((r) => r.id)).toEqual([b.id]);
+  });
+
+  it("listMediaPage paginates newest-first with a total, and filters by channel/platform/tag/ids", () => {
+    const rows = Array.from({ length: 5 }, (_, i) =>
+      insertMedia(
+        db,
+        sample({
+          source_url: `https://y/${i}`,
+          title: `V${i}`,
+          uploader: i % 2 === 0 ? "Alice" : "Bob",
+          platform_id: i < 3 ? "youtube" : "twitter",
+        }),
+      ),
+    );
+    addTag(db, rows[0]!.id, "music");
+    addTag(db, rows[4]!.id, "MUSIC"); // case-insensitive match
+
+    // Page 1 of 2 (size 3), newest first, total counts the whole set.
+    const p0 = listMediaPage(db, {}, 3, 0);
+    expect(p0.total).toBe(5);
+    expect(p0.rows.map((r) => r.title)).toEqual(["V4", "V3", "V2"]);
+    const p1 = listMediaPage(db, {}, 3, 3);
+    expect(p1.rows.map((r) => r.title)).toEqual(["V1", "V0"]);
+
+    // Filters constrain both rows and total.
+    expect(listMediaPage(db, { channel: "Alice" }, 10, 0).total).toBe(3); // V0,V2,V4
+    expect(listMediaPage(db, { platform: "twitter" }, 10, 0).total).toBe(2); // V3,V4
+    expect(listMediaPage(db, { tag: "music" }, 10, 0).rows.map((r) => r.title)).toEqual(["V4", "V0"]);
+
+    // ids allowlist; empty allowlist matches nothing (empty search result).
+    expect(listMediaPage(db, { ids: [rows[1]!.id, rows[3]!.id] }, 10, 0).rows.map((r) => r.title)).toEqual([
+      "V3",
+      "V1",
+    ]);
+    expect(listMediaPage(db, { ids: [] }, 10, 0).total).toBe(0);
+
+    // listIds returns all matching ids (newest first) across pages.
+    expect(listMediaIds(db, { channel: "Bob" })).toEqual([rows[3]!.id, rows[1]!.id]);
+
+    // Facets span the whole library.
+    expect(listMediaChannels(db)).toEqual(["Alice", "Bob"]);
+    expect(listMediaPlatforms(db)).toEqual(["twitter", "youtube"]);
   });
 
   it("getMediaBySourceUrl returns the most-recent row for a url, or undefined", () => {

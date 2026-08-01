@@ -7,7 +7,7 @@
          connections stay locked to 'self'. -->
     <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: sift-thumb:; media-src 'self' sift-media:" />
-    <!-- TODO(phase-2): source app name from @sift/core branding -->
+    <!-- Pre-JS loading fallback only; main.tsx sets document.title from @sift/core branding. -->
     <title>Sift</title>
   </head>
   <body>

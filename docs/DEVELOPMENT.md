@@ -176,9 +176,13 @@ Downloading is a straight pipeline from the Home preview card to a persisted
   "Library" in the header nav). Empty state renders
   `data-testid="library-empty"`.
 - **Downloads directory** (`apps/desktop/src/main/paths.ts`, `downloadsDir()`):
-  files land under `Downloads/<App>` (the OS "Downloads" folder plus the
-  branded app subfolder) in production. Configurable download path is deferred
-  to a later Settings → Downloads phase; today it's fixed.
+  `downloadsDir()` returns the default — the OS "Downloads" folder plus the
+  branded app subfolder. That default is only the fallback for the
+  downloads-config store (`downloadsConfigFile()`), which holds the live,
+  user-overridable path. Settings → Downloads
+  (`renderer/routes/settings/downloads-section.tsx`) edits it via
+  `downloads:getPath`/`setPath`/`pickPath`; `DownloadService.downloadsDir` reads
+  the store live, so a changed path takes effect on the next download.
 
 ### Offline download e2e fixture
 
@@ -242,14 +246,15 @@ touching the resolution call site:
   an existing provider with the same `id` (idempotent re-registration) or
   appends. `resolve(ctx)` returns the **first** provider whose `canHandle(ctx)`
   is true, or `null` — first-match-wins, so registration order *is* the
-  resolution order. Only one provider is registered today
+  resolution order. Two providers register today
   (`apps/desktop/src/main/index.ts`):
   ```ts
   transcriptRegistry.register(createYtdlpSubsProvider({ runner }));
+  transcriptRegistry.register(createWhisperProvider({ ffmpeg, whisper, isInstalled }));
   ```
-  **Whisper is Phase 4b, not part of this phase.** When it lands, its provider
-  (`canHandle` always true — it's the fallback) registers *after*
-  `ytdlp-subs`, so "if captions exist → fast free subtitle pull, else → local
+  The Whisper provider registers *after* `ytdlp-subs`, and its `canHandle` is
+  true only when a downloaded audio file exists **and** the binary + model are
+  installed, so "if captions exist → fast free subtitle pull, else → local
   transcription" falls out of the registry's ordering for free; no branching
   logic needs to change in `TranscriptService`.
 - **`ytdlp-subs` provider** (`apps/desktop/src/main/transcript/ytdlp-subs-provider.ts`,
@@ -302,9 +307,10 @@ touching the resolution call site:
   returns the newest one (`getTranscriptsByMediaId(...)[0]`) without
   re-invoking any provider — repeat "Get transcript" clicks are free. Otherwise
   resolves a provider from the registry (`registry.resolve(ctx)`); if none can
-  handle it, throws `"No captions found. Local transcription (Whisper) is
-  coming in a later update."` (the media row is left in place so a future
-  Whisper run can attach a transcript to it later). On success, persists the
+  handle it (no captions, and Whisper not installed or the video not
+  downloaded), throws `"No captions found. Install Whisper (Settings →
+  Binaries) to transcribe downloaded videos locally."` (the media row is left
+  in place so a later Whisper run can attach a transcript to it). On success, persists the
   result via `insertTranscript` and returns the mapped `TranscriptRecord`.
 - **IPC** (`apps/desktop/src/main/ipc/transcript.ts`, `packages/ipc-contract`):
   a single `transcript:get(input: { metadata })` handler; errors (including
@@ -316,16 +322,16 @@ touching the resolution call site:
   "Transcribing…"), regardless of whether the fetched metadata has captions.
   Clicking it on a caption-less video still creates/finds the `media` row
   (with `download_status: "none"`) and then surfaces the "No captions" error
-  below, so a future Whisper provider (4b) can attach a transcript to that
-  same row later. `handleTranscribe` calls
+  below (or, once the video is downloaded and Whisper is installed, the Whisper
+  provider transcribes it). `handleTranscribe` calls
   `window.sift.transcript.get({ metadata })`; on
   success `TranscriptPanel` renders (`data-testid="transcript-panel"`,
   header "Transcript · `<providerId>`"), one `data-testid="transcript-segment"`
   row per segment with a `mm:ss` timestamp and the segment text; on failure
   the message renders as `data-testid="transcript-error"`. no
-  streaming progress — subtitle fetch is a few seconds, so there's no
-  intermediate UI state; `transcript:progress` events + a progress bar arrive
-  with Whisper (4b) where jobs are long enough to need one.
+  streaming progress on the Home subtitle path — subtitle fetch is a few
+  seconds, so there's no intermediate UI state. `transcript:progress` events +
+  a progress bar drive the longer Whisper path (see the Whisper section).
 
 ### Offline transcript e2e fixture
 
@@ -360,11 +366,12 @@ Home, click "Get transcript", and confirm segments render with sensible
 timestamps and readable text. This is a Phase 4a/8 follow-up, not a gap in
 the automated suite.
 
-**Local transcription (no captions) is Phase 4b, not this phase.** Until a
-Whisper-based provider is registered after `ytdlp-subs`, a caption-less video
-gets a clean `"No captions found. Local transcription (Whisper) is coming in
-a later update."` error (`transcript-error` in the UI) instead of a
-transcript — this is the expected, tested behavior of the current registry,
+**Local transcription (no captions) is handled by the Whisper provider**
+(registered after `ytdlp-subs`). When Whisper is *not* installed, a
+caption-less video gets a clean `"No captions found. Install Whisper
+(Settings → Binaries) to transcribe downloaded videos locally."` error
+(`transcript-error` in the UI) instead of a
+transcript — this is the expected, tested behavior of the registry,
 not a bug.
 
 ### Transcript language preference
@@ -575,9 +582,9 @@ Ollama, and custom (OpenAI-compatible base_url) providers registered
 alongside Anthropic in the same `AiRegistry`; user prompt-library CRUD
 (add/edit/delete on top of the three seeded built-ins); per-provider
 `safeStorage` keys; `AiRegistry.unregister` so `clearKey` truly revokes.
-**Deferred to Phase 4b:** local (Whisper) transcription — summarize already
-works against any transcript regardless of which provider produced it, so
-once 4b lands, summarizing a caption-less video needs no changes here.
+**Whisper transcripts:** summarize works against any transcript regardless of
+which provider produced it, so summarizing a Whisper-transcribed caption-less
+video needs no changes here.
 
 ## Providers + prompt library (Phase 5b)
 

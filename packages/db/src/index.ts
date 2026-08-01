@@ -12,8 +12,12 @@ export {
   getMediaBySourceUrl,
   backfillMediaChannelIds,
   listMediaByChannelId,
+  listMediaPage,
+  listMediaIds,
+  listMediaChannels,
+  listMediaPlatforms,
 } from "./media";
-export type { DownloadStatus, MediaRow, NewMedia } from "./media";
+export type { DownloadStatus, MediaRow, NewMedia, MediaFilter } from "./media";
 export {
   insertTranscript,
   getTranscriptById,

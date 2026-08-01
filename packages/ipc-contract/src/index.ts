@@ -23,6 +23,9 @@ export const IPC = {
   downloadStart: "download:start",
   downloadProgress: "download:progress",
   libraryList: "library:list",
+  libraryListPage: "library:listPage",
+  libraryFacets: "library:facets",
+  libraryListIds: "library:listIds",
   libraryReveal: "library:reveal",
   libraryRemove: "library:remove",
   libraryDetail: "library:detail",
@@ -254,6 +257,30 @@ export interface MediaListItem {
   tags: string[];
 }
 
+/** Filters for the paged library list (contract's own copy of `@sift/db`'s `MediaFilter` —
+ * ipc-contract must not import `@sift/db`). All optional; `ids: []` matches nothing. */
+export interface MediaFilter {
+  tag?: string | null;
+  channel?: string | null;
+  platform?: string | null;
+  from?: number | null; // created_at >= (inclusive ms epoch)
+  to?: number | null; // created_at <= (inclusive ms epoch)
+  ids?: number[] | null; // restrict to these media ids (e.g. search results)
+}
+
+/** One page of the library plus the total number of rows matching the filter (for the pager). */
+export interface MediaPage {
+  items: MediaListItem[];
+  total: number;
+}
+
+/** Distinct filter values across the whole library, for the filter dropdowns. */
+export interface LibraryFacets {
+  channels: string[];
+  platforms: string[];
+  tags: { name: string; count: number }[];
+}
+
 /** A search hit for one media row (this is the contract's own copy; `@sift/db` has an
  * identical shape — the ipc-contract must not import `@sift/db`). */
 export interface SearchHit {
@@ -476,6 +503,13 @@ export interface SiftApi {
     /** Lists persisted media, newest first, each with a per-video capture summary
      * (transcript count/language, format chips, summary count). No network. */
     list(): Promise<MediaListItem[]>;
+    /** One page of the library matching `filter`, newest first, plus the total match count.
+     * Filtering runs in SQL, so only the page's rows are loaded. `page` is 0-based. */
+    listPage(filter: MediaFilter, page: number, pageSize: number): Promise<MediaPage>;
+    /** Distinct channel/platform/tag values across the whole library, for the filter dropdowns. */
+    facets(): Promise<LibraryFacets>;
+    /** All media ids matching `filter` (newest first) — e.g. to export the whole filtered set. */
+    listIds(filter: MediaFilter): Promise<number[]>;
     /** Reveals a downloaded file in the OS file manager. */
     reveal(path: string): Promise<void>;
     /** Deletes a media row; FK cascade also removes its transcripts + summaries. */
