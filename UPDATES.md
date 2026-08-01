@@ -1,5 +1,13 @@
 # Updates
 
+## v0.0.8 — 2026-08-01
+
+- The Library now loads one page at a time, so large libraries stay fast. Pager with
+  First/Prev/numbered/Next/Last, a page indicator, and a result count.
+- Choose how many videos show per page (24/48/96/200) — remembered between sessions.
+- Jump straight to a page number when you have many pages.
+- Channel, platform, and tag filters now cover your whole library, not just the current page.
+
 ## v0.0.7 — 2026-07-31
 
 - Update prompts now show release notes as clean text (raw HTML tags no longer leak through).
