@@ -12,6 +12,7 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TagChip } from "@/components/tag-chip";
 
 const TIER_LABELS: Record<MediaMetadata["platform"]["tier"], string> = {
@@ -122,6 +123,9 @@ export function PreviewCard({
   const selected = options.find((o) => o.id === selectedId) ?? options[0];
   const doneFormats = existing ? existing.formats.filter((f) => f.status === "done") : [];
   const existingMatch = selected ? doneFormats.find((f) => f.id === selected.id) : undefined;
+  const transcriptCount = existing?.transcriptCount ?? 0;
+  const summaryCount = existing?.summaryCount ?? 0;
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const percent =
     progress && progress.total
       ? Math.min(100, Math.round((progress.received / progress.total) * 100))
@@ -259,10 +263,27 @@ export function PreviewCard({
             <p>{metadata.hasCaptions ? "Captions available" : "No captions"}</p>
           </div>
 
-          {doneFormats.length > 0 && (
-            <p data-testid="already-captured" className="text-sm text-foreground/70">
-              Already in your library — {doneFormats.map((f) => f.label).join(", ")}
-            </p>
+          {(doneFormats.length > 0 || transcriptCount > 0 || summaryCount > 0) && (
+            <div data-testid="already-captured" className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-foreground/50">Already in your library</p>
+              <div className="flex flex-wrap gap-1.5">
+                {doneFormats.map((f) => (
+                  <Badge key={f.id} data-testid="captured-video" variant="outline" className="gap-1">
+                    ⬇ {f.label}
+                  </Badge>
+                ))}
+                {transcriptCount > 0 && (
+                  <Badge data-testid="captured-transcript" variant="outline" className="gap-1">
+                    ✎ Transcript{existing?.transcriptLanguage ? ` · ${existing.transcriptLanguage}` : ""}
+                  </Badge>
+                )}
+                {summaryCount > 0 && (
+                  <Badge data-testid="captured-summary" variant="outline" className="gap-1">
+                    ✦ {summaryCount} {summaryCount === 1 ? "summary" : "summaries"}
+                  </Badge>
+                )}
+              </div>
+            </div>
           )}
 
           <div className="flex items-center gap-2">
@@ -282,7 +303,12 @@ export function PreviewCard({
             <Button
               data-testid="download-button"
               disabled={downloading || !selected}
-              onClick={() => selected && onDownload(selected, tags)}
+              onClick={() => {
+                if (!selected) return;
+                // Already have this exact format on disk → confirm before re-downloading.
+                if (existingMatch) setConfirmOpen(true);
+                else onDownload(selected, tags);
+              }}
             >
               {downloading
                 ? "Downloading…"
@@ -464,6 +490,24 @@ export function PreviewCard({
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={confirmOpen}
+        data-testid="redownload-confirm"
+        title="Re-download this video?"
+        description={
+          <>
+            <span className="font-medium">{selected?.label}</span> is already in your library
+            {transcriptCount > 0 ? " (with a transcript)" : ""}. Downloading again will replace the
+            existing file.
+          </>
+        }
+        confirmLabel={selected ? `Re-download ${selected.label}` : "Re-download"}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          if (selected) onDownload(selected, tags);
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </motion.div>
   );
 }
