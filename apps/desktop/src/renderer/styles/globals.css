@@ -6,6 +6,7 @@
   /* Dark-only: the .dark class is applied permanently on <html> (see index.html).
      :root stays as an inert light fallback — no toggle is wired. */
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --surface: 0 0% 98%;
     --surface-2: 0 0% 95%;
@@ -20,6 +21,7 @@
     --danger: 0 72% 50%;
   }
   .dark {
+    color-scheme: dark; /* native <select> popups, date pickers, scrollbars render dark */
     --background: 222 24% 8%;
     --surface: 222 20% 12%;
     --surface-2: 222 18% 16%;
