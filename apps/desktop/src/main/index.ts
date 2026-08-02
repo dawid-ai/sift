@@ -59,6 +59,7 @@ import { createOllamaProvider } from "./ai/ollama-provider";
 import { createCustomConfigStore } from "./ai/custom-config";
 import { createTranscriptConfigStore } from "./settings/transcript-config";
 import { createTranscriptMethodStore } from "./settings/transcript-method-config";
+import { createAutoTranscriptStore } from "./settings/auto-transcript-config";
 import { createDownloadsConfigStore } from "./settings/downloads-config";
 import { createSecrets } from "./secrets";
 import { resetStaleDownloads } from "./maintenance";
@@ -72,6 +73,7 @@ import {
   thumbnailsDir,
   transcriptConfigFile,
   transcriptMethodConfigFile,
+  autoTranscriptConfigFile,
   whisperDir,
   whisperModelsDir,
 } from "./paths";
@@ -624,6 +626,10 @@ app.whenReady().then(() => {
     const transcriptMethodStore = createTranscriptMethodStore({
       filePath: transcriptMethodConfigFile(),
     });
+    // Persisted "auto-fetch transcript after download" toggle (default on).
+    const autoTranscriptStore = createAutoTranscriptStore({
+      filePath: autoTranscriptConfigFile(),
+    });
     const transcriptRegistry = new TranscriptRegistry();
     transcriptRegistry.register(createYtdlpSubsProvider({ runner }));
 
@@ -670,7 +676,12 @@ app.whenReady().then(() => {
       getCookiesFile: authManager.cookiesFileForUrl,
       reportAuthFailure: authManager.reportAuthFailure,
     });
-    registerTranscriptIpc(transcriptService, () => BrowserWindow.getAllWindows(), transcriptMethodStore);
+    registerTranscriptIpc(
+      transcriptService,
+      () => BrowserWindow.getAllWindows(),
+      transcriptMethodStore,
+      autoTranscriptStore,
+    );
     registerSettingsIpc(transcriptConfigStore);
 
     // One encrypted secrets store per keyed provider (anthropic, openai, custom),

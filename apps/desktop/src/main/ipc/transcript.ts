@@ -13,6 +13,7 @@ export function registerTranscriptIpc(
   service: TranscriptService,
   getWindows: () => BrowserWindow[],
   methodStore: { get(): TranscriptMethod; set(m: TranscriptMethod): void },
+  autoDownloadStore: { get(): boolean; set(enabled: boolean): void },
 ): void {
   ipcMain.handle(
     IPC.transcriptGet,
@@ -23,4 +24,8 @@ export function registerTranscriptIpc(
   );
   ipcMain.handle(IPC.transcriptGetMethod, () => methodStore.get());
   ipcMain.handle(IPC.transcriptSetMethod, (_event, m: TranscriptMethod) => methodStore.set(m));
+  ipcMain.handle(IPC.transcriptGetAutoDownload, () => autoDownloadStore.get());
+  ipcMain.handle(IPC.transcriptSetAutoDownload, (_event, enabled: boolean) =>
+    autoDownloadStore.set(enabled),
+  );
 }

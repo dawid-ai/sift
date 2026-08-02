@@ -142,9 +142,11 @@ function HomeView() {
         setDownloading(false);
         setProgress(null);
       }
-      // Transcript by default: once the video is downloaded, fetch its transcript.
-      // Non-fatal — a caption failure (e.g. none available, or a 429) surfaces in the
-      // transcript panel, not as a download error.
+      // Transcript after download (Settings → "Get transcript after download", default on):
+      // fetch the transcript now that the video is on disk (so Whisper can process a
+      // caption-less video). Non-fatal — a caption failure (none available, or a 429)
+      // surfaces in the transcript panel, not as a download error.
+      if (!(await window.sift.transcript.getAutoDownload())) return;
       transcribeRequestIdRef.current += 1;
       const rid = transcribeRequestIdRef.current;
       setTranscribing(true);

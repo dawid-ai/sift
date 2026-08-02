@@ -54,6 +54,11 @@ export function transcriptConfigFile(): string {
   return join(app.getPath("userData"), "settings", "transcript.json");
 }
 
+/** Path to the persisted "auto-fetch transcript after download" toggle (non-secret). */
+export function autoTranscriptConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "auto-transcript.json");
+}
+
 /** Path to the persisted default transcript-method override (non-secret). */
 export function transcriptMethodConfigFile(): string {
   return join(app.getPath("userData"), "settings", "transcript-method.json");

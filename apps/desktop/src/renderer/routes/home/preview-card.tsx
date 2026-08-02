@@ -133,7 +133,21 @@ export function PreviewCard({
 
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
+  const [allTags, setAllTags] = useState<string[]>([]);
   const [ollamaState, setOllamaState] = useState<"idle" | "checking" | "down" | "not-installed">("idle");
+
+  // Existing tags across the library, for autosuggest while typing.
+  useEffect(() => {
+    void window.sift.tags.listAll().then((rows) => setAllTags(rows.map((r) => r.name)));
+  }, []);
+
+  const tagSuggestions = tagDraft.trim()
+    ? allTags.filter(
+        (n) =>
+          n.toLowerCase().includes(tagDraft.trim().toLowerCase()) &&
+          !tags.some((t) => t.toLowerCase() === n.toLowerCase()),
+      )
+    : [];
 
   function addTag(raw: string) {
     const t = raw.trim().toLowerCase();
@@ -301,7 +315,13 @@ export function PreviewCard({
                 }
               }}
               className="flex h-9 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              list="download-tag-suggestions"
             />
+            <datalist id="download-tag-suggestions">
+              {tagSuggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {tags.map((t) => (

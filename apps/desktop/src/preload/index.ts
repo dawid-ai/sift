@@ -147,6 +147,8 @@ const api: SiftApi = {
     },
     getMethod: () => ipcRenderer.invoke(IPC.transcriptGetMethod),
     setMethod: (m) => ipcRenderer.invoke(IPC.transcriptSetMethod, m),
+    getAutoDownload: () => ipcRenderer.invoke(IPC.transcriptGetAutoDownload),
+    setAutoDownload: (enabled: boolean) => ipcRenderer.invoke(IPC.transcriptSetAutoDownload, enabled),
   },
   summarize: {
     start: (input) => ipcRenderer.invoke(IPC.summarizeStart, input),

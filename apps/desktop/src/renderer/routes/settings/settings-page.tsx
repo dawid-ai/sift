@@ -7,6 +7,7 @@ import { PromptsSection } from "./prompts-section";
 import { SigninSection } from "./signin-section";
 import { TranscriptLanguageSection } from "./transcript-language-section";
 import { TranscriptMethodSection } from "./transcript-method-section";
+import { AutoTranscriptSection } from "./auto-transcript-section";
 import { UpdatesSection } from "./updates-section";
 import { WhisperSection } from "./whisper-section";
 
@@ -42,6 +43,7 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-semibold">Transcript method</h3>
         <TranscriptMethodSection />
+        <AutoTranscriptSection />
       </section>
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-semibold">Downloads</h3>

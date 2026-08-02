@@ -44,6 +44,8 @@ export const IPC = {
   transcriptProgress: "transcript:progress",
   transcriptGetMethod: "transcript:getMethod",
   transcriptSetMethod: "transcript:setMethod",
+  transcriptGetAutoDownload: "transcript:getAutoDownload",
+  transcriptSetAutoDownload: "transcript:setAutoDownload",
   summarizeStart: "summarize:start",
   summarizeToken: "summarize:token",
   summarizeExport: "summarize:export",
@@ -610,6 +612,10 @@ export interface SiftApi {
     getMethod(): Promise<TranscriptMethod>;
     /** Persists the default transcript method. */
     setMethod(m: TranscriptMethod): Promise<void>;
+    /** Whether a transcript is auto-fetched after a video download (default true). */
+    getAutoDownload(): Promise<boolean>;
+    /** Persists the auto-fetch-after-download toggle. */
+    setAutoDownload(enabled: boolean): Promise<void>;
   };
   summarize: {
     /** Streams a summary for the newest transcript of `metadata`'s URL; persists + returns the record. */
