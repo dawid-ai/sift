@@ -1,5 +1,12 @@
 # Updates
 
+## v0.0.10 — 2026-08-02
+
+- When you paste a URL that's already in your library, the preview now shows what you already
+  have — badges for the downloaded video, its transcript, and any summaries.
+- Downloading an already-captured video now asks for confirmation first, so you don't
+  overwrite an existing file by accident.
+
 ## v0.0.9 — 2026-08-02
 
 - Tag box on Home now suggests your existing tags as you type.
