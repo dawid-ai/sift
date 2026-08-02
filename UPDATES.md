@@ -1,5 +1,10 @@
 # Updates
 
+## v0.0.12 — 2026-08-02
+
+- Fixed dropdown menus (format, provider, filters) and date pickers rendering with a white
+  background and unreadable text — they now match the dark theme.
+
 ## v0.0.11 — 2026-08-02
 
 - Library pagination controls now stay pinned at the bottom, with no empty gap beneath them on
