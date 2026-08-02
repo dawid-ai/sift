@@ -205,7 +205,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
   }
 
   return (
-    <main className="flex flex-1 flex-col p-8">
+    <main className="flex flex-1 flex-col p-8 min-h-0">
       {error && (
         <p data-testid="library-remove-error" className="mb-4 text-sm text-red-600 dark:text-red-400">
           {error}
@@ -337,37 +337,39 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
           )}
         </div>
       )}
-      {total === 0 ? (
-        <p data-testid="library-no-matches" className="py-8 text-center text-sm text-foreground/60">
-          No matches
-        </p>
-      ) : view === "table" ? (
-        <LibraryTable
-          items={items}
-          onOpen={handleOpen}
-          onRemove={handleRemove}
-          onTagClick={setActiveTag}
-          hits={searchHits}
-          query={search.trim()}
-        />
-      ) : (
-        <div
-          data-testid="library-grid"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {items.map((item) => (
-            <MediaCard
-              key={item.media.id}
-              item={item}
-              onOpen={handleOpen}
-              onRemove={handleRemove}
-              onTagClick={setActiveTag}
-              hit={searchHits?.get(item.media.id)}
-              query={search.trim()}
-            />
-          ))}
-        </div>
-      )}
+      <div data-testid="library-scroll" className="flex-1 min-h-0 overflow-auto">
+        {total === 0 ? (
+          <p data-testid="library-no-matches" className="py-8 text-center text-sm text-foreground/60">
+            No matches
+          </p>
+        ) : view === "table" ? (
+          <LibraryTable
+            items={items}
+            onOpen={handleOpen}
+            onRemove={handleRemove}
+            onTagClick={setActiveTag}
+            hits={searchHits}
+            query={search.trim()}
+          />
+        ) : (
+          <div
+            data-testid="library-grid"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {items.map((item) => (
+              <MediaCard
+                key={item.media.id}
+                item={item}
+                onOpen={handleOpen}
+                onRemove={handleRemove}
+                onTagClick={setActiveTag}
+                hit={searchHits?.get(item.media.id)}
+                query={search.trim()}
+              />
+            ))}
+          </div>
+        )}
+      </div>
       {total > 0 && (
         <div className="mt-4 flex flex-col items-center gap-2 text-sm">
           <div className="flex items-center gap-2 text-foreground/60">
