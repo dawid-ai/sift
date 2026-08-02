@@ -1,5 +1,10 @@
 # Updates
 
+## v0.0.11 — 2026-08-02
+
+- Library pagination controls now stay pinned at the bottom, with no empty gap beneath them on
+  shorter pages. The list scrolls on its own while the search and filters stay in view.
+
 ## v0.0.10 — 2026-08-02
 
 - When you paste a URL that's already in your library, the preview now shows what you already
