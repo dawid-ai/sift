@@ -1,5 +1,12 @@
 # Updates
 
+## v0.0.9 — 2026-08-02
+
+- Tag box on Home now suggests your existing tags as you type.
+- New setting: "Get transcript after download" (on by default) — a toggle to control whether
+  transcribing runs automatically once a video finishes downloading. Leaving it on means a
+  caption-less video already has its file ready for local Whisper transcription.
+
 ## v0.0.8 — 2026-08-01
 
 - The Library now loads one page at a time, so large libraries stay fast. Pager with
