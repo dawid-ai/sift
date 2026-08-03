@@ -1,5 +1,10 @@
 # Updates
 
+## v0.0.14 — 2026-08-03
+
+- Dropdown menus now render dark with readable text (the previous fix didn't cover the
+  open menu list on Windows).
+
 ## v0.0.13 — 2026-08-03
 
 - Video thumbnails now load reliably: YouTube thumbnails are cached locally (fetched once)

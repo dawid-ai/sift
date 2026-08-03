@@ -1,6 +1,6 @@
 {
   "name": "@sift/desktop",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "private": true,
   "description": "Sift — download, transcribe, and summarize online video",
   "author": "Sift",
