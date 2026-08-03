@@ -38,4 +38,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Native <select> dropdown lists: Windows/Chromium paints the popup white even under
+     color-scheme: dark, so color the <option> rows explicitly (dark bg, legible text). */
+  option {
+    background-color: hsl(var(--surface));
+    color: hsl(var(--foreground));
+  }
 }
