@@ -3,7 +3,7 @@ import type { MediaListItem, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, videoThumbUrl } from "@/lib/utils";
 import { highlightSegments } from "@/lib/search-snippet";
 import { platformLabel } from "@/lib/platform-label";
 import { formatDuration } from "@/routes/home/preview-card";
@@ -70,8 +70,13 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, hit, query }: LibraryR
         <div className="flex items-center gap-2">
           {media.thumbnailUrl && (
             <img
-              src={media.thumbnailUrl}
+              src={videoThumbUrl(media.thumbnailUrl)}
               alt={media.title}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.style.visibility = "hidden";
+              }}
               className="h-10 w-16 shrink-0 rounded object-cover"
             />
           )}

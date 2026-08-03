@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ChannelRecord, ChannelVideo, ChannelVideoStatus, ChannelContentType, ChannelOrder, DownloadedVideo, QueueSpec } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
-import { thumbUrl } from "@/lib/utils";
+import { thumbUrl, videoThumbUrl } from "@/lib/utils";
 import { extractLinks } from "@/lib/extract-links";
 import { QueueSpecControls } from "@/components/queue-spec-controls";
 
@@ -139,7 +139,7 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
           <div className="flex flex-col gap-1">
             {downloaded.map((d) => (
               <button key={d.id} type="button" data-testid="channel-downloaded-item" onClick={() => onOpenMedia?.(d.id)} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-left text-sm transition-colors hover:border-foreground/20">
-                {d.thumbnailUrl && <img src={d.thumbnailUrl} alt="" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="h-9 w-16 flex-none rounded object-cover" />}
+                {d.thumbnailUrl && <img src={videoThumbUrl(d.thumbnailUrl)} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="h-9 w-16 flex-none rounded object-cover" />}
                 <span className="min-w-0 flex-1 truncate">{d.title}</span>
                 <span className="flex-none text-xs text-foreground/45">{new Date(d.createdAt).toLocaleDateString()}</span>
               </button>

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TagChip } from "@/components/tag-chip";
+import { videoThumbUrl } from "@/lib/utils";
 
 const TIER_LABELS: Record<MediaMetadata["platform"]["tier"], string> = {
   tested: "Tested",
@@ -252,8 +253,12 @@ export function PreviewCard({
         <CardContent className="flex flex-col gap-3">
           {metadata.thumbnailUrl && (
             <img
-              src={metadata.thumbnailUrl}
+              src={videoThumbUrl(metadata.thumbnailUrl)}
               alt={metadata.title}
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.style.visibility = "hidden";
+              }}
               className="max-w-full rounded"
             />
           )}

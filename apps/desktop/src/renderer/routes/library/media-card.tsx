@@ -4,7 +4,7 @@ import { TagChip } from "@/components/tag-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, videoThumbUrl } from "@/lib/utils";
 import { highlightSegments } from "@/lib/search-snippet";
 import { platformLabel } from "@/lib/platform-label";
 
@@ -41,7 +41,16 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, hit, query }: Me
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {media.thumbnailUrl && (
-          <img src={media.thumbnailUrl} alt={media.title} className="max-w-full rounded" />
+          <img
+            src={videoThumbUrl(media.thumbnailUrl)}
+            alt={media.title}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.style.visibility = "hidden";
+            }}
+            className="max-w-full rounded"
+          />
         )}
         <div className="flex items-center gap-2">
           <Badge data-testid="media-card-platform" variant="outline">{platformLabel(media.platformId)}</Badge>
