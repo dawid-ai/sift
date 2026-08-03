@@ -1,5 +1,11 @@
 # Updates
 
+## v0.0.13 — 2026-08-03
+
+- Video thumbnails now load reliably: YouTube thumbnails are cached locally (fetched once)
+  instead of all hitting the network at once, which could fail to load a whole page of
+  thumbnails in a large library. Off-screen thumbnails also load lazily as you scroll.
+
 ## v0.0.12 — 2026-08-02
 
 - Fixed dropdown menus (format, provider, filters) and date pickers rendering with a white
