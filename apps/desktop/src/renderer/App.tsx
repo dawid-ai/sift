@@ -25,6 +25,8 @@ import { QueuePage } from "@/routes/queue/queue-page";
 import { ChannelsPage } from "@/routes/channels/channels-page";
 import { useUpdates } from "@/routes/updates/use-updates";
 import { UpdateToast } from "@/routes/updates/update-toast";
+import { useBinaryUpdates } from "@/routes/updates/use-binary-updates";
+import { BinaryUpdateToast } from "@/routes/updates/binary-update-toast";
 import { KNOWN_PROVIDERS } from "@/lib/ai-provider-catalog";
 import { transcriptStageLabel } from "@/lib/transcript-stage-label";
 
@@ -370,6 +372,7 @@ export function App() {
   const [focusMediaId, setFocusMediaId] = useState<number | null>(null);
   const [openChannelError, setOpenChannelError] = useState<string | null>(null);
   const { state: updateState, dismiss: dismissUpdate } = useUpdates();
+  const { state: binaryUpdateState, dismiss: dismissBinaryUpdate } = useBinaryUpdates();
 
   // Jumps from a channel's "Downloaded from this channel" list to that video's in-app detail.
   const handleOpenMedia = useCallback((mediaId: number) => {
@@ -418,6 +421,7 @@ export function App() {
         {view === "settings" && <SettingsPage updateState={updateState} />}
       </div>
       <UpdateToast state={updateState} onDismiss={dismissUpdate} />
+      <BinaryUpdateToast state={binaryUpdateState} onDismiss={dismissBinaryUpdate} />
     </div>
   );
 }
