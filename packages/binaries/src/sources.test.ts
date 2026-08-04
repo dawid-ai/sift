@@ -62,6 +62,7 @@ describe("ytdlpSource.resolveLatest", () => {
 
 const FFMPEG_RELEASE = {
   tag_name: "latest",
+  published_at: "2024-09-01T12:49:00Z",
   assets: [
     {
       name: "ffmpeg-master-latest-win64-gpl.zip",
@@ -103,7 +104,7 @@ describe("ffmpegSource.resolveLatest", () => {
   it("resolves the win-x64 archive with its sha256 and inner binary name", async () => {
     const r = await ffmpegSource.resolveLatest("win-x64", fakeFfmpegFetch());
     expect(r.assetUrl).toBe("https://gh/ffmpeg-win64-gpl.zip");
-    expect(r.version).toBe("latest");
+    expect(r.version).toBe("build-2024-09-01");
     expect(r.sha256).toBe("eee555");
     expect(r.binaryName).toBe("ffmpeg.exe");
   });

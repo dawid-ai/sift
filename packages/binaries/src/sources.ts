@@ -20,6 +20,7 @@ interface GithubAsset {
 
 interface GithubRelease {
   tag_name: string;
+  published_at: string;
   assets: GithubAsset[];
 }
 
@@ -134,7 +135,7 @@ export const ffmpegSource: BinarySource = {
       throw new Error(`No sha256 entry found for "${archiveName}" in checksums.sha256`);
     }
     return {
-      version: release.tag_name,
+      version: `build-${release.published_at.slice(0, 10)}`,
       assetUrl: asset.browser_download_url,
       sha256,
       binaryName: ffmpegBinaryName(p),
