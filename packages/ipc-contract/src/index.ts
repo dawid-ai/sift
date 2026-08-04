@@ -18,6 +18,10 @@ export const IPC = {
   binariesCheck: "binaries:check",
   binariesInstall: "binaries:install",
   binariesProgress: "binaries:progress",
+  binariesGetPolicy: "binaries:getPolicy",
+  binariesSetPolicy: "binaries:setPolicy",
+  binariesUpdateEvent: "binaries:updateEvent",
+  binariesCurrentUpdateEvent: "binaries:currentUpdateEvent",
   metadataFetch: "metadata:fetch",
   metadataListExtractors: "metadata:listExtractors",
   downloadStart: "download:start",
@@ -112,6 +116,17 @@ export interface BinaryProgress {
   received: number;
   total: number | null;
 }
+
+/** Silent auto-update vs. notify-only for managed binaries. */
+export type BinaryUpdatePolicy = "auto" | "notify";
+
+/** A managed-binary maintenance lifecycle event, forwarded main → renderer.
+ * `ready.reason` distinguishes a first-run install from an update, for copy. */
+export type BinaryUpdateEvent =
+  | { type: "installing"; kind: BinaryKind }
+  | { type: "ready"; kind: BinaryKind; version: string; reason: "installed" | "updated" }
+  | { type: "available"; kind: BinaryKind; installedVersion: string; latestVersion: string }
+  | { type: "error"; kind: BinaryKind; message: string };
 
 /** Point-in-time install status for the whisper.cpp binary + local model. */
 export interface WhisperStatus {
@@ -472,6 +487,14 @@ export interface SiftApi {
     install(kind: BinaryKind): Promise<BinaryStatus>;
     /** Subscribes to install progress events. Returns an unsubscribe function. */
     onProgress(cb: (p: BinaryProgress) => void): () => void;
+    /** Current auto-update policy (default "auto"). */
+    getPolicy(): Promise<BinaryUpdatePolicy>;
+    /** Persists the auto-update policy. */
+    setPolicy(mode: BinaryUpdatePolicy): Promise<void>;
+    /** Subscribes to startup maintenance lifecycle events. Returns an unsubscribe fn. */
+    onUpdateEvent(cb: (e: BinaryUpdateEvent) => void): () => void;
+    /** Latest maintenance event per kind, to recover events emitted before subscribe (startup race). */
+    currentUpdateEvents(): Promise<BinaryUpdateEvent[]>;
   };
   whisper: {
     /** Binary + model install status. No network. */
