@@ -35,7 +35,13 @@ export function BinariesSection() {
   const [errors, setErrors] = useState<Partial<Record<BinaryKind, string | null>>>({});
   const [policy, setPolicy] = useState<"auto" | "notify">("auto");
   useEffect(() => {
-    window.sift.binaries.getPolicy().then(setPolicy);
+    let cancelled = false;
+    window.sift.binaries.getPolicy().then((p) => {
+      if (!cancelled) setPolicy(p);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   async function togglePolicy(next: "auto" | "notify") {
     setPolicy(next);

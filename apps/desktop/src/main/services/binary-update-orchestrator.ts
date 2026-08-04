@@ -47,50 +47,55 @@ export async function runStartupBinaryMaintenance(deps: BinaryMaintenanceDeps): 
   const byKind = new Map(statuses.map((s) => [s.kind, s]));
 
   for (const kind of deps.kinds) {
-    const s = byKind.get(kind);
-    if (!s) continue;
-
-    // First-run: install regardless of policy.
-    if (!s.installed) {
-      deps.emit({ type: "installing", kind });
-      try {
-        const r = await deps.install(kind);
-        deps.emit({ type: "ready", kind, version: r.installedVersion ?? "", reason: "installed" });
-      } catch (e) {
-        deps.emit({ type: "error", kind, message: errText(e) });
-      }
-      continue;
-    }
-
-    // Installed: throttle the network check. A falsy lastChecked (null, or 0 —
-    // e.g. a DB column that defaults to 0) means "never checked": always proceed.
-    const lastChecked = deps.getLastChecked(kind);
-    if (lastChecked && deps.now() - lastChecked < throttleMs) continue;
-
-    let checked: BinaryStatus;
     try {
-      checked = await deps.check(kind);
-    } catch (e) {
-      deps.emit({ type: "error", kind, message: errText(e) });
-      continue;
-    }
-    if (!checked.updateAvailable) continue;
+      const s = byKind.get(kind);
+      if (!s) continue;
 
-    if (decideUpdateAction({ installed: true, updateAvailable: true, policy: deps.policy() }) === "auto-update") {
-      deps.emit({ type: "installing", kind });
+      // First-run: install regardless of policy.
+      if (!s.installed) {
+        deps.emit({ type: "installing", kind });
+        try {
+          const r = await deps.install(kind);
+          deps.emit({ type: "ready", kind, version: r.installedVersion ?? "", reason: "installed" });
+        } catch (e) {
+          deps.emit({ type: "error", kind, message: errText(e) });
+        }
+        continue;
+      }
+
+      // Installed: throttle the network check. A falsy lastChecked (null, or 0 —
+      // e.g. a DB column that defaults to 0) means "never checked": always proceed.
+      const lastChecked = deps.getLastChecked(kind);
+      if (lastChecked && deps.now() - lastChecked < throttleMs) continue;
+
+      let checked: BinaryStatus;
       try {
-        const r = await deps.install(kind);
-        deps.emit({ type: "ready", kind, version: r.installedVersion ?? "", reason: "updated" });
+        checked = await deps.check(kind);
       } catch (e) {
         deps.emit({ type: "error", kind, message: errText(e) });
+        continue;
       }
-    } else {
-      deps.emit({
-        type: "available",
-        kind,
-        installedVersion: checked.installedVersion ?? "",
-        latestVersion: checked.latestVersion ?? "",
-      });
+      if (!checked.updateAvailable) continue;
+
+      if (decideUpdateAction({ installed: true, updateAvailable: true, policy: deps.policy() }) === "auto-update") {
+        deps.emit({ type: "installing", kind });
+        try {
+          const r = await deps.install(kind);
+          deps.emit({ type: "ready", kind, version: r.installedVersion ?? "", reason: "updated" });
+        } catch (e) {
+          deps.emit({ type: "error", kind, message: errText(e) });
+        }
+      } else {
+        deps.emit({
+          type: "available",
+          kind,
+          installedVersion: checked.installedVersion ?? "",
+          latestVersion: checked.latestVersion ?? "",
+        });
+      }
+    } catch {
+      // Best-effort: a throwing getLastChecked/emit/etc must never escape this
+      // fire-and-forget startup call. Skip this kind.
     }
   }
 }

@@ -135,4 +135,36 @@ describe("runStartupBinaryMaintenance", () => {
     ).resolves.toBeUndefined();
     expect(events).toEqual([]);
   });
+
+  it("never throws even if emit() itself throws", async () => {
+    let calls = 0;
+    await expect(
+      runStartupBinaryMaintenance({
+        kinds: ["ytdlp"],
+        list: async () => [status("ytdlp", { installed: false, installedVersion: null })],
+        getLastChecked: () => null,
+        check: async () => status("ytdlp"),
+        install: async (k) => status(k, { installedVersion: "1" }),
+        policy: () => "auto",
+        emit: () => { calls++; throw new Error("send failed"); },
+        now: () => 1_000_000,
+      }),
+    ).resolves.toBeUndefined();
+    expect(calls).toBeGreaterThan(0);
+  });
+
+  it("never throws if getLastChecked() throws", async () => {
+    await expect(
+      runStartupBinaryMaintenance({
+        kinds: ["ytdlp"],
+        list: async () => [status("ytdlp")],
+        getLastChecked: () => { throw new Error("db read failed"); },
+        check: async () => status("ytdlp", { updateAvailable: true, latestVersion: "new" }),
+        install: async (k) => status(k),
+        policy: () => "auto",
+        emit: () => {},
+        now: () => 1_000_000,
+      }),
+    ).resolves.toBeUndefined();
+  });
 });
