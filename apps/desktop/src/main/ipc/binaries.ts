@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import { ipcMain } from "electron";
-import { IPC, type BinaryKind } from "@sift/ipc-contract";
+import { IPC, type BinaryKind, type BinaryUpdateEvent, type BinaryUpdatePolicy } from "@sift/ipc-contract";
 import type { BinariesService } from "../services/binaries-service";
 
 /**
@@ -22,4 +22,33 @@ export function registerBinariesIpc(
       }
     }),
   );
+}
+
+interface PolicyStore {
+  get(): BinaryUpdatePolicy;
+  set(mode: BinaryUpdatePolicy): void;
+}
+
+/**
+ * Registers policy get/set + the `binaries:updateEvent` push channel. Caches the
+ * latest event per kind so a renderer mounting after startup maintenance ran can
+ * recover them via `binaries:currentUpdateEvent` (startup race). Returns `emit` for
+ * the startup runner to push lifecycle events, and `currentEvents` for tests.
+ */
+export function registerBinaryUpdatesIpc(
+  getWindows: () => BrowserWindow[],
+  policyStore: PolicyStore,
+): { emit(e: BinaryUpdateEvent): void; currentEvents(): BinaryUpdateEvent[] } {
+  const lastByKind = new Map<BinaryUpdateEvent["kind"], BinaryUpdateEvent>();
+
+  const emit = (e: BinaryUpdateEvent): void => {
+    lastByKind.set(e.kind, e);
+    for (const win of getWindows()) win.webContents.send(IPC.binariesUpdateEvent, e);
+  };
+
+  ipcMain.handle(IPC.binariesGetPolicy, () => policyStore.get());
+  ipcMain.handle(IPC.binariesSetPolicy, (_e, mode: BinaryUpdatePolicy) => policyStore.set(mode));
+  ipcMain.handle(IPC.binariesCurrentUpdateEvent, () => [...lastByKind.values()]);
+
+  return { emit, currentEvents: () => [...lastByKind.values()] };
 }
