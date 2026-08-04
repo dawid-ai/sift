@@ -33,6 +33,14 @@ export function BinariesSection() {
   const [progress, setProgress] = useState<Partial<Record<BinaryKind, BinaryProgress>>>({});
   const [busy, setBusy] = useState<Partial<Record<BinaryKind, "checking" | "installing">>>({});
   const [errors, setErrors] = useState<Partial<Record<BinaryKind, string | null>>>({});
+  const [policy, setPolicy] = useState<"auto" | "notify">("auto");
+  useEffect(() => {
+    window.sift.binaries.getPolicy().then(setPolicy);
+  }, []);
+  async function togglePolicy(next: "auto" | "notify") {
+    setPolicy(next);
+    await window.sift.binaries.setPolicy(next);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +93,14 @@ export function BinariesSection() {
 
   return (
     <div className="flex flex-col gap-4">
+      <label className="flex items-center gap-2 text-sm text-foreground/80" data-testid="binary-autoupdate-toggle">
+        <input
+          type="checkbox"
+          checked={policy === "auto"}
+          onChange={(e) => void togglePolicy(e.target.checked ? "auto" : "notify")}
+        />
+        Keep tools up to date automatically
+      </label>
       {BINARY_KINDS.map((kind) => {
         const status = statuses[kind];
         const kindProgress = progress[kind];
