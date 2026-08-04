@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import {
   IPC,
   type BinaryProgress,
+  type BinaryUpdateEvent,
   type ChannelVideosQuery,
   type DownloadProgress,
   type MediaFilter,
@@ -43,6 +44,14 @@ const api: SiftApi = {
       ipcRenderer.on(IPC.binariesProgress, listener);
       return () => ipcRenderer.removeListener(IPC.binariesProgress, listener);
     },
+    getPolicy: () => ipcRenderer.invoke(IPC.binariesGetPolicy),
+    setPolicy: (mode) => ipcRenderer.invoke(IPC.binariesSetPolicy, mode),
+    onUpdateEvent: (cb: (e: BinaryUpdateEvent) => void) => {
+      const listener = (_: unknown, e: BinaryUpdateEvent) => cb(e);
+      ipcRenderer.on(IPC.binariesUpdateEvent, listener);
+      return () => ipcRenderer.removeListener(IPC.binariesUpdateEvent, listener);
+    },
+    currentUpdateEvents: () => ipcRenderer.invoke(IPC.binariesCurrentUpdateEvent),
   },
   whisper: {
     status: () => ipcRenderer.invoke(IPC.whisperStatus),
