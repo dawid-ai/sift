@@ -22,7 +22,7 @@ import { registerAppIpc } from "./ipc/app";
 import { registerUpdatesIpc } from "./ipc/updates";
 import { registerOllamaIpc } from "./ipc/ollama";
 import { registerDbIpc } from "./ipc/db";
-import { registerBinariesIpc } from "./ipc/binaries";
+import { registerBinariesIpc, registerBinaryUpdatesIpc } from "./ipc/binaries";
 import { registerMetadataIpc } from "./ipc/metadata";
 import { registerDownloadIpc } from "./ipc/download";
 import { registerLibraryIpc } from "./ipc/library";
@@ -61,10 +61,13 @@ import { createTranscriptConfigStore } from "./settings/transcript-config";
 import { createTranscriptMethodStore } from "./settings/transcript-method-config";
 import { createAutoTranscriptStore } from "./settings/auto-transcript-config";
 import { createDownloadsConfigStore } from "./settings/downloads-config";
+import { createBinaryUpdatesConfigStore } from "./settings/binary-updates-config";
+import { runStartupBinaryMaintenance } from "./services/binary-update-orchestrator";
 import { createSecrets } from "./secrets";
 import { resetStaleDownloads } from "./maintenance";
 import {
   binariesDir,
+  binaryUpdatesConfigFile,
   cookiesFile,
   customConfigFile,
   downloadsConfigFile,
@@ -530,6 +533,37 @@ app.whenReady().then(() => {
       fetchImpl: e2eFixtureDir ? fixtureFetch(e2eFixtureDir) : undefined,
     });
     registerBinariesIpc(binariesService, () => BrowserWindow.getAllWindows());
+
+    const binaryUpdatesStore = createBinaryUpdatesConfigStore({
+      filePath: binaryUpdatesConfigFile(),
+    });
+    const { emit: emitBinaryUpdate } = registerBinaryUpdatesIpc(
+      () => BrowserWindow.getAllWindows(),
+      binaryUpdatesStore,
+    );
+
+    // Startup maintenance: install missing binaries (always) and, per policy, auto-update
+    // or notify when outdated. Throttled to once/24h via AssetRow.last_checked. Fire-and-forget
+    // so it never blocks window creation; events are cached for the startup-race replay.
+    // Skipped under e2e unless a spec opts in, so unrelated specs don't see install toasts.
+    const runMaintenance = !e2eFixtureDir || process.env.SIFT_E2E_BINARY_MAINTENANCE === "1";
+    if (runMaintenance) {
+      void runStartupBinaryMaintenance({
+        kinds: ["ytdlp", "ffmpeg", "deno"],
+        list: () => binariesService.list(),
+        getLastChecked: (kind) => getAsset(getDb(), kind)?.last_checked ?? null,
+        check: (kind) => binariesService.check(kind),
+        install: (kind) =>
+          binariesService.install(kind, (progress) => {
+            for (const win of BrowserWindow.getAllWindows()) {
+              win.webContents.send(IPC.binariesProgress, progress);
+            }
+          }),
+        policy: () => binaryUpdatesStore.get(),
+        emit: emitBinaryUpdate,
+        now: () => Date.now(),
+      });
+    }
 
     const runner = e2eFixtureDir
       ? fixtureYtDlpRunner()
