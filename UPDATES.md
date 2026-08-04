@@ -1,5 +1,17 @@
 # Updates
 
+## v0.0.15 — 2026-08-04
+
+- Sift now installs the tools it needs (yt-dlp, ffmpeg, Deno) automatically on first
+  run — no manual setup step.
+- Those tools now keep themselves up to date: on launch, an outdated tool updates
+  silently in the background (yt-dlp changes often as YouTube does). A toggle in
+  Settings → Binaries switches this to notify-only if you'd rather approve each update.
+- A small toast shows when a tool is installing/updating or when an update is available.
+- Fixed ffmpeg update detection — it previously could never tell that a newer ffmpeg
+  build existed. (After this update, ffmpeg may refresh itself once as it moves to the
+  new build-date versioning — expected, not a problem.)
+
 ## v0.0.14 — 2026-08-03
 
 - Dropdown menus now render dark with readable text (the previous fix didn't cover the
