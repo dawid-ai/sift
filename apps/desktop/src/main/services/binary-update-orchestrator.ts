@@ -34,7 +34,16 @@ function errText(e: unknown): string {
 /** Runs once at startup. Never throws — a per-kind failure emits `error` and moves on. */
 export async function runStartupBinaryMaintenance(deps: BinaryMaintenanceDeps): Promise<void> {
   const throttleMs = deps.throttleMs ?? DEFAULT_THROTTLE_MS;
-  const statuses = await deps.list();
+
+  // Startup maintenance is best-effort. If list() itself rejects there's no
+  // per-kind context to attach an error event to, so do nothing rather than
+  // crashing startup.
+  let statuses: BinaryStatus[];
+  try {
+    statuses = await deps.list();
+  } catch {
+    return;
+  }
   const byKind = new Map(statuses.map((s) => [s.kind, s]));
 
   for (const kind of deps.kinds) {

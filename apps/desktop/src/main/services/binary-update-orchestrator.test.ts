@@ -118,4 +118,21 @@ describe("runStartupBinaryMaintenance", () => {
       { type: "ready", kind: "deno", version: "1.0.0", reason: "installed" },
     ]);
   });
+
+  it("never throws when list() itself rejects — does nothing", async () => {
+    const events: BinaryUpdateEvent[] = [];
+    await expect(
+      runStartupBinaryMaintenance({
+        kinds: ["ytdlp"],
+        list: async () => { throw new Error("db down"); },
+        getLastChecked: () => null,
+        check: async () => { throw new Error("unused"); },
+        install: async (k) => status(k),
+        policy: () => "auto",
+        emit: (e) => events.push(e),
+        now: () => 1_000_000,
+      }),
+    ).resolves.toBeUndefined();
+    expect(events).toEqual([]);
+  });
 });
