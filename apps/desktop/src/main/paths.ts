@@ -30,6 +30,11 @@ export function downloadsConfigFile(): string {
   return join(app.getPath("userData"), "settings", "downloads.json");
 }
 
+/** Path to the persisted binary auto-update policy (auto|notify, non-secret). */
+export function binaryUpdatesConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "binary-updates.json");
+}
+
 /** Ensures `dir` exists, creating intermediate directories as needed. */
 export function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
