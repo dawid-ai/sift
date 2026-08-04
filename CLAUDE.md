@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Never add `Co-Authored-By` trailers (or any Claude/AI attribution) to commits or PRs.**
+
 ## What Sift is
 
 Cross-platform Electron desktop app to download, transcribe, and summarize media
@@ -66,6 +68,9 @@ Three-process Electron app. The hard rules:
 - `packages/binaries` — on-demand yt-dlp/ffmpeg resolution + download-and-verify
   (sha256 from the release's own checksum file, never computed pre-download).
 - `packages/ipc-contract` — renderer⇄main channel + type definitions.
+
+AI SDKs in use: `@anthropic-ai/sdk` and `openai` (plus a custom/Ollama path) live
+in `apps/desktop` deps, wired through the `@sift/core/ai` registry.
 
 ### Recurring patterns
 
