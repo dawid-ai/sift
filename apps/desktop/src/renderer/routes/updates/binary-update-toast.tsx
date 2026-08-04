@@ -62,7 +62,16 @@ export function BinaryUpdateToast({
                   <Button
                     size="sm"
                     data-testid={`binary-update-toast-${n.kind}-update`}
-                    onClick={() => void window.sift.binaries.install(n.kind).then(() => onDismiss(n.kind))}
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          await window.sift.binaries.install(n.kind);
+                          onDismiss(n.kind);
+                        } catch (e) {
+                          console.error(`Failed to update ${n.kind}`, e);
+                        }
+                      })();
+                    }}
                   >
                     Update
                   </Button>
