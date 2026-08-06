@@ -1,5 +1,16 @@
 # Updates
 
+## v0.1.0 — 2026-08-06
+
+- New **Slides** tab on any downloaded video: pull out the data-bearing frames
+  (slides, charts, on-screen text) automatically, or grab the current frame while
+  watching.
+- Curate what you keep — click to include/exclude, mark a slide region to focus on
+  the projected screen, and skip the wide room/camera shots.
+- Selected slides fold into the AI summary, and you can export a document
+  (Markdown or PDF) that lays the transcript out with each slide dropped in at the
+  moment it appears — no AI required.
+
 ## v0.0.15 — 2026-08-04
 
 - Sift now installs the tools it needs (yt-dlp, ffmpeg, Deno) automatically on first
