@@ -4,6 +4,7 @@ import type { AiRegistry } from "@sift/core";
 import { assembleSummaryContent, buildOutputBaseName, sanitizeFilename, SUMMARY_SYSTEM_PROMPT } from "@sift/core";
 import type { NewMedia, SiftDatabase, SummaryRow } from "@sift/db";
 import {
+  getFramesByMediaId,
   getMediaBySourceUrl,
   getMediaById,
   getPromptById,
@@ -88,7 +89,12 @@ export class SummarizeService {
     const prompt = getPromptById(db, input.promptId);
     if (!prompt) throw new Error("Prompt not found.");
 
-    const content = assembleSummaryContent(prompt.body, transcript.text);
+    // Fold included slide/on-screen text into the AI content as a timestamped section
+    // (no-op when no frames exist). Deselected frames (included=0) are skipped. Text-only.
+    const frames = getFramesByMediaId(db, media.id)
+      .filter((f) => f.included === 1 && f.ocr_text)
+      .map((f) => ({ tsMs: f.ts_ms, text: f.ocr_text! }));
+    const content = assembleSummaryContent(prompt.body, transcript.text, frames);
     const text = await provider.summarize(
       { model: input.model, systemPrompt: SUMMARY_SYSTEM_PROMPT, content, maxTokens: 4096 },
       (delta) => onToken?.(delta),

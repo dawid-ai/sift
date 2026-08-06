@@ -3,6 +3,9 @@ import type {
   DownloadOption,
   DownloadProgress,
   DownloadRecord,
+  FrameCrop,
+  FrameProgress,
+  FrameRecord,
   MediaDetail,
   MediaMetadata,
   TranscriptProgress,
@@ -15,8 +18,9 @@ import { MediaPlayer, type MediaPlayerHandle } from "./media-player";
 import { TranscriptPanel, type TranscribeMode } from "./transcript-panel";
 import { DownloadsPanel } from "./downloads-panel";
 import { SummariesPanel } from "./summaries-panel";
+import { SlidesPanel } from "./slides-panel";
 
-type DetailTab = "transcript" | "summary" | "files";
+type DetailTab = "transcript" | "summary" | "slides" | "files";
 
 /** mm:ss (or h:mm:ss) — null for missing/zero durations. */
 function formatDuration(sec: number | null): string | null {
@@ -50,6 +54,25 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>(null);
   const [transcriptStage, setTranscriptStage] = useState<string | null>(null);
   const [summarizing, setSummarizing] = useState(false);
+  const [frames, setFrames] = useState<FrameRecord[]>([]);
+  const [extractingFrames, setExtractingFrames] = useState(false);
+  const [capturingFrame, setCapturingFrame] = useState(false);
+  const [frameStage, setFrameStage] = useState<FrameProgress | null>(null);
+  // Whether clicking a slide also starts playback. Off by default; remembered across sessions.
+  const [autoplayOnClick, setAutoplayOnClick] = useState(
+    () => localStorage.getItem("sift.slidesAutoplay") === "1",
+  );
+  const [crop, setCrop] = useState<FrameCrop | null>(null);
+  const [cropEditing, setCropEditing] = useState(false);
+  const [exportingDoc, setExportingDoc] = useState(false);
+  const [documentPath, setDocumentPath] = useState<string | null>(null);
+  // Empty = off; otherwise an Ollama vision model that AI-filters non-slide frames. Remembered.
+  const [classifierModel, setClassifierModel] = useState(
+    () => localStorage.getItem("sift.slideClassifier") ?? "",
+  );
+  const [fullScreenOnly, setFullScreenOnly] = useState(
+    () => localStorage.getItem("sift.slidesFullScreenOnly") === "1",
+  );
   const [tab, setTab] = useState<DetailTab>("transcript");
   const [actionError, setActionError] = useState<string | null>(null);
   // Cache the fetched metadata: transcript.get/summarize.start both need it, and it's a
@@ -75,6 +98,40 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   useEffect(() => {
     const unsub = window.sift.transcript.onProgress((p: TranscriptProgress) => {
       setTranscriptStage(p.stage);
+    });
+    return unsub;
+  }, []);
+
+  // Frames + crop aren't part of MediaDetail — load them separately per media id.
+  useEffect(() => {
+    let live = true;
+    setFrames([]);
+    setCrop(null);
+    setCropEditing(false);
+    window.sift.frames
+      .list(id)
+      .then((f) => {
+        if (live) setFrames(f);
+      })
+      .catch(() => {
+        /* absent frames are not an error; the panel just shows its empty state */
+      });
+    window.sift.frames
+      .getCrop(id)
+      .then((c) => {
+        if (live) setCrop(c);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [id]);
+
+  // Coarse extraction progress (no mediaId in the payload — reflects truth only while
+  // this view's own `extractingFrames` run is in flight, same caveat as transcript above).
+  useEffect(() => {
+    const unsub = window.sift.frames.onProgress((p: FrameProgress) => {
+      setFrameStage(p);
     });
     return unsub;
   }, []);
@@ -218,6 +275,98 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     }
   }
 
+  async function handleExtractFrames() {
+    if (extractingFrames) return;
+    setExtractingFrames(true);
+    setFrameStage(null);
+    setActionError(null);
+    try {
+      await window.sift.frames.extract(id, {
+        classifierModel: classifierModel || undefined,
+        fullScreenOnly,
+      });
+      // Re-list rather than trust the return: extract preserves manual captures, so the
+      // full ordered set (auto + manual) only comes from a fresh list.
+      setFrames(await window.sift.frames.list(id));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExtractingFrames(false);
+      setFrameStage(null);
+    }
+  }
+
+  async function handleCaptureFrame() {
+    if (capturingFrame || !hasPlayer) return;
+    setCapturingFrame(true);
+    setActionError(null);
+    try {
+      const tsMs = Math.round((playerRef.current?.getCurrentTime() ?? 0) * 1000);
+      await window.sift.frames.capture(id, tsMs);
+      setFrames(await window.sift.frames.list(id));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCapturingFrame(false);
+    }
+  }
+
+  async function handleToggleInclude(frameId: number, included: boolean) {
+    setFrames((fs) => fs.map((f) => (f.id === frameId ? { ...f, included } : f))); // optimistic
+    try {
+      await window.sift.frames.setIncluded(frameId, included);
+    } catch (e) {
+      setFrames((fs) => fs.map((f) => (f.id === frameId ? { ...f, included: !included } : f)));
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function toggleAutoplay() {
+    setAutoplayOnClick((v) => {
+      const next = !v;
+      localStorage.setItem("sift.slidesAutoplay", next ? "1" : "0");
+      return next;
+    });
+  }
+
+  function changeClassifier(model: string) {
+    setClassifierModel(model);
+    localStorage.setItem("sift.slideClassifier", model);
+  }
+
+  function toggleFullScreenOnly() {
+    setFullScreenOnly((v) => {
+      const next = !v;
+      localStorage.setItem("sift.slidesFullScreenOnly", next ? "1" : "0");
+      return next;
+    });
+  }
+
+  function handleCropDraw(c: FrameCrop) {
+    setCrop(c);
+    setCropEditing(false);
+    window.sift.frames.setCrop(id, c).catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
+  }
+
+  function handleClearCrop() {
+    setCrop(null);
+    setCropEditing(false);
+    window.sift.frames.setCrop(id, null).catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
+  }
+
+  async function handleExportDocument(format: "md" | "pdf") {
+    if (exportingDoc) return;
+    setExportingDoc(true);
+    setActionError(null);
+    try {
+      setDocumentPath(await window.sift.frames.export(id, format));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExportingDoc(false);
+    }
+  }
+
   async function handleRemove() {
     try {
       await window.sift.library.remove(id);
@@ -289,8 +438,8 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   const hasPlayer = playable !== null;
   // With a local player, clicking a transcript line seeks it; otherwise fall back to
   // opening the source in the browser at that timestamp (the pre-player behavior).
-  const seek = (sec: number) => {
-    if (hasPlayer) playerRef.current?.seekTo(sec);
+  const seek = (sec: number, play = true) => {
+    if (hasPlayer) playerRef.current?.seekTo(sec, { play });
     else
       window.sift.library
         .openExternal(appendTimeParam(media.sourceUrl, sec))
@@ -298,7 +447,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   };
 
   return (
-    <main data-testid="media-detail" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
+    <main data-testid="media-detail" className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-8">
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" data-testid="media-detail-back" onClick={onBack}>← Library</Button>
         <div className="ml-auto flex gap-2">
@@ -325,7 +474,9 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
       )}
 
       {/* Player + info on the left; tabbed content on the right. Stacks on narrow windows. */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      {/* Player column is deliberately dominant — a bigger preview makes aiming the manual
+          frame-capture (and reading slides) far easier. It stays sticky while the tabs scroll. */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5 lg:sticky lg:top-8 lg:self-start">
           <MediaPlayer
             ref={playerRef}
@@ -334,6 +485,9 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
             onTime={setCurrentTime}
             onDownload={() => void handleDownloadDefault()}
             downloading={downloadingFormat !== null}
+            crop={crop}
+            cropEditing={cropEditing}
+            onCropDraw={handleCropDraw}
           />
           <div>
             <h2 data-testid="media-detail-title" className="text-lg font-semibold leading-snug">{media.title}</h2>
@@ -351,7 +505,14 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
           {/* Tab bar */}
           <div className="flex gap-5 border-b border-border">
             {TABS.map((t) => {
-              const count = t.key === "transcript" ? transcripts.length : t.key === "summary" ? summaries.length : downloads.length;
+              const count =
+                t.key === "transcript"
+                  ? transcripts.length
+                  : t.key === "summary"
+                    ? summaries.length
+                    : t.key === "slides"
+                      ? frames.length
+                      : downloads.length;
               const active = tab === t.key;
               return (
                 <button
@@ -399,6 +560,34 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 onRemove={(id) => void handleRemoveSummary(id)}
               />
             )}
+            {tab === "slides" && (
+              <SlidesPanel
+                frames={frames}
+                canExtract={hasPlayer}
+                extracting={extractingFrames}
+                capturing={capturingFrame}
+                stage={frameStage}
+                autoplay={autoplayOnClick}
+                hasCrop={crop !== null}
+                cropEditing={cropEditing}
+                classifierModel={classifierModel}
+                onChangeClassifier={changeClassifier}
+                fullScreenOnly={fullScreenOnly}
+                onToggleFullScreenOnly={toggleFullScreenOnly}
+                canExport={transcripts.length > 0}
+                exporting={exportingDoc}
+                documentPath={documentPath}
+                onExtract={() => void handleExtractFrames()}
+                onCapture={() => void handleCaptureFrame()}
+                onToggleAutoplay={toggleAutoplay}
+                onToggleInclude={(fid, inc) => void handleToggleInclude(fid, inc)}
+                onToggleCropEditing={() => setCropEditing((v) => !v)}
+                onClearCrop={handleClearCrop}
+                onSeek={(sec) => seek(sec, autoplayOnClick)}
+                onExport={(format) => void handleExportDocument(format)}
+                onRevealDocument={(path) => void window.sift.library.reveal(path)}
+              />
+            )}
             {tab === "files" && (
               <DownloadsPanel
                 downloads={downloads}
@@ -418,5 +607,6 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
 const TABS: { key: DetailTab; label: string }[] = [
   { key: "transcript", label: "Transcript" },
   { key: "summary", label: "Summary" },
+  { key: "slides", label: "Slides" },
   { key: "files", label: "Files" },
 ];

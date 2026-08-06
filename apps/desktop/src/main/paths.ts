@@ -74,6 +74,21 @@ export function thumbnailsDir(): string {
   return join(app.getPath("userData"), "thumbnails");
 }
 
+/** Root of all extracted slide frames. Used to serve them via the sift-frame:// protocol. */
+export function framesRootDir(): string {
+  return join(app.getPath("userData"), "frames");
+}
+
+/** Per-media directory of extracted slide frames (frame-0001.jpg …). Survives app updates. */
+export function framesDir(mediaId: number): string {
+  return join(framesRootDir(), String(mediaId));
+}
+
+/** Where Tesseract caches the downloaded `<lang>.traineddata` (fetched at most once). */
+export function tesseractCacheDir(): string {
+  return join(app.getPath("userData"), "tesseract");
+}
+
 /** The single exported yt-dlp cookies.txt for the whole sign-in session.
  * NOTE: the folder must NOT be "cookies" — on case-insensitive Windows that collides with
  * Chromium's reserved `Cookies` network-store file, which then can't be migrated/deleted

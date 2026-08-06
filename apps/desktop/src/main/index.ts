@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync, rmSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync, rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { dirname, join } from "node:path";
@@ -15,7 +15,7 @@ import {
   type BinarySource,
 } from "@sift/binaries";
 import { IPC, type BinaryKind } from "@sift/ipc-contract";
-import { backfillMediaChannelIds, downloadExistsByFilePath, getAsset, upsertAsset, type AssetKind } from "@sift/db";
+import { backfillMediaChannelIds, downloadExistsByFilePath, frameExistsByImagePath, getAsset, upsertAsset, type AssetKind } from "@sift/db";
 import { normalizeAssetPaths, resolveAssetPath } from "./asset-path";
 import { parseRange, mediaContentType } from "./media-range";
 import { registerAppIpc } from "./ipc/app";
@@ -29,6 +29,7 @@ import { registerLibraryIpc } from "./ipc/library";
 import { registerTagsIpc } from "./ipc/tags";
 import { registerTranscriptIpc } from "./ipc/transcript";
 import { registerSummarizeIpc } from "./ipc/summarize";
+import { registerFramesIpc } from "./ipc/frames";
 import { registerAiProvidersIpc } from "./ipc/ai-providers";
 import { registerSettingsIpc } from "./ipc/settings";
 import { registerAuthIpc } from "./ipc/auth";
@@ -44,6 +45,8 @@ import { MetadataService } from "./services/metadata-service";
 import { DownloadService } from "./services/download-service";
 import { TranscriptService } from "./services/transcript-service";
 import { SummarizeService } from "./services/summarize-service";
+import { FrameService } from "./services/frame-service";
+import { FrameExportService } from "./services/frame-export-service";
 import { QueueWorker } from "./services/queue-worker";
 import { ChannelService } from "./services/channel-service";
 import { serveThumb } from "./services/thumbnail-cache";
@@ -51,7 +54,8 @@ import { WhisperSetupService } from "./services/whisper-setup-service";
 import { createYtdlpSubsProvider } from "./transcript/ytdlp-subs-provider";
 import { createWhisperProvider } from "./transcript/whisper-provider";
 import { createYtDlpRunner, type YtDlpRunner } from "./sidecars/ytdlp";
-import { createFfmpegRunner } from "./sidecars/ffmpeg";
+import { createFfmpegRunner, type FfmpegRunner } from "./sidecars/ffmpeg";
+import { createOcrRunner, type OcrRunner } from "./sidecars/ocr";
 import { createWhisperRunner } from "./sidecars/whisper";
 import { createAnthropicProvider } from "./ai/anthropic-provider";
 import { createOpenAiProvider } from "./ai/openai-provider";
@@ -72,6 +76,8 @@ import {
   customConfigFile,
   downloadsConfigFile,
   downloadsDir,
+  framesDir,
+  tesseractCacheDir,
   secretsFile,
   thumbnailsDir,
   transcriptConfigFile,
@@ -100,6 +106,8 @@ protocol.registerSchemesAsPrivileged([
   // Serves downloaded video files to the in-app <video>. stream:true enables Range
   // requests so scrubbing/seeking works; secure+standard so it loads under the CSP.
   { scheme: "sift-media", privileges: { standard: true, secure: true, stream: true } },
+  // Serves extracted slide frames to the renderer's <img>. Static JPEGs, no Range needed.
+  { scheme: "sift-frame", privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
 // Offline e2e hook (see docs/DEVELOPMENT.md "e2e fixture hook"): when set, the app
@@ -363,6 +371,60 @@ function fixtureWhisperProvider(): TranscriptProvider {
   };
 }
 
+/** Renders self-contained HTML to a PDF buffer via a hidden BrowserWindow (no new dep).
+ * Loads from a temp file rather than a data: URL — embedded slide images make the HTML
+ * multi-MB, past comfortable data-URL limits. */
+async function renderPdf(html: string): Promise<Buffer> {
+  const tmp = join(app.getPath("temp"), `sift-doc-${randomUUID()}.html`);
+  writeFileSync(tmp, html, "utf8");
+  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
+  try {
+    await win.loadFile(tmp);
+    return await win.webContents.printToPDF({ printBackground: true });
+  } finally {
+    win.destroy();
+    rmSync(tmp, { force: true });
+  }
+}
+
+// 1×1 JPEG — the fixture frame service writes this so the sift-frame:// protocol serves
+// real image bytes in e2e (its allowlist + existsSync gate need a file on disk).
+const FIXTURE_JPEG = Buffer.from(
+  "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AfwD/2Q==",
+  "base64",
+);
+
+/** Offline frame extraction for the e2e fixture branch: a fake ffmpeg writes two tiny frame
+ * images and a fake OCR returns canned slide text, so frames:extract runs end-to-end (DB +
+ * protocol + panel) without a real ffmpeg/Tesseract/network. */
+function fixtureFrameService(database: SiftDatabase): FrameService {
+  const ffmpeg: FfmpegRunner = {
+    extractWav: async () => {},
+    // One scene change → settledGrabTimes prepends 0, so two frames get grabbed.
+    detectSceneTimes: async () => [20],
+    extractFrameAt: async ({ outputPath }) => {
+      mkdirSync(dirname(outputPath), { recursive: true });
+      writeFileSync(outputPath, FIXTURE_JPEG);
+    },
+  };
+  const makeOcr = (): OcrRunner => ({
+    recognize: async (imagePath) => ({
+      text: imagePath.endsWith("0001.jpg")
+        ? "Fixture Slide One Q3 Revenue Up"
+        : "Fixture Slide Two Roadmap Q4 Plan",
+      wordCount: 5,
+      meanConfidence: 90,
+    }),
+    close: async () => {},
+  });
+  // Maximally-distinct hashes so the two fixture frames aren't de-duped (the real dHash of
+  // identical 1×1 JPEGs would collapse them). Must be valid 16-hex-char dHashes far apart in
+  // Hamming distance — a path string isn't (two paths differ by only a couple of bits).
+  const hashFrame = (p: string): string =>
+    p.endsWith("0001.jpg") ? "ffffffffffffffff" : "0000000000000000";
+  return new FrameService({ db: database, ffmpeg, makeOcr, framesDir, hashFrame });
+}
+
 /** Offline whisper setup for the e2e fixture branch: `install()` seeds a whisper asset row
  * + writes a fake model file (progress ticks), so the Settings card shows "Installed". No
  * real download/verify — keeps the whisper e2e offline. */
@@ -510,6 +572,18 @@ app.whenReady().then(() => {
         "Accept-Ranges": "bytes",
         "Content-Length": String(size),
       },
+    });
+  });
+
+  // Serve extracted slide frames. sift-frame://file/<encodeURIComponent(abs path)>.
+  // Same allowlist posture as sift-media: only paths we actually stored in `frame`.
+  protocol.handle("sift-frame", (req) => {
+    const filePath = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
+    if (!db || !dbReady || !frameExistsByImagePath(getDb(), filePath) || !existsSync(filePath)) {
+      return new Response(null, { status: 404 });
+    }
+    return new Response(new Uint8Array(readFileSync(filePath)), {
+      headers: { "content-type": "image/jpeg", "cache-control": "no-cache" },
     });
   });
 
@@ -821,6 +895,25 @@ app.whenReady().then(() => {
         : () => downloadsConfigStore.get(),
     });
     registerSummarizeIpc(summarizeService);
+
+    // Slide/data-frame extraction: reuses the managed ffmpeg binary; OCR via a lazily
+    // created Tesseract worker per run. ponytail: no langPath yet → tesseract.js fetches
+    // eng.traineddata from a CDN on first run (works in dev, breaks offline). Bundling
+    // eng.traineddata + pointing langPath at it is the packaging step before release.
+    const frameService = e2eFixtureDir
+      ? fixtureFrameService(getDb())
+      : new FrameService({
+          db: getDb(),
+          ffmpeg: createFfmpegRunner({ getBinaryPath: () => assetPath("ffmpeg") }),
+          makeOcr: () => createOcrRunner({ cachePath: tesseractCacheDir() }),
+          framesDir,
+        });
+    const frameExportService = new FrameExportService({
+      db: getDb(),
+      downloadsDir: e2eFixtureDir ? e2eDownloadsDir : () => downloadsConfigStore.get(),
+      renderPdf,
+    });
+    registerFramesIpc(frameService, frameExportService, () => BrowserWindow.getAllWindows());
 
     const queueWorker = new QueueWorker({
       db: getDb(),

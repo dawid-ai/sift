@@ -23,10 +23,12 @@
     "clsx": "^2.1.1",
     "electron-updater": "^6",
     "framer-motion": "^11.5.4",
+    "jpeg-js": "^0.4.4",
     "lucide-react": "^0.445.0",
     "openai": "^6.46.0",
     "tailwind-merge": "^2.5.2",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",

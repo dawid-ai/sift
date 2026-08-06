@@ -14,7 +14,11 @@ const baseCtx: TranscriptContext = {
 
 function fakes() {
   return {
-    ffmpeg: { extractWav: vi.fn().mockResolvedValue(undefined) },
+    ffmpeg: {
+      extractWav: vi.fn().mockResolvedValue(undefined),
+      detectSceneTimes: vi.fn().mockResolvedValue([]),
+      extractFrameAt: vi.fn().mockResolvedValue(undefined),
+    },
     whisper: {
       transcribe: vi.fn().mockResolvedValue({
         segments: [

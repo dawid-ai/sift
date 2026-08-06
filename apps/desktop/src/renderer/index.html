@@ -2,11 +2,11 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <!-- img-src: sift-thumb: serves locally-cached channel thumbnails; https:/data: cover
-         remote thumbnails not yet routed through the cache. Images are inert; scripts/styles/
-         connections stay locked to 'self'. -->
+    <!-- img-src: sift-thumb: serves locally-cached channel thumbnails; sift-frame: serves
+         extracted slide frames; https:/data: cover remote thumbnails not yet routed through
+         the cache. Images are inert; scripts/styles/connections stay locked to 'self'. -->
     <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: sift-thumb:; media-src 'self' sift-media:" />
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: sift-thumb: sift-frame:; media-src 'self' sift-media:" />
     <!-- Pre-JS loading fallback only; main.tsx sets document.title from @sift/core branding. -->
     <title>Sift</title>
   </head>

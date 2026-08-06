@@ -20,6 +20,7 @@ pnpm dev            # launch app in dev (electron-vite)
 pnpm test           # all unit tests (Vitest, per-package)
 pnpm typecheck      # strict TS across every package
 pnpm lint           # ESLint
+pnpm format         # Prettier write across the repo
 
 pnpm --filter @sift/desktop e2e        # Playwright (builds first)
 pnpm --filter @sift/core test          # single package's tests

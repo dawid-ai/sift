@@ -10,6 +10,8 @@ import {
   type QueueSpec,
   type SiftApi,
   type SummaryToken,
+  type FrameProgress,
+  type FrameCrop,
   type TranscriptProgress,
   type UpdateEvent,
   type WhisperProgress,
@@ -168,6 +170,24 @@ const api: SiftApi = {
     },
     export: (summaryId: number) =>
       ipcRenderer.invoke(IPC.summarizeExport, summaryId),
+  },
+  frames: {
+    extract: (mediaId: number, opts?: { classifierModel?: string; fullScreenOnly?: boolean }) =>
+      ipcRenderer.invoke(IPC.framesExtract, mediaId, opts),
+    list: (mediaId: number) => ipcRenderer.invoke(IPC.framesList, mediaId),
+    capture: (mediaId: number, tsMs: number) => ipcRenderer.invoke(IPC.framesCapture, mediaId, tsMs),
+    setIncluded: (frameId: number, included: boolean) =>
+      ipcRenderer.invoke(IPC.framesSetIncluded, frameId, included),
+    getCrop: (mediaId: number) => ipcRenderer.invoke(IPC.framesGetCrop, mediaId),
+    setCrop: (mediaId: number, crop: FrameCrop | null) =>
+      ipcRenderer.invoke(IPC.framesSetCrop, mediaId, crop),
+    export: (mediaId: number, format: "md" | "pdf") =>
+      ipcRenderer.invoke(IPC.framesExport, mediaId, format),
+    onProgress: (cb: (p: FrameProgress) => void) => {
+      const listener = (_event: IpcRendererEvent, p: FrameProgress) => cb(p);
+      ipcRenderer.on(IPC.framesProgress, listener);
+      return () => ipcRenderer.removeListener(IPC.framesProgress, listener);
+    },
   },
   prompts: {
     list: () => ipcRenderer.invoke(IPC.promptsList),

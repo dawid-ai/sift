@@ -93,6 +93,14 @@ export const IPC = {
   downloadsGetPath: "downloads:getPath",
   downloadsSetPath: "downloads:setPath",
   downloadsPickPath: "downloads:pickPath",
+  framesExtract: "frames:extract",
+  framesList: "frames:list",
+  framesProgress: "frames:progress",
+  framesSetIncluded: "frames:setIncluded",
+  framesCapture: "frames:capture",
+  framesGetCrop: "frames:getCrop",
+  framesSetCrop: "frames:setCrop",
+  framesExport: "frames:export",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -231,6 +239,38 @@ export interface TranscriptSegmentDto {
 export interface TranscriptProgress {
   stage: string;
   ratio: number | null;
+}
+
+/** Coarse progress for a frame-extraction run (scene-select → OCR → keep-filter). */
+export interface FrameProgress {
+  stage: "extracting" | "reading" | "done";
+  /** 0..1 scan position while `extracting` (null when the video duration is unknown). */
+  ratio: number | null;
+  processed: number;
+  total: number;
+  kept: number;
+}
+
+/** A crop region as fractions (0..1) of the video frame — the "slide area". */
+export interface FrameCrop {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** A persisted data-frame (slide/chart), camelCased for the renderer. */
+export interface FrameRecord {
+  id: number;
+  mediaId: number;
+  tsMs: number;
+  /** sift-frame://file/<encoded abs path> — renderable in an <img>. */
+  imageUrl: string;
+  ocrText: string | null;
+  ocrConfidence: number | null;
+  kind: string | null;
+  /** Whether this frame feeds document generation (user-toggleable). */
+  included: boolean;
 }
 
 /** A persisted transcript row, camelCased for the renderer. */
@@ -652,6 +692,31 @@ export interface SiftApi {
     onToken(cb: (t: SummaryToken) => void): () => void;
     /** Writes the summary to a .md file in Downloads/<App>; returns the absolute path. */
     export(summaryId: number): Promise<string>;
+  };
+  frames: {
+    /** Extracts data-bearing frames (slides/charts) from the media's downloaded video,
+     * persists them, and returns the kept records. Rejects if the video isn't downloaded.
+     * `classifierModel` (an Ollama vision model) runs an AI slide check per frame when set.
+     * `fullScreenOnly` keeps only bright full-screen slides, dropping wide room/camera shots. */
+    extract(
+      mediaId: number,
+      opts?: { classifierModel?: string; fullScreenOnly?: boolean },
+    ): Promise<FrameRecord[]>;
+    /** Persisted frames for a media, in timeline order. */
+    list(mediaId: number): Promise<FrameRecord[]>;
+    /** Grabs a single frame at `tsMs` (manual capture while watching), OCRs + stores it. */
+    capture(mediaId: number, tsMs: number): Promise<FrameRecord>;
+    /** Toggles whether a frame feeds document generation. */
+    setIncluded(frameId: number, included: boolean): Promise<void>;
+    /** The slide-area crop for this media, or null if extraction uses the full frame. */
+    getCrop(mediaId: number): Promise<FrameCrop | null>;
+    /** Sets the slide-area crop (fractions), or null to extract from the full frame. */
+    setCrop(mediaId: number, crop: FrameCrop | null): Promise<void>;
+    /** Writes a transcript + selected-slides document (no AI) to Downloads/<App>;
+     * returns the absolute path. Rejects if the media has no transcript yet. */
+    export(mediaId: number, format: "md" | "pdf"): Promise<string>;
+    /** Subscribes to extraction progress. Returns an unsubscribe function. */
+    onProgress(cb: (p: FrameProgress) => void): () => void;
   };
   prompts: {
     list(): Promise<PromptInfo[]>;

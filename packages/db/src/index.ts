@@ -33,6 +33,17 @@ export {
 } from "./summary";
 export type { SummaryRow, NewSummary } from "./summary";
 export {
+  insertFrame,
+  getFramesByMediaId,
+  deleteFramesByMediaId,
+  deleteAutoFramesByMediaId,
+  setFrameIncluded,
+  frameExistsByImagePath,
+} from "./frames";
+export type { FrameRow, NewFrame } from "./frames";
+export { getFrameCrop, setFrameCrop, clearFrameCrop } from "./frame-crop";
+export type { FrameCrop } from "./frame-crop";
+export {
   insertDownload,
   getDownloadById,
   getDownloadByMediaAndFormat,

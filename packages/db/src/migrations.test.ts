@@ -16,7 +16,7 @@ describe("runMigrations", () => {
     const applied = db
       .prepare<{ version: number }>("SELECT version FROM schema_migrations")
       .all();
-    expect(applied).toHaveLength(11);
+    expect(applied).toHaveLength(14);
     db.close();
   });
 
