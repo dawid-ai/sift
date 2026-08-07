@@ -8,9 +8,11 @@ export interface TranscriptRow {
   text: string;
   segments_json: string | null;
   model: string | null;
+  /** Absolute path of the .txt written to disk, or null. Set after insert via setTranscriptFilePath. */
+  file_path: string | null;
   created_at: number;
 }
-export type NewTranscript = Omit<TranscriptRow, "id" | "created_at">;
+export type NewTranscript = Omit<TranscriptRow, "id" | "created_at" | "file_path">;
 
 export function insertTranscript(db: SiftDatabase, t: NewTranscript): TranscriptRow {
   const created_at = Date.now();
@@ -33,6 +35,10 @@ export function getTranscriptsByMediaId(db: SiftDatabase, mediaId: number): Tran
       "SELECT * FROM transcript WHERE media_id = @mediaId ORDER BY created_at DESC, id DESC",
     )
     .all({ mediaId });
+}
+
+export function setTranscriptFilePath(db: SiftDatabase, id: number, filePath: string): void {
+  db.prepare("UPDATE transcript SET file_path = @filePath WHERE id = @id").run({ id, filePath });
 }
 
 export function deleteTranscript(db: SiftDatabase, id: number): void {

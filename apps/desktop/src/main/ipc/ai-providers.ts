@@ -1,11 +1,14 @@
 import { ipcMain } from "electron";
 import type { AiRegistry } from "@sift/core";
-import { IPC, type AiProviderInfo, type CustomProviderConfig } from "@sift/ipc-contract";
+import { IPC, type AiDefaultConfig, type AiProviderInfo, type CustomProviderConfig } from "@sift/ipc-contract";
 import type { createSecrets } from "../secrets";
 import type { createCustomConfigStore } from "../ai/custom-config";
+import type { createAiDefaultConfigStore } from "../settings/ai-default-config";
+import { isClaudeCliAvailable } from "../ai/claude-cli-provider";
 
 type Secrets = ReturnType<typeof createSecrets>;
 type CustomConfigStore = ReturnType<typeof createCustomConfigStore>;
+type AiDefaultStore = ReturnType<typeof createAiDefaultConfigStore>;
 
 /**
  * Registers the AI-provider/key IPC handlers, scoped per-provider (Phase 5b): each
@@ -27,6 +30,7 @@ export function registerAiProvidersIpc(
   secretsFor: (providerId: string) => Secrets,
   rebuild: (providerId: string, key: string) => void,
   customConfigStore: CustomConfigStore,
+  defaultStore: AiDefaultStore,
 ): void {
   ipcMain.handle(IPC.aiProvidersList, () =>
     registry.list().map((p): AiProviderInfo => ({
@@ -59,6 +63,22 @@ export function registerAiProvidersIpc(
       customConfigStore.set(cfg);
       const key = secretsFor("custom").getKey();
       if (key) rebuild("custom", key);
+    },
+  );
+
+  ipcMain.handle(IPC.aiGetDefault, () => defaultStore.get());
+  ipcMain.handle(IPC.aiSetDefault, (_event, cfg: AiDefaultConfig | null) => defaultStore.set(cfg));
+  ipcMain.handle(IPC.aiCliStatus, () => isClaudeCliAvailable());
+
+  ipcMain.handle(
+    IPC.aiRunPrompt,
+    (_event, input: { providerId: string; model: string; systemPrompt: string; content: string }) => {
+      const provider = registry.get(input.providerId);
+      if (!provider) throw new Error("Unknown AI provider.");
+      return provider.summarize(
+        { model: input.model, systemPrompt: input.systemPrompt, content: input.content, maxTokens: 8192 },
+        () => {},
+      );
     },
   );
 }

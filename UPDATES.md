@@ -1,5 +1,22 @@
 # Updates
 
+## v0.2.0 — 2026-08-07
+
+- **AI-polished documents** from the Slides tab: turn a talk into a dense knowledge
+  document, with slides dropped in where they belong. Pick how it's written — no AI
+  (raw), a local model (Ollama), or an external one.
+- **Use your Claude subscription** — a new Claude Code CLI provider runs polish and
+  summaries through the `claude` command you're already logged into, no API key.
+  Pick a default AI provider in Settings.
+- **Files tab** on every video: one place listing the documents, transcripts,
+  summaries, and prompt runs created for it, each with an **Open** to reveal the file.
+- Transcripts and summaries are now **saved to disk** automatically (a .txt / .md
+  beside your downloads), not just kept in the app.
+- **Save slides…** exports the selected frames as image files at full resolution.
+- **Prompt playground** in Settings to tune a prompt against a transcript before using it.
+- Whisper transcription now shows a **progress bar**.
+- Home tags keep the capitalization you type; the platform badge is tidier.
+
 ## v0.1.0 — 2026-08-06
 
 - New **Slides** tab on any downloaded video: pull out the data-bearing frames

@@ -119,7 +119,7 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, hit, query }: Me
               data-testid="media-reveal"
               onClick={() => void window.sift.library.reveal(media.downloadPath!)}
             >
-              Show in folder
+              Open
             </Button>
           </div>
         )}

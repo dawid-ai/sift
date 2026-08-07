@@ -33,8 +33,11 @@ export function createWhisperProvider(deps: {
         onProgress({ stage: "extracting-audio", ratio: null });
         await deps.ffmpeg.extractWav({ inputPath: ctx.audioPath, outputPath: wavPath });
 
-        onProgress({ stage: "transcribing", ratio: null });
-        const { segments } = await deps.whisper.transcribe({ wavPath, language: ctx.language });
+        onProgress({ stage: "transcribing", ratio: 0 });
+        const { segments } = await deps.whisper.transcribe(
+          { wavPath, language: ctx.language },
+          (ratio) => onProgress({ stage: "transcribing", ratio }),
+        );
 
         return {
           providerId: WHISPER_CPP_ID,

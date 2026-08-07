@@ -1,4 +1,4 @@
-import type { FrameProgress, FrameRecord } from "@sift/ipc-contract";
+import type { AiProviderInfo, FrameExportProgress, FrameProgress, FrameRecord } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 
 /** mm:ss (or h:mm:ss) from milliseconds. */
@@ -45,6 +45,16 @@ export interface SlidesPanelProps {
   canExport: boolean;
   exporting: boolean;
   documentPath: string | null;
+  /** Document AI-polish selection. providerId "" = No AI (raw). */
+  polish: {
+    providers: AiProviderInfo[];
+    providerId: string;
+    setProviderId: (id: string) => void;
+    models: { id: string; label: string }[];
+    model: string;
+    setModel: (m: string) => void;
+    progress: FrameExportProgress | null;
+  };
   onExtract: () => void;
   onCapture: () => void;
   onToggleAutoplay: () => void;
@@ -54,6 +64,8 @@ export interface SlidesPanelProps {
   onSeek: (sec: number) => void;
   onExport: (format: "md" | "pdf") => void;
   onRevealDocument: (path: string) => void;
+  /** Prompts for a folder and saves the selected slides there at full resolution. */
+  onSaveSlides: () => void;
 }
 
 /** Extracts, captures, and curates data-bearing frames (slides/charts) from the video. */
@@ -65,9 +77,9 @@ const VISION_MODELS = ["qwen2.5vl:7b", "minicpm-v", "gemma3:12b"];
 export function SlidesPanel({
   frames, canExtract, extracting, capturing, stage, autoplay, hasCrop, cropEditing,
   classifierModel, onChangeClassifier, fullScreenOnly, onToggleFullScreenOnly,
-  canExport, exporting, documentPath,
+  canExport, exporting, documentPath, polish,
   onExtract, onCapture, onToggleAutoplay, onToggleInclude, onToggleCropEditing, onClearCrop, onSeek,
-  onExport, onRevealDocument,
+  onExport, onRevealDocument, onSaveSlides,
 }: SlidesPanelProps) {
   const includedCount = frames.filter((f) => f.included).length;
   return (
@@ -201,7 +213,20 @@ export function SlidesPanel({
         </p>
       ) : (
         <>
-          <p className="text-xs text-foreground/50">{includedCount} of {frames.length} selected for the document</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-foreground/50">{includedCount} of {frames.length} selected for the document</p>
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid="media-detail-save-slides"
+              disabled={includedCount === 0}
+              onClick={onSaveSlides}
+              className="ml-auto"
+              title="Save the selected slides to a folder at full resolution"
+            >
+              Save slides…
+            </Button>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {frames.map((f) => (
               <div
@@ -258,6 +283,39 @@ export function SlidesPanel({
             {!canExport && (
               <p className="mt-2 text-sm text-foreground/50">Get a transcript first to build the document.</p>
             )}
+
+            {/* Polish with: rewrite each transcript section into clean, dense prose. Slides stay put.
+                "No AI" is the zero-cost default; local (Ollama) or external (API / Claude Code CLI). */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-foreground/60">
+              <label htmlFor="doc-polish">Polish with</label>
+              <select
+                id="doc-polish"
+                data-testid="media-detail-polish-provider"
+                value={polish.providerId}
+                disabled={exporting}
+                onChange={(e) => polish.setProviderId(e.target.value)}
+                className="rounded border border-border bg-transparent px-1.5 py-0.5"
+              >
+                <option value="">No AI (raw)</option>
+                {polish.providers.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+              {polish.providerId && (
+                <select
+                  data-testid="media-detail-polish-model"
+                  value={polish.model}
+                  disabled={exporting || polish.models.length === 0}
+                  onChange={(e) => polish.setModel(e.target.value)}
+                  className="rounded border border-border bg-transparent px-1.5 py-0.5"
+                >
+                  {polish.models.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 data-testid="media-detail-export-pdf"
@@ -275,6 +333,11 @@ export function SlidesPanel({
                 Markdown
               </Button>
             </div>
+            {exporting && polish.providerId && (
+              <p data-testid="media-detail-export-progress" className="mt-2 text-xs text-foreground/55">
+                Distilling the transcript with AI — this can take a while…
+              </p>
+            )}
             {documentPath && (
               <button
                 type="button"

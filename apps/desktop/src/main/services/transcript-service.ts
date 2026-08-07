@@ -1,10 +1,17 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type {
   TranscriptContext,
   TranscriptMethod,
   TranscriptProgressFn,
   TranscriptRegistry,
 } from "@sift/core";
-import { pickTranscriptLanguage, resolveTranscriptProvider } from "@sift/core";
+import {
+  buildOutputBaseName,
+  pickTranscriptLanguage,
+  resolveTranscriptProvider,
+  sanitizeFilename,
+} from "@sift/core";
 import type { NewMedia, SiftDatabase, TranscriptRow } from "@sift/db";
 import {
   deleteTranscript,
@@ -13,6 +20,7 @@ import {
   insertMedia,
   insertTranscript,
   listDownloadsByMediaId,
+  setTranscriptFilePath,
 } from "@sift/db";
 import type { MediaMetadata, TranscriptRecord } from "@sift/ipc-contract";
 import { isAuthError } from "../auth/status";
@@ -53,6 +61,7 @@ function toRecord(row: TranscriptRow, mediaId: number): TranscriptRecord {
     text: row.text,
     segments: JSON.parse(row.segments_json ?? "[]"),
     model: row.model,
+    filePath: row.file_path,
     createdAt: row.created_at,
   };
 }
@@ -60,6 +69,7 @@ function toRecord(row: TranscriptRow, mediaId: number): TranscriptRecord {
 export interface TranscriptServiceOpts {
   db: SiftDatabase;
   registry: TranscriptRegistry;
+  downloadsDir: () => string; // resolves the current downloads dir (live config)
   getPreferredLanguages: () => string[];
   getMethod: () => TranscriptMethod;
   getCookiesFile?: (url: string) => Promise<string | null>;
@@ -179,6 +189,20 @@ export class TranscriptService {
       segments_json: JSON.stringify(result.segments),
       model: result.model,
     });
+    // Auto-write the .txt so the Files tab can "Open" it. Best-effort: a write failure
+    // must not lose the transcript (the DB row is the source of truth) — file_path stays null.
+    try {
+      const downloadsDir = this.opts.downloadsDir();
+      const base = buildOutputBaseName(media.uploader, media.title);
+      // provider in the name keeps captions vs whisper distinct for the same video.
+      const path = join(downloadsDir, `${sanitizeFilename(`${base}__transcript-${result.providerId}`)}.txt`);
+      mkdirSync(downloadsDir, { recursive: true });
+      writeFileSync(path, result.text, "utf8");
+      setTranscriptFilePath(db, row.id, path);
+      row.file_path = path;
+    } catch {
+      /* leave file_path null */
+    }
     // Only delete the previous transcript(s) after the new one is safely persisted —
     // a failed transcribe (thrown above) never reaches here, so the old row survives.
     if (input.force === "whisper") {

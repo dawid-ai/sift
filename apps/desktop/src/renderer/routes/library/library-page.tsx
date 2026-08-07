@@ -252,7 +252,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
             className="underline"
             onClick={() => void window.sift.library.reveal(exportResult.path)}
           >
-            Show in folder
+            Open
           </button>
         </p>
       )}

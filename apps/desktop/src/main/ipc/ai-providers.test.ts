@@ -91,6 +91,10 @@ function fakeCustomConfigStore(): CustomConfigStore & {
   };
 }
 
+function fakeAiDefaultStore(): { get(): null; set(): void } {
+  return { get: () => null, set: () => {} };
+}
+
 describe("registerAiProvidersIpc", () => {
   beforeEach(() => {
     handlers.clear();
@@ -108,6 +112,7 @@ describe("registerAiProvidersIpc", () => {
       secretsFor,
       vi.fn(),
       fakeCustomConfigStore(),
+      fakeAiDefaultStore(),
     );
 
     const result = await handlers.get(IPC.aiKeyStatus)?.(null, "anthropic");
@@ -131,6 +136,7 @@ describe("registerAiProvidersIpc", () => {
       secretsFor,
       rebuild,
       fakeCustomConfigStore(),
+      fakeAiDefaultStore(),
     );
 
     await handlers.get(IPC.aiKeySet)?.(null, "openai", "k");
@@ -152,6 +158,7 @@ describe("registerAiProvidersIpc", () => {
       secretsFor,
       vi.fn(),
       fakeCustomConfigStore(),
+      fakeAiDefaultStore(),
     );
 
     await handlers.get(IPC.aiKeyClear)?.(null, "anthropic");
@@ -174,7 +181,7 @@ describe("registerAiProvidersIpc", () => {
       register: () => {},
       unregister: () => {},
     } as unknown as AiRegistry;
-    registerAiProvidersIpc(registry, vi.fn(), vi.fn(), fakeCustomConfigStore());
+    registerAiProvidersIpc(registry, vi.fn(), vi.fn(), fakeCustomConfigStore(), fakeAiDefaultStore());
 
     const result = await handlers.get(IPC.aiProvidersList)?.(null);
 
@@ -192,7 +199,7 @@ describe("registerAiProvidersIpc", () => {
     const { registry } = fakeRegistry();
     const customConfigStore = fakeCustomConfigStore();
     customConfigStore.set({ baseUrl: "http://x/v1", model: "m" });
-    registerAiProvidersIpc(registry, vi.fn(), vi.fn(), customConfigStore);
+    registerAiProvidersIpc(registry, vi.fn(), vi.fn(), customConfigStore, fakeAiDefaultStore());
 
     const result = await handlers.get(IPC.aiCustomConfigGet)?.(null);
 
@@ -212,7 +219,7 @@ describe("registerAiProvidersIpc", () => {
       rebuildCalls.push({ id, key }),
     );
     const customConfigStore = fakeCustomConfigStore();
-    registerAiProvidersIpc(registry, secretsFor, rebuild, customConfigStore);
+    registerAiProvidersIpc(registry, secretsFor, rebuild, customConfigStore, fakeAiDefaultStore());
 
     await handlers.get(IPC.aiCustomConfigSet)?.(null, {
       baseUrl: "http://x/v1",
@@ -233,7 +240,7 @@ describe("registerAiProvidersIpc", () => {
     const secretsFor = vi.fn(() => customSecrets);
     const rebuild = vi.fn();
     const customConfigStore = fakeCustomConfigStore();
-    registerAiProvidersIpc(registry, secretsFor, rebuild, customConfigStore);
+    registerAiProvidersIpc(registry, secretsFor, rebuild, customConfigStore, fakeAiDefaultStore());
 
     await handlers.get(IPC.aiCustomConfigSet)?.(null, {
       baseUrl: "http://x/v1",

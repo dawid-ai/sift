@@ -13,6 +13,8 @@ import { migration011 } from "./migrations/011-media-channel-id.sql";
 import { migration012 } from "./migrations/012-frame.sql";
 import { migration013 } from "./migrations/013-frame-included.sql";
 import { migration014 } from "./migrations/014-frame-crop.sql";
+import { migration015 } from "./migrations/015-document.sql";
+import { migration016 } from "./migrations/016-artifact-file-path.sql";
 
 const MIGRATIONS: { version: number; sql: string }[] = [
   { version: 1, sql: migration001 },
@@ -29,6 +31,8 @@ const MIGRATIONS: { version: number; sql: string }[] = [
   { version: 12, sql: migration012 },
   { version: 13, sql: migration013 },
   { version: 14, sql: migration014 },
+  { version: 15, sql: migration015 },
+  { version: 16, sql: migration016 },
 ];
 
 // `migrations` param defaults to the real list; overridable so tests can inject a

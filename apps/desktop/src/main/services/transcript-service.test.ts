@@ -1,3 +1,4 @@
+import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { openTestDatabase } from "@sift/db/testing";
 import {
@@ -110,6 +111,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -142,6 +144,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -165,6 +168,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -198,6 +202,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -231,6 +236,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en", "pl"],
       getMethod: () => "auto",
     });
@@ -263,6 +269,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
       getCookiesFile: async () => "/c/youtube.txt",
@@ -300,7 +307,7 @@ describe("TranscriptService", () => {
     const { provider, ctx } = makeCapturingProvider();
     registry.register(provider);
     const svc = new TranscriptService({
-      db, registry, getPreferredLanguages: () => ["en"], getMethod: () => "auto",
+      db, registry, downloadsDir: () => tmpdir(), getPreferredLanguages: () => ["en"], getMethod: () => "auto",
     });
     await svc.get({ metadata: { ...metadata, hasCaptions: false } });
     expect(ctx()?.audioPath).toBe("/downloads/video.mp4");
@@ -315,7 +322,7 @@ describe("TranscriptService", () => {
     const { provider, ctx } = makeCapturingProvider();
     registry.register(provider);
     const svc = new TranscriptService({
-      db, registry, getPreferredLanguages: () => ["en"], getMethod: () => "auto",
+      db, registry, downloadsDir: () => tmpdir(), getPreferredLanguages: () => ["en"], getMethod: () => "auto",
     });
     await svc.get({ metadata: { ...metadata, hasCaptions: false } });
     expect(ctx()?.audioPath).toBeNull();
@@ -339,6 +346,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -360,6 +368,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "captions_only",
     });
@@ -394,6 +403,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -428,6 +438,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -467,6 +478,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
@@ -508,6 +520,7 @@ describe("TranscriptService", () => {
     const service = new TranscriptService({
       db,
       registry,
+      downloadsDir: () => tmpdir(),
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });

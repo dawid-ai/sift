@@ -11,6 +11,7 @@ import {
   type SiftApi,
   type SummaryToken,
   type FrameProgress,
+  type FrameExportProgress,
   type FrameCrop,
   type TranscriptProgress,
   type UpdateEvent,
@@ -181,12 +182,18 @@ const api: SiftApi = {
     getCrop: (mediaId: number) => ipcRenderer.invoke(IPC.framesGetCrop, mediaId),
     setCrop: (mediaId: number, crop: FrameCrop | null) =>
       ipcRenderer.invoke(IPC.framesSetCrop, mediaId, crop),
-    export: (mediaId: number, format: "md" | "pdf") =>
-      ipcRenderer.invoke(IPC.framesExport, mediaId, format),
+    export: (mediaId: number, format: "md" | "pdf", polish?: { providerId: string; model: string }) =>
+      ipcRenderer.invoke(IPC.framesExport, mediaId, format, polish),
+    saveSelected: (mediaId: number) => ipcRenderer.invoke(IPC.framesSaveSelected, mediaId),
     onProgress: (cb: (p: FrameProgress) => void) => {
       const listener = (_event: IpcRendererEvent, p: FrameProgress) => cb(p);
       ipcRenderer.on(IPC.framesProgress, listener);
       return () => ipcRenderer.removeListener(IPC.framesProgress, listener);
+    },
+    onExportProgress: (cb: (p: FrameExportProgress) => void) => {
+      const listener = (_event: IpcRendererEvent, p: FrameExportProgress) => cb(p);
+      ipcRenderer.on(IPC.framesExportProgress, listener);
+      return () => ipcRenderer.removeListener(IPC.framesExportProgress, listener);
     },
   },
   prompts: {
@@ -207,6 +214,10 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.aiKeyClear, providerId),
     getCustomConfig: () => ipcRenderer.invoke(IPC.aiCustomConfigGet),
     setCustomConfig: (cfg) => ipcRenderer.invoke(IPC.aiCustomConfigSet, cfg),
+    getDefault: () => ipcRenderer.invoke(IPC.aiGetDefault),
+    setDefault: (cfg) => ipcRenderer.invoke(IPC.aiSetDefault, cfg),
+    cliStatus: () => ipcRenderer.invoke(IPC.aiCliStatus),
+    runPrompt: (input) => ipcRenderer.invoke(IPC.aiRunPrompt, input),
   },
 };
 

@@ -3,6 +3,32 @@ export const SUMMARY_SYSTEM_PROMPT =
   "Produce a clear, well-organized summary that captures the key points, decisions, and notable quotes " +
   "without inventing information that is not present in the transcript.";
 
+/**
+ * Distills a raw talk/lecture transcript into a written knowledge document — NOT a cleaned-up
+ * transcript and NOT a short summary. Used by the AI-polished document export. The transcript is
+ * fed whole, with `[[SLIDE n]]` markers where each slide appears; the model keeps the markers
+ * (repositioned) so the images can be re-inserted around the distilled text.
+ */
+export const POLISH_SYSTEM_PROMPT = [
+  "You turn a raw talk or lecture transcript into a dense, written KNOWLEDGE DOCUMENT.",
+  "",
+  "Keep ONLY substance: facts, data, numbers, definitions, methods, mechanisms, arguments, results,",
+  "and conclusions. Remove everything else — greetings, audience questions, calls for participation,",
+  '"today we\'ll cover / let\'s discuss" meta and discovery, tangents, anecdotes that carry no',
+  "information, filler, hedging, and repetition. Do NOT preserve the speaker's wording or sentence",
+  "order; reorganize the material by topic. This is not a transcript and not a short summary — it is",
+  "the knowledge, restructured. Capture every distinct fact and figure, but nothing that isn't knowledge.",
+  "",
+  "Write clean Markdown: `##`/`###` section headers, short paragraphs, and bullet lists where the",
+  "content is a set of points, steps, or data. The document already has a title, so start at `##`.",
+  "",
+  "The transcript contains slide markers like `[[SLIDE 3]]`. Keep every marker exactly once, on its",
+  "own line, moved to sit next to the content that slide illustrates. Do NOT describe, caption, or",
+  "transcribe the slides — each marker is replaced by the slide image.",
+  "",
+  "Output only the finished document — no preamble, no closing remarks, no code fences.",
+].join("\n");
+
 /** On-screen text read off one kept video frame (a slide/chart), tagged by timestamp. */
 export interface FrameNote {
   tsMs: number;

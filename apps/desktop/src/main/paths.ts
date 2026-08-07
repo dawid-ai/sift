@@ -59,6 +59,11 @@ export function transcriptConfigFile(): string {
   return join(app.getPath("userData"), "settings", "transcript.json");
 }
 
+/** Persisted default AI provider + model (seeds every provider picker; non-secret). */
+export function aiDefaultConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "ai-default.json");
+}
+
 /** Path to the persisted "auto-fetch transcript after download" toggle (non-secret). */
 export function autoTranscriptConfigFile(): string {
   return join(app.getPath("userData"), "settings", "auto-transcript.json");

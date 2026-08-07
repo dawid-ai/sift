@@ -41,6 +41,16 @@ export const KNOWN_PROVIDERS: AiProviderInfo[] = [
     ],
   },
   {
+    id: "claude-cli",
+    label: "Claude Code CLI (subscription)",
+    needsKey: false,
+    models: [
+      { id: "opus", label: "Claude Opus (subscription)" },
+      { id: "sonnet", label: "Claude Sonnet (subscription)" },
+      { id: "haiku", label: "Claude Haiku (subscription)" },
+    ],
+  },
+  {
     id: "custom",
     label: "Custom (OpenAI-compatible)",
     needsKey: true,

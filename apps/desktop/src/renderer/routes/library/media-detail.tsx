@@ -5,6 +5,7 @@ import type {
   DownloadRecord,
   FrameCrop,
   FrameProgress,
+  FrameExportProgress,
   FrameRecord,
   MediaDetail,
   MediaMetadata,
@@ -17,6 +18,7 @@ import { appendTimeParam } from "@/lib/transcript-view";
 import { MediaPlayer, type MediaPlayerHandle } from "./media-player";
 import { TranscriptPanel, type TranscribeMode } from "./transcript-panel";
 import { DownloadsPanel } from "./downloads-panel";
+import { FilesPanel } from "./files-panel";
 import { SummariesPanel } from "./summaries-panel";
 import { SlidesPanel } from "./slides-panel";
 
@@ -53,6 +55,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   // button shows the progress label; the other merely disables.
   const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>(null);
   const [transcriptStage, setTranscriptStage] = useState<string | null>(null);
+  const [transcriptRatio, setTranscriptRatio] = useState<number | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [frames, setFrames] = useState<FrameRecord[]>([]);
   const [extractingFrames, setExtractingFrames] = useState(false);
@@ -66,6 +69,10 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   const [cropEditing, setCropEditing] = useState(false);
   const [exportingDoc, setExportingDoc] = useState(false);
   const [documentPath, setDocumentPath] = useState<string | null>(null);
+  const [exportStage, setExportStage] = useState<FrameExportProgress | null>(null);
+  // Document AI-polish selection ("" provider = No AI / raw). Separate from the summary picker.
+  const [polishProviderId, setPolishProviderId] = useState("");
+  const [polishModel, setPolishModel] = useState("");
   // Empty = off; otherwise an Ollama vision model that AI-filters non-slide frames. Remembered.
   const [classifierModel, setClassifierModel] = useState(
     () => localStorage.getItem("sift.slideClassifier") ?? "",
@@ -85,6 +92,19 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
 
   const pickers = useAiPickers();
 
+  // Models for the chosen document-polish provider; keep the selected model valid.
+  const polishModels = pickers.providers.find((p) => p.id === polishProviderId)?.models ?? [];
+  useEffect(() => {
+    if (!polishProviderId) {
+      setPolishModel("");
+      return;
+    }
+    setPolishModel((prev) => (polishModels.some((m) => m.id === prev) ? prev : (polishModels[0]?.id ?? "")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [polishProviderId, pickers.providers]);
+
+  useEffect(() => window.sift.frames.onExportProgress((p) => setExportStage(p)), []);
+
   useEffect(() => {
     const unsub = window.sift.download.onProgress((p) => {
       if (p.mediaId === id) setProgress(p);
@@ -98,6 +118,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   useEffect(() => {
     const unsub = window.sift.transcript.onProgress((p: TranscriptProgress) => {
       setTranscriptStage(p.stage);
+      setTranscriptRatio(p.ratio);
     });
     return unsub;
   }, []);
@@ -218,6 +239,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     if (transcribeMode !== null) return;
     setTranscribeMode("captions");
     setTranscriptStage(null);
+    setTranscriptRatio(null);
     setActionError(null);
     try {
       const meta = await ensureMetadata();
@@ -228,6 +250,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     } finally {
       setTranscribeMode(null);
       setTranscriptStage(null);
+      setTranscriptRatio(null);
     }
   }
 
@@ -235,6 +258,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     if (transcribeMode !== null) return;
     setTranscribeMode("whisper");
     setTranscriptStage(null);
+    setTranscriptRatio(null);
     setActionError(null);
     try {
       const meta = await ensureMetadata();
@@ -245,6 +269,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     } finally {
       setTranscribeMode(null);
       setTranscriptStage(null);
+      setTranscriptRatio(null);
     }
   }
 
@@ -354,16 +379,30 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     window.sift.frames.setCrop(id, null).catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
   }
 
+  async function handleSaveSlides() {
+    setActionError(null);
+    try {
+      const res = await window.sift.frames.saveSelected(id);
+      if (res) window.sift.library.reveal(res.dir);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   async function handleExportDocument(format: "md" | "pdf") {
     if (exportingDoc) return;
     setExportingDoc(true);
+    setExportStage(null);
     setActionError(null);
+    const polish = polishProviderId && polishModel ? { providerId: polishProviderId, model: polishModel } : undefined;
     try {
-      setDocumentPath(await window.sift.frames.export(id, format));
+      setDocumentPath(await window.sift.frames.export(id, format, polish));
+      await reload(); // surface the new document in the Files tab
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setExportingDoc(false);
+      setExportStage(null);
     }
   }
 
@@ -426,7 +465,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     );
   }
 
-  const { media, transcripts, summaries, downloads } = detail;
+  const { media, transcripts, summaries, downloads, documents } = detail;
   const metaLine = [media.uploader, formatDuration(media.durationSec), media.platformId]
     .filter(Boolean)
     .join(" · ");
@@ -512,7 +551,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                     ? summaries.length
                     : t.key === "slides"
                       ? frames.length
-                      : downloads.length;
+                      : documents.length + transcripts.length + summaries.length + downloads.length;
               const active = tab === t.key;
               return (
                 <button
@@ -543,6 +582,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 currentTime={currentTime}
                 transcribeMode={transcribeMode}
                 transcriptStage={transcriptStage}
+                transcriptRatio={transcriptRatio}
                 canRetranscribe={downloads.some((d) => d.status === "done" && d.filePath)}
                 onSeek={seek}
                 onGetTranscript={() => void handleGetTranscript()}
@@ -577,6 +617,15 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 canExport={transcripts.length > 0}
                 exporting={exportingDoc}
                 documentPath={documentPath}
+                polish={{
+                  providers: pickers.providers,
+                  providerId: polishProviderId,
+                  setProviderId: setPolishProviderId,
+                  models: polishModels,
+                  model: polishModel,
+                  setModel: setPolishModel,
+                  progress: exportStage,
+                }}
                 onExtract={() => void handleExtractFrames()}
                 onCapture={() => void handleCaptureFrame()}
                 onToggleAutoplay={toggleAutoplay}
@@ -586,16 +635,30 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 onSeek={(sec) => seek(sec, autoplayOnClick)}
                 onExport={(format) => void handleExportDocument(format)}
                 onRevealDocument={(path) => void window.sift.library.reveal(path)}
+                onSaveSlides={() => void handleSaveSlides()}
               />
             )}
             {tab === "files" && (
-              <DownloadsPanel
-                downloads={downloads}
-                downloadingFormat={downloadingFormat}
-                progress={progress}
-                onRetry={(d) => void handleRetryDownload(d)}
-                onRemove={(id) => void handleRemoveDownload(id)}
-              />
+              <div className="flex flex-col gap-6">
+                <FilesPanel
+                  documents={documents}
+                  transcripts={transcripts}
+                  summaries={summaries}
+                  prompts={pickers.prompts}
+                  onReveal={(path) => void window.sift.library.reveal(path)}
+                  onOpenTab={(t) => setTab(t)}
+                />
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-medium">Downloads</p>
+                  <DownloadsPanel
+                    downloads={downloads}
+                    downloadingFormat={downloadingFormat}
+                    progress={progress}
+                    onRetry={(d) => void handleRetryDownload(d)}
+                    onRemove={(id) => void handleRemoveDownload(id)}
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>

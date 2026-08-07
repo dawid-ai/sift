@@ -62,7 +62,7 @@ export function DownloadsPanel({
                 data-testid="media-detail-download-reveal"
                 onClick={() => void window.sift.library.reveal(d.filePath!)}
               >
-                Show in folder
+                Open
               </Button>
             )}
             {d.status === "error" && (

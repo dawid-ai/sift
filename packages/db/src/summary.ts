@@ -7,9 +7,11 @@ export interface SummaryRow {
   provider_id: string;
   model: string;
   text: string;
+  /** Absolute path of the .md written to disk, or null. Set after insert via setSummaryFilePath. */
+  file_path: string | null;
   created_at: number;
 }
-export type NewSummary = Omit<SummaryRow, "id" | "created_at">;
+export type NewSummary = Omit<SummaryRow, "id" | "created_at" | "file_path">;
 
 export function insertSummary(db: SiftDatabase, s: NewSummary): SummaryRow {
   const created_at = Date.now();
@@ -32,6 +34,10 @@ export function getSummariesByMediaId(db: SiftDatabase, mediaId: number): Summar
       "SELECT * FROM summary WHERE media_id = @mediaId ORDER BY created_at DESC, id DESC",
     )
     .all({ mediaId });
+}
+
+export function setSummaryFilePath(db: SiftDatabase, id: number, filePath: string): void {
+  db.prepare("UPDATE summary SET file_path = @filePath WHERE id = @id").run({ id, filePath });
 }
 
 export function deleteSummary(db: SiftDatabase, id: number): void {

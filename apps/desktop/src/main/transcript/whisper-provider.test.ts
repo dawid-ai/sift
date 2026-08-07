@@ -54,7 +54,10 @@ describe("whisper provider transcribe", () => {
     expect(f.ffmpeg.extractWav).toHaveBeenCalledOnce();
     const wavArg = f.ffmpeg.extractWav.mock.calls[0]![0] as { inputPath: string; outputPath: string };
     expect(wavArg.inputPath).toBe("/downloads/video.mp4");
-    expect(f.whisper.transcribe).toHaveBeenCalledWith({ wavPath: wavArg.outputPath, language: "en" });
+    expect(f.whisper.transcribe).toHaveBeenCalledWith(
+      { wavPath: wavArg.outputPath, language: "en" },
+      expect.any(Function),
+    );
 
     expect(result.providerId).toBe(WHISPER_CPP_ID);
     expect(result.model).toBe("small");

@@ -63,6 +63,10 @@ export const IPC = {
   aiKeyClear: "ai:keyClear",
   aiCustomConfigGet: "ai:customConfigGet",
   aiCustomConfigSet: "ai:customConfigSet",
+  aiGetDefault: "ai:getDefault",
+  aiSetDefault: "ai:setDefault",
+  aiCliStatus: "ai:cliStatus",
+  aiRunPrompt: "ai:runPrompt",
   queueAdd: "queue:add",
   queueList: "queue:list",
   queueRemove: "queue:remove",
@@ -101,6 +105,8 @@ export const IPC = {
   framesGetCrop: "frames:getCrop",
   framesSetCrop: "frames:setCrop",
   framesExport: "frames:export",
+  framesExportProgress: "frames:exportProgress",
+  framesSaveSelected: "frames:saveSelected",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -251,6 +257,12 @@ export interface FrameProgress {
   kept: number;
 }
 
+/** Progress of an AI-polished document export: sections rewritten so far. */
+export interface FrameExportProgress {
+  processed: number;
+  total: number;
+}
+
 /** A crop region as fractions (0..1) of the video frame — the "slide area". */
 export interface FrameCrop {
   x: number;
@@ -282,6 +294,8 @@ export interface TranscriptRecord {
   text: string;
   segments: TranscriptSegmentDto[];
   model: string | null;
+  /** Absolute path of the .txt written to disk, or null (old rows / write failed). */
+  filePath: string | null;
   createdAt: number;
 }
 
@@ -293,6 +307,20 @@ export interface SummaryRecord {
   providerId: string;
   model: string;
   text: string;
+  /** Absolute path of the .md written to disk, or null (old rows / write failed). */
+  filePath: string | null;
+  createdAt: number;
+}
+
+/** A generated document/report file (transcript + selected slides). `providerId`/`model`
+ * are null for the raw (no-AI) tier, set for an AI-distilled one. */
+export interface DocumentRecord {
+  id: number;
+  mediaId: number;
+  format: string; // "md" | "pdf"
+  path: string;
+  providerId: string | null;
+  model: string | null;
   createdAt: number;
 }
 
@@ -403,6 +431,7 @@ export interface MediaDetail {
   transcripts: TranscriptRecord[];
   summaries: SummaryRecord[];
   downloads: DownloadRecord[];
+  documents: DocumentRecord[];
   tags: string[];
 }
 
@@ -484,6 +513,12 @@ export interface AiProviderInfo {
  */
 export interface CustomProviderConfig {
   baseUrl: string;
+  model: string;
+}
+
+/** The user's default AI provider + model (seeds every provider picker). */
+export interface AiDefaultConfig {
+  providerId: string;
   model: string;
 }
 
@@ -712,11 +747,21 @@ export interface SiftApi {
     getCrop(mediaId: number): Promise<FrameCrop | null>;
     /** Sets the slide-area crop (fractions), or null to extract from the full frame. */
     setCrop(mediaId: number, crop: FrameCrop | null): Promise<void>;
-    /** Writes a transcript + selected-slides document (no AI) to Downloads/<App>;
-     * returns the absolute path. Rejects if the media has no transcript yet. */
-    export(mediaId: number, format: "md" | "pdf"): Promise<string>;
+    /** Writes a transcript + selected-slides document to Downloads/<App>; returns the
+     * absolute path. Rejects if the media has no transcript yet. When `polish` is set,
+     * each transcript section is rewritten by that AI provider (slides stay put). */
+    export(
+      mediaId: number,
+      format: "md" | "pdf",
+      polish?: { providerId: string; model: string },
+    ): Promise<string>;
+    /** Prompts for a folder and copies every selected slide there at full resolution.
+     * Returns the folder + count, or null if the user cancelled. */
+    saveSelected(mediaId: number): Promise<{ dir: string; count: number } | null>;
     /** Subscribes to extraction progress. Returns an unsubscribe function. */
     onProgress(cb: (p: FrameProgress) => void): () => void;
+    /** Subscribes to AI-polish document-export progress. Returns an unsubscribe function. */
+    onExportProgress(cb: (p: FrameExportProgress) => void): () => void;
   };
   prompts: {
     list(): Promise<PromptInfo[]>;
@@ -734,5 +779,14 @@ export interface SiftApi {
     getCustomConfig(): Promise<CustomProviderConfig | null>;
     /** Persists base_url/model and re-registers the custom provider if a key is already set. */
     setCustomConfig(cfg: CustomProviderConfig): Promise<void>;
+    /** The persisted default provider + model, or null if the user hasn't chosen one. */
+    getDefault(): Promise<AiDefaultConfig | null>;
+    /** Sets (or clears, with null) the default provider + model. */
+    setDefault(cfg: AiDefaultConfig | null): Promise<void>;
+    /** Whether the `claude` CLI is installed and runnable (for the Settings badge). */
+    cliStatus(): Promise<boolean>;
+    /** Runs an arbitrary system-prompt + content through a provider and returns the text.
+     * Powers the Settings prompt playground (prompt tuning); does not persist anything. */
+    runPrompt(input: { providerId: string; model: string; systemPrompt: string; content: string }): Promise<string>;
   };
 }

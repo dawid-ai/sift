@@ -7,6 +7,106 @@ import { KNOWN_PROVIDERS } from "@/lib/ai-provider-catalog";
 
 const KEYED_PROVIDERS = KNOWN_PROVIDERS.filter((p) => p.needsKey);
 const KEYLESS_PROVIDERS = KNOWN_PROVIDERS.filter((p) => !p.needsKey);
+const SELECT_CLASS =
+  "h-9 min-w-0 rounded-md border border-border bg-background px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+
+/** Picks the default provider + model used to seed every provider picker in the app. */
+function DefaultProviderControl() {
+  const [providerId, setProviderId] = useState("");
+  const [model, setModel] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    window.sift.aiProviders.getDefault().then((cfg) => {
+      if (cancelled || !cfg) return;
+      setProviderId(cfg.providerId);
+      setModel(cfg.model);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const models = KNOWN_PROVIDERS.find((p) => p.id === providerId)?.models ?? [];
+
+  function persist(nextProvider: string, nextModel: string) {
+    setProviderId(nextProvider);
+    setModel(nextModel);
+    void window.sift.aiProviders.setDefault(nextProvider ? { providerId: nextProvider, model: nextModel } : null);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Default AI provider</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <p className="text-sm text-foreground/60">
+          Pre-selected everywhere Sift uses AI (summaries, document polish).
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            data-testid="ai-default-provider"
+            value={providerId}
+            onChange={(e) => {
+              const next = e.target.value;
+              const first = KNOWN_PROVIDERS.find((p) => p.id === next)?.models[0]?.id ?? "";
+              persist(next, first);
+            }}
+            className={SELECT_CLASS}
+          >
+            <option value="">Auto (first available)</option>
+            {KNOWN_PROVIDERS.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+          </select>
+          {providerId && models.length > 0 && (
+            <select
+              data-testid="ai-default-model"
+              value={model}
+              onChange={(e) => persist(providerId, e.target.value)}
+              className={SELECT_CLASS}
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Keyless card for the Claude Code CLI provider — a detected/not-found probe + the ToS note. */
+function ClaudeCliCard({ label }: { label: string }) {
+  const [status, setStatus] = useState<"checking" | "found" | "missing">("checking");
+  useEffect(() => {
+    let cancelled = false;
+    window.sift.aiProviders.cliStatus().then((ok) => {
+      if (!cancelled) setStatus(ok ? "found" : "missing");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle>{label}</CardTitle>
+        <Badge data-testid="ai-cli-status" variant="outline">
+          {status === "checking" ? "Checking…" : status === "found" ? "Detected" : "Not found"}
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        <p data-testid="ai-provider-claude-cli" className="text-sm text-foreground/70">
+          Uses your logged-in <code>claude</code> subscription — no API key. Requires Claude Code installed
+          and signed in. Note: driving a consumer subscription from another app is a ToS grey area.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 /** Base_url + model fields for the `custom` (OpenAI-compatible) provider only. */
 function CustomConfigFields() {
@@ -172,21 +272,26 @@ function ProviderKeyRow({ id, label }: { id: string; label: string }) {
 export function AiProvidersSection() {
   return (
     <div data-testid="ai-providers-section" className="flex flex-col gap-4">
+      <DefaultProviderControl />
       {KEYED_PROVIDERS.map((p) => (
         <ProviderKeyRow key={p.id} id={p.id} label={p.label} />
       ))}
-      {KEYLESS_PROVIDERS.map((p) => (
-        <Card key={p.id}>
-          <CardHeader>
-            <CardTitle>{p.label}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p data-testid={`ai-provider-${p.id}`} className="text-sm text-foreground/70">
-              Local — no key needed
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+      {KEYLESS_PROVIDERS.map((p) =>
+        p.id === "claude-cli" ? (
+          <ClaudeCliCard key={p.id} label={p.label} />
+        ) : (
+          <Card key={p.id}>
+            <CardHeader>
+              <CardTitle>{p.label}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p data-testid={`ai-provider-${p.id}`} className="text-sm text-foreground/70">
+                Local — no key needed
+              </p>
+            </CardContent>
+          </Card>
+        ),
+      )}
     </div>
   );
 }

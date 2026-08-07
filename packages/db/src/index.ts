@@ -3,6 +3,8 @@ export type { SiftDatabase, Statement } from "./database";
 export { runMigrations } from "./migrations";
 export { upsertAsset, getAsset, listAssets, touchAssetChecked } from "./assets";
 export type { AssetKind, AssetRow } from "./assets";
+export { insertDocument, getDocumentsByMediaId, deleteDocument } from "./documents";
+export type { DocumentRow, NewDocument } from "./documents";
 export {
   insertMedia,
   setMediaDownload,
@@ -22,6 +24,7 @@ export {
   insertTranscript,
   getTranscriptById,
   getTranscriptsByMediaId,
+  setTranscriptFilePath,
   deleteTranscript,
 } from "./transcript";
 export type { TranscriptRow, NewTranscript } from "./transcript";
@@ -29,6 +32,7 @@ export {
   insertSummary,
   getSummaryById,
   getSummariesByMediaId,
+  setSummaryFilePath,
   deleteSummary,
 } from "./summary";
 export type { SummaryRow, NewSummary } from "./summary";

@@ -15,6 +15,8 @@ const NO_MODELS: AiProviderInfo["models"] = [];
 export function useAiPickers() {
   const [providers, setProviders] = useState<AiProviderInfo[]>(KNOWN_PROVIDERS);
   const [defaultProviderId, setDefaultProviderId] = useState<string | null>(null);
+  // The user's persisted default provider+model (Settings), or null. Seeds the initial selection.
+  const [userDefaultModel, setUserDefaultModel] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<PromptInfo[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
@@ -23,8 +25,9 @@ export function useAiPickers() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [customConfig, keyFlags] = await Promise.all([
+      const [customConfig, userDefault, keyFlags] = await Promise.all([
         window.sift.aiProviders.getCustomConfig(),
+        window.sift.aiProviders.getDefault(),
         Promise.all(
           KNOWN_PROVIDERS.map((p) =>
             p.needsKey ? window.sift.aiProviders.keyStatus(p.id) : Promise.resolve(true),
@@ -39,7 +42,10 @@ export function useAiPickers() {
             : p,
         ),
       );
-      setDefaultProviderId(KNOWN_PROVIDERS.find((_, i) => keyFlags[i])?.id ?? null);
+      // The user's persisted default wins; otherwise the first keyed/available provider.
+      const firstAvailable = KNOWN_PROVIDERS.find((_, i) => keyFlags[i])?.id ?? null;
+      setDefaultProviderId(userDefault?.providerId ?? firstAvailable);
+      setUserDefaultModel(userDefault?.model ?? null);
     }
     void load();
     return () => {
@@ -68,9 +74,11 @@ export function useAiPickers() {
     setSelectedModel((prev) =>
       prev && models.some((m) => m.id === prev)
         ? prev
-        : (models.find((m) => m.id === DEFAULT_MODEL_ID)?.id ?? models[0]!.id),
+        : (models.find((m) => m.id === userDefaultModel)?.id ??
+          models.find((m) => m.id === DEFAULT_MODEL_ID)?.id ??
+          models[0]!.id),
     );
-  }, [models]);
+  }, [models, userDefaultModel]);
 
   useEffect(() => {
     if (prompts.length === 0) return;

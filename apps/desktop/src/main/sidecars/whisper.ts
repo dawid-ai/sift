@@ -1,10 +1,9 @@
-import { execFile } from "node:child_process";
+import { spawn as nodeSpawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
-import type { ExecFn } from "./ytdlp";
+import type { SpawnFn } from "./ytdlp";
 
 export interface WhisperSegment {
   start: number;
@@ -33,29 +32,28 @@ export function parseWhisperJson(json: unknown): WhisperSegment[] {
 }
 
 export interface WhisperRunner {
-  transcribe(o: { wavPath: string; language: string }): Promise<{ segments: WhisperSegment[] }>;
+  transcribe(
+    o: { wavPath: string; language: string },
+    /** 0..1 as whisper.cpp reports `progress = N%` on stderr. */
+    onProgress?: (ratio: number) => void,
+  ): Promise<{ segments: WhisperSegment[] }>;
 }
 
-const execFileAsync = promisify(execFile);
-const defaultExec: ExecFn = async (file, args) => {
-  const { stdout, stderr } = await execFileAsync(file, args, {
-    maxBuffer: 1024 * 1024 * 64,
-    timeout: 0, // whisper on a long file can run for minutes — no timeout
-    killSignal: "SIGKILL",
-  });
-  return { stdout: stdout.toString(), stderr: stderr.toString() };
-};
+const defaultSpawn: SpawnFn = (file, args) => nodeSpawn(file, args);
+
+// whisper.cpp with `-pp` prints `whisper_print_progress_callback: progress =  40%` on stderr.
+const PROGRESS_RE = /progress\s*=\s*(\d+)\s*%/;
 
 export function createWhisperRunner(deps: {
   getBinaryPath: () => string | null;
   getModelPath: () => string | null;
-  exec?: ExecFn;
+  spawn?: SpawnFn;
   readJson?: (path: string) => unknown;
 }): WhisperRunner {
-  const exec = deps.exec ?? defaultExec;
+  const spawn = deps.spawn ?? defaultSpawn;
   const readJson = deps.readJson ?? ((p: string) => JSON.parse(readFileSync(p, "utf8")));
   return {
-    async transcribe({ wavPath, language }) {
+    transcribe({ wavPath, language }, onProgress) {
       const binary = deps.getBinaryPath();
       const model = deps.getModelPath();
       if (!binary) throw new Error("whisper is not installed — install it in Settings → Binaries");
@@ -63,18 +61,42 @@ export function createWhisperRunner(deps: {
 
       const outBase = join(tmpdir(), `sift-whisper-${randomUUID()}`);
       const jsonPath = `${outBase}.json`;
-      try {
-        await exec(binary, [
+      return new Promise<{ segments: WhisperSegment[] }>((resolve, reject) => {
+        const proc = spawn(binary, [
           "-m", model,
           "-f", wavPath,
           "-l", language,
           "-oj",          // --output-json → writes <outBase>.json
+          "-pp",          // --print-progress → `progress = N%` on stderr
           "-of", outBase, // --output-file base (no extension)
         ]);
-        return { segments: parseWhisperJson(readJson(jsonPath)) };
-      } finally {
-        rmSync(jsonPath, { force: true });
-      }
+        let last = -1;
+        proc.stdout.on("data", () => {}); // drain
+        proc.stderr.on("data", (chunk) => {
+          if (!onProgress) return;
+          const m = PROGRESS_RE.exec(String(chunk));
+          // whisper re-emits the same % across lines; only forward increases.
+          if (m && Number(m[1]) !== last) {
+            last = Number(m[1]);
+            onProgress(last / 100);
+          }
+        });
+        proc.on("error", reject);
+        proc.on("close", (code) => {
+          if (code !== 0) {
+            rmSync(jsonPath, { force: true });
+            reject(new Error(`whisper failed (exit code ${String(code)})`));
+            return;
+          }
+          try {
+            resolve({ segments: parseWhisperJson(readJson(jsonPath)) });
+          } catch (err) {
+            reject(err instanceof Error ? err : new Error(String(err)));
+          } finally {
+            rmSync(jsonPath, { force: true });
+          }
+        });
+      });
     },
   };
 }

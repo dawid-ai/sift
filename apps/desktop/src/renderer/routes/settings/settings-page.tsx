@@ -4,6 +4,7 @@ import { BinariesSection } from "./binaries-section";
 import { DownloadsSection } from "./downloads-section";
 import { PlatformsSection } from "./platforms-section";
 import { PromptsSection } from "./prompts-section";
+import { PromptPlaygroundSection } from "./prompt-playground-section";
 import { SigninSection } from "./signin-section";
 import { TranscriptLanguageSection } from "./transcript-language-section";
 import { TranscriptMethodSection } from "./transcript-method-section";
@@ -52,6 +53,10 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-semibold">Prompts</h3>
         <PromptsSection />
+      </section>
+      <section className="flex flex-col gap-4">
+        <h3 className="text-lg font-semibold">Prompt playground</h3>
+        <PromptPlaygroundSection />
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
-import { existsSync } from "node:fs";
+import { copyFileSync, existsSync } from "node:fs";
+import { extname, join } from "node:path";
 import type { BrowserWindow } from "electron";
-import { ipcMain } from "electron";
+import { dialog, ipcMain } from "electron";
 import { IPC, type FrameProgress, type FrameRecord } from "@sift/ipc-contract";
 import {
   clearFrameCrop,
@@ -17,6 +18,16 @@ import type { FrameService } from "../services/frame-service";
 import type { ExportFormat, FrameExportService } from "../services/frame-export-service";
 import { createOllamaSlideClassifier } from "../services/frame-classifier";
 import { getDb } from "../index";
+
+/** `65000` ms → `01-05` (mm-ss, filesystem-safe) for slide filenames. */
+function tsTag(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return h > 0 ? `${pad(h)}-${pad(m)}-${pad(s)}` : `${pad(m)}-${pad(s)}`;
+}
 
 function toRecord(row: FrameRow): FrameRecord {
   return {
@@ -90,7 +101,32 @@ export function registerFramesIpc(
     getFramesByMediaId(getDb(), mediaId).map(toRecord),
   );
 
-  ipcMain.handle(IPC.framesExport, (_event, mediaId: number, format: ExportFormat) =>
-    exportService.export(mediaId, format),
+  ipcMain.handle(IPC.framesSaveSelected, async (_event, mediaId: number) => {
+    const rows = getFramesByMediaId(getDb(), mediaId).filter((f) => f.included === 1);
+    if (rows.length === 0) throw new Error("No slides selected.");
+    const win = getWindows()[0];
+    const picked = win
+      ? await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory"] })
+      : await dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] });
+    if (picked.canceled || !picked.filePaths[0]) return null;
+    const dir = picked.filePaths[0];
+    // Frames are stored at native resolution already (no downscale on grab), so a copy is
+    // the max quality available — no re-encode. Named slide-NN-<mm-ss> in timeline order.
+    let count = 0;
+    rows.forEach((f, i) => {
+      const stamp = tsTag(f.ts_ms);
+      const name = `slide-${String(i + 1).padStart(3, "0")}-${stamp}${extname(f.image_path) || ".jpg"}`;
+      copyFileSync(f.image_path, join(dir, name));
+      count++;
+    });
+    return { dir, count };
+  });
+
+  ipcMain.handle(
+    IPC.framesExport,
+    (_event, mediaId: number, format: ExportFormat, polish?: { providerId: string; model: string }) =>
+      exportService.export(mediaId, format, polish, (p) => {
+        for (const win of getWindows()) win.webContents.send(IPC.framesExportProgress, p);
+      }),
   );
 }

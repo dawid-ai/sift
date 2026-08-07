@@ -15,6 +15,7 @@ import {
   getMediaBySourceUrl,
   getSummariesByMediaId,
   getTranscriptsByMediaId,
+  getDocumentsByMediaId,
   insertMedia,
   listAllTags,
   listMediaChannels,
@@ -323,6 +324,7 @@ export class DownloadService {
       text: t.text,
       segments: t.segments_json ? JSON.parse(t.segments_json) : [],
       model: t.model,
+      filePath: t.file_path,
       createdAt: t.created_at,
     }));
     const summaries = getSummariesByMediaId(db, id).map((s) => ({
@@ -332,9 +334,19 @@ export class DownloadService {
       providerId: s.provider_id,
       model: s.model,
       text: s.text,
+      filePath: s.file_path,
       createdAt: s.created_at,
     }));
-    return { media: toMediaRecord(media, dlRows), downloads, transcripts, summaries, tags: tagsForMedia(db, id) };
+    const documents = getDocumentsByMediaId(db, id).map((d) => ({
+      id: d.id,
+      mediaId: d.media_id,
+      format: d.format,
+      path: d.path,
+      providerId: d.provider_id,
+      model: d.model,
+      createdAt: d.created_at,
+    }));
+    return { media: toMediaRecord(media, dlRows), downloads, transcripts, summaries, documents, tags: tagsForMedia(db, id) };
   }
 
   /** Deletes a single download row and unlinks its file, if any. */

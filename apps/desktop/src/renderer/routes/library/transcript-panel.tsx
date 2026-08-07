@@ -14,6 +14,8 @@ export interface TranscriptPanelProps {
   currentTime: number;
   transcribeMode: TranscribeMode;
   transcriptStage: string | null;
+  /** 0..1 whisper progress, or null when unknown / not running. */
+  transcriptRatio: number | null;
   canRetranscribe: boolean;
   onSeek: (sec: number) => void;
   onGetTranscript: () => void;
@@ -26,7 +28,7 @@ export interface TranscriptPanelProps {
  * scrolled into view. Source transcripts appear as one compact removable row each (no duplicate
  * full-text block), plus the Get transcript / Re-transcribe actions. */
 export function TranscriptPanel({
-  transcripts, hasPlayer, currentTime, transcribeMode, transcriptStage,
+  transcripts, hasPlayer, currentTime, transcribeMode, transcriptStage, transcriptRatio,
   canRetranscribe, onSeek, onGetTranscript, onRetranscribe, onRemoveTranscript,
 }: TranscriptPanelProps) {
   const [search, setSearch] = useState("");
@@ -67,6 +69,21 @@ export function TranscriptPanel({
           </Button>
         )}
       </div>
+
+      {/* Whisper progress bar — only the transcribe stage reports a ratio (audio extract is quick). */}
+      {transcribeMode === "whisper" && transcriptRatio !== null && (
+        <div data-testid="transcript-progress" className="flex flex-col gap-1">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-300"
+              style={{ width: `${Math.round(transcriptRatio * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs tabular-nums text-foreground/50">
+            {transcriptStageLabel(transcriptStage)} · {Math.round(transcriptRatio * 100)}%
+          </p>
+        </div>
+      )}
 
       {/* Source transcripts — one compact removable row each (no duplicated full-text block). */}
       {transcripts.length > 0 && (

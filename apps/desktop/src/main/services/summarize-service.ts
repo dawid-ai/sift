@@ -12,6 +12,7 @@ import {
   getTranscriptsByMediaId,
   insertMedia,
   insertSummary,
+  setSummaryFilePath,
 } from "@sift/db";
 import type { MediaMetadata, SummaryRecord } from "@sift/ipc-contract";
 
@@ -49,6 +50,7 @@ function toRecord(row: SummaryRow, mediaId: number): SummaryRecord {
     providerId: row.provider_id,
     model: row.model,
     text: row.text,
+    filePath: row.file_path,
     createdAt: row.created_at,
   };
 }
@@ -107,28 +109,40 @@ export class SummarizeService {
       model: input.model,
       text,
     });
+    // Auto-write the .md so the Files tab can "Open" it. Best-effort: a write failure
+    // must not lose the summary (the DB row is the source of truth) — file_path stays null.
+    try {
+      const path = this.writeSummaryFile(row);
+      setSummaryFilePath(db, row.id, path);
+      row.file_path = path;
+    } catch {
+      /* leave file_path null */
+    }
     return toRecord(row, media.id);
+  }
+
+  /** Writes a summary row's text to `<base>__<prompt|summary>.md` under downloadsDir; returns the path. */
+  private writeSummaryFile(row: SummaryRow): string {
+    const { db } = this.opts;
+    const downloadsDir = this.opts.downloadsDir();
+    const media = getMediaById(db, row.media_id);
+    if (!media) throw new Error("Media not found.");
+    const base = buildOutputBaseName(media.uploader, media.title);
+    const prompt = row.prompt_id != null ? getPromptById(db, row.prompt_id) : undefined;
+    const suffix = prompt ? prompt.name : "summary";
+    const path = join(downloadsDir, `${sanitizeFilename(`${base}__${suffix}`)}.md`);
+    mkdirSync(downloadsDir, { recursive: true });
+    writeFileSync(path, row.text, "utf8");
+    return path;
   }
 
   /** Writes the summary's text to a `.md` file under `downloadsDir`; returns the absolute path. */
   async export(summaryId: number): Promise<string> {
     const { db } = this.opts;
-    const downloadsDir = this.opts.downloadsDir();
-
     const row = getSummaryById(db, summaryId);
     if (!row) throw new Error("Summary not found.");
-
-    const media = getMediaById(db, row.media_id);
-    if (!media) throw new Error("Media not found.");
-
-    const base = buildOutputBaseName(media.uploader, media.title);
-    const prompt = row.prompt_id != null ? getPromptById(db, row.prompt_id) : undefined;
-    const suffix = prompt ? prompt.name : "summary";
-    const fileName = `${sanitizeFilename(`${base}__${suffix}`)}.md`;
-    const path = join(downloadsDir, fileName);
-
-    mkdirSync(downloadsDir, { recursive: true });
-    writeFileSync(path, row.text, "utf8");
+    const path = this.writeSummaryFile(row);
+    setSummaryFilePath(db, summaryId, path);
     return path;
   }
 }

@@ -38,7 +38,17 @@ test("builds a no-AI document from the transcript + selected slides", async () =
     // PDF exercises the hidden-window printToPDF path (real Electron main).
     await window.getByTestId("media-detail-export-pdf").click();
     await expect(savedPath).toContainText(".pdf");
+
+    // AI-polished tier: pick a provider (the offline fixture Claude CLI) and re-export.
+    await window.getByTestId("media-detail-polish-provider").selectOption("claude-cli");
+    await window.getByTestId("media-detail-export-md").click();
+    await expect(savedPath).toContainText(".md");
     await expect(window.getByTestId("media-detail-action-error")).toHaveCount(0);
+
+    // Every export is tracked: the Files tab lists the generated documents + the prompt runs.
+    await window.getByTestId("media-detail-tab-files").click();
+    await expect(window.getByTestId("files-document").first()).toBeVisible();
+    await expect(window.getByTestId("files-prompt-run").first()).toBeVisible();
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });

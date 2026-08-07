@@ -1,9 +1,99 @@
 # Slides / Frame-Extraction Feature — Handover
 
-Single source of truth for continuing this work in a fresh session. Everything below is
-**implemented and verified** unless marked otherwise. **All work is UNCOMMITTED** on `master`
-(last commit `ca95847 release: v0.0.15`). First action in the new session: consider committing
-(branch off master first per repo rules), or keep iterating — files persist on disk.
+Single source of truth for continuing this work in a fresh session.
+
+> **Git state:** the raw slides feature shipped as **v0.1.0** (commits `394cb3d` feat(slides)
+> + `db0fd5c` release: v0.1.0, tag `v0.1.0` pushed) and a CI fix (`9fa9d7a`). Everything in the
+> **"LATEST SESSION"** block below (AI-polish tiers, Claude CLI provider, Files hub, Save slides,
+> prompt playground) is **UNCOMMITTED on `master`** — the user is testing/tuning before it's
+> committed. Do NOT commit without asking. Branch off master first per repo rules.
+
+---
+
+## LATEST SESSION (read this first)
+
+Built on top of v0.1.0. **Gate is green** (typecheck, lint, ~509 unit, build, 30 e2e) but the
+AI-polish output quality still needs real-`claude` tuning. Spec:
+`docs/superpowers/specs/2026-08-06-ai-polished-document-export-design.md`.
+
+### Done this session (uncommitted)
+- **AI-polished document export — distillation, not cleanup.** The polish now feeds the WHOLE
+  transcript to the model in ONE call, with `[[SLIDE n]]` placeholders, and asks for a dense
+  KNOWLEDGE DOCUMENT (headers/paragraphs/bullets, substance only — no filler/questions/discovery),
+  keeping/repositioning the markers; images are spliced back in. Core: `packages/core/src/frames/document.ts`
+  (`toMarkeredTranscript`, `fromMarkeredOutput`, `markdownToHtml`, block renderers). Prompt:
+  `POLISH_SYSTEM_PROMPT` in `packages/core/src/ai/prompt.ts` (user confirmed the new output is "much better").
+- **Three tiers**, chosen via the "Polish with" selector in the Slides tab: No AI (raw) · local
+  (Ollama) · external (Anthropic/OpenAI/custom **+ new Claude Code CLI provider**).
+- **Claude Code CLI provider** `apps/desktop/src/main/ai/claude-cli-provider.ts` — shells
+  `claude -p --model <opus|sonnet|haiku>` (subscription, keyless), prompt on **stdin**. First-class
+  everywhere; registered globally; `isClaudeCliAvailable` probes `claude --version`. v1 non-streaming.
+- **Default AI provider** setting (Settings) + persisted store `settings/ai-default-config.ts`;
+  `useAiPickers` seeds from it. CLI Detected/Not-found badge + ToS note in Settings.
+- **Files tab = artifacts hub** — new `document` table (migration **015**), `packages/db/src/documents.ts`;
+  export records a row; `MediaDetail.documents`; `files-panel.tsx` lists Documents / Transcripts /
+  Summaries / Prompts-run, with Downloads below. `detail()` reload after export surfaces new docs.
+- **Save slides** — `frames:saveSelected` IPC: folder picker → copies selected slides at native res
+  (frames are stored full-res already). Button in `slides-panel.tsx`.
+- **Prompt playground** (Settings global tool) `prompt-playground-section.tsx` + `ai:runPrompt` IPC —
+  paste transcript + edit prompt + run through a provider; for tuning (edits are local, not persisted).
+
+### ✅ DONE — transcripts & summaries are now files on disk + "Open" everywhere
+Transcripts and prompt outputs were **DB-only** (no file to open). Now auto-written on create so
+every Files-panel row can reveal a real file:
+- **Migration 016** (`016-artifact-file-path.sql.ts`): `ALTER TABLE transcript/summary ADD COLUMN
+  file_path TEXT` (nullable — old rows / write-failures stay null; DB text is source of truth).
+  `migrations.test.ts` count 15→16.
+- **DB**: `TranscriptRow`/`SummaryRow` gain `file_path`; new `setTranscriptFilePath` /
+  `setSummaryFilePath` setters (insert unchanged — path set after the write). Exported from db index.
+- **TranscriptService.runGet**: after insert, writes `<base>__transcript-<providerId>.txt` to
+  `downloadsDir` (new injected opt), best-effort try/catch. Provider in the name keeps captions vs
+  whisper distinct. `toRecord` carries `filePath`.
+- **SummarizeService**: extracted `writeSummaryFile(row)` (`<base>__<prompt|summary>.md`), called by
+  both `start` (auto, best-effort) and the existing `export()`. Both now `setSummaryFilePath`.
+- **IPC contract**: `TranscriptRecord.filePath` + `SummaryRecord.filePath` (`string | null`).
+  `download-service.ts` detail mapper fills them.
+- **UI** `files-panel.tsx`: Transcripts/Summaries rows show **Open** (reveal file, when `filePath`)
+  next to **Go to** (tab jump). "Prompts run" rows show **Open** too (summary `filePath` / document `path`).
+- **Rename** `Show in folder` → **Open** on downloads-panel, library-page export toast, media-card.
+- **Caveat**: re-running the same prompt overwrites its `.md` (name has no id); multiple summary rows
+  then share one file. ponytail: add an id suffix if per-row files matter. Transcript names include
+  providerId so captions/whisper don't collide.
+- Gate: typecheck ✓, `pnpm -r test` (all packages) ✓, lint ✓. E2e NOT re-run (needs a build; no spec
+  asserts on the Files panel or downloads-dir contents, so low risk).
+
+### ✅ DONE — user-feedback fixes (prior; typecheck + lint + whisper tests green)
+1. **Files tab count.** `media-detail.tsx` badge for the Files tab now counts
+   `documents.length + transcripts.length + summaries.length + downloads.length` (everything the
+   Files panel actually lists).
+2. **"Open" / "Go to" rename.** `files-panel.tsx`: Documents button "Reveal" → **Open** (still
+   `onReveal` = `shell.showItemInFolder`); Transcripts/Summaries tab-jump buttons "Open" → **Go to**.
+3. **Whisper progress bar.** `sidecars/whisper.ts` now spawns (streaming) instead of `execFile`
+   (buffered): added `-pp` (`--print-progress`), parses `progress = N%` off stderr (regex
+   `/progress\s*=\s*(\d+)\s*%/`, only forwards increases), and calls a new `onProgress(ratio)` arg.
+   `whisper-provider.ts` forwards it as `{ stage: "transcribing", ratio }`. `media-detail.tsx` keeps
+   `transcriptRatio` state; `transcript-panel.tsx` renders a bar (`data-testid="transcript-progress"`)
+   while `transcribeMode === "whisper" && ratio !== null`. **HUMAN-TEST CAVEAT:** the `-pp` flag +
+   exact `progress = N%` string are from whisper.cpp docs — verify against the managed whisper-cli's
+   real stderr on a live re-transcribe (regex is permissive but the flag name could differ by build).
+4. **Home tier badge dropped.** `preview-card.tsx` renders just `{metadata.platform.label}`;
+   removed the unused `TIER_LABELS` map (kept the `MediaMetadata` import — still used).
+5. **Home tags keep case.** `preview-card.tsx` `addTag` is now `const t = raw.trim();` with a
+   case-insensitive dedup (`!tags.some((x) => x.toLowerCase() === t.toLowerCase())`).
+
+### How the user tests / tunes
+- Prompt tuning: **Settings → Prompt playground** (paste a chunk of the Stanford transcript, run through
+  Claude CLI, iterate). Winning prompt gets pasted back and baked into `POLISH_SYSTEM_PROMPT` by us.
+- Real pipeline: `pnpm dev` → open the Stanford lecture → **Slides** → Polish with = Claude Code CLI →
+  export **Markdown** → open the `.md` in `Downloads/Sift`. **Watch:** CLI reads the prompt on stdin;
+  if it hangs/returns empty, switch the invocation (arg vs stdin, or `--append-system-prompt`).
+- Files hub: any video → **Files** tab. Save slides: **Slides** tab → **Save slides…**.
+
+### Deferred (agreed "later")
+- Vision slide placement (pass slide images to the model so it positions them by content, not timestamp).
+- CLI streaming (`--output-format stream-json`).
+
+---
 
 ## Goal
 
@@ -121,7 +211,27 @@ Shipped (typecheck, unit, lint, build, e2e all green). Zero AI, zero new deps.
 - `apps/desktop/e2e/frames-export.spec.ts` — download → transcript → extract → export md + pdf.
 - Slides are IMAGES filling the transcript's gaps — no OCR/text recreation (as specified).
 
-### 2. Claude Code CLI provider (uses the user's Pro/Max SUBSCRIPTION, not API credits)
+### ✅ DONE: AI-polished document export (Tiers 1 & 2) + Claude Code CLI provider
+Built on top of the raw export. Spec: `docs/superpowers/specs/2026-08-06-ai-polished-document-export-design.md`.
+- **Core** `frames/document.ts`: `buildDocumentBlocks`, `chunkText`, `polishTextBlocks` (rewrites
+  each text run via an injected `polish` fn; slides are hard boundaries so placement is preserved),
+  block-based renderers. `POLISH_SYSTEM_PROMPT` in `ai/prompt.ts` (clean, don't summarize).
+- **Provider** `ai/claude-cli-provider.ts`: `createClaudeCliProvider` shells `claude -p --model <m>`
+  (subscription, keyless); `isClaudeCliAvailable` probes `claude --version`. v1 non-streaming.
+  Registered globally (like Ollama) so it's a first-class provider in summaries + polish; in
+  `KNOWN_PROVIDERS`. ponytail: `--output-format stream-json` is the streaming upgrade path.
+- **Service** `frame-export-service.ts`: `export(mediaId, format, polish?, onProgress)` — polish via
+  `registry.get(id).summarize(POLISH_SYSTEM_PROMPT, ...)`, per-section try/catch → raw on failure,
+  streams `frames:exportProgress`.
+- **Default provider** setting: `settings/ai-default-config.ts` + `aiDefaultConfigFile()`, IPC
+  `ai:getDefault`/`ai:setDefault`/`ai:cliStatus`, `useAiPickers` seeds from it. Settings has a
+  "Default AI provider" selector + a Claude CLI Detected/Not-found card with the ToS note.
+- **UI**: "Polish with" provider+model selector in the Create-document block; polish progress line.
+- e2e `frames-export.spec.ts` covers raw md → pdf → polish (offline fixture provider).
+- **Human-test caveat**: the real `claude` CLI and real Ollama polish need a manual tuning pass
+  (not offline-testable) — document in DEVELOPMENT.md before release.
+
+### 2. (superseded — see DONE above) Claude Code CLI provider
 The user has `claude` installed + logged in (they run `claude -p ... "/decompose"` headless).
 The Claude.ai subscription CANNOT be used by Sift's `@anthropic-ai/sdk` directly (that's API
 credits). The ONLY subscription path is shelling out to headless Claude Code, which has vision:

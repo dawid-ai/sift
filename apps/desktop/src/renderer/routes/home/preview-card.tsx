@@ -16,12 +16,6 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TagChip } from "@/components/tag-chip";
 import { videoThumbUrl } from "@/lib/utils";
 
-const TIER_LABELS: Record<MediaMetadata["platform"]["tier"], string> = {
-  tested: "Tested",
-  supported: "Supported",
-  unknown: "Unverified",
-};
-
 /** Human-readable byte size, e.g. "339 MB"; `null`/non-finite renders "". */
 export function formatBytes(bytes: number | null): string {
   if (bytes === null || !Number.isFinite(bytes) || bytes <= 0) return "";
@@ -155,8 +149,8 @@ export function PreviewCard({
     : [];
 
   function addTag(raw: string) {
-    const t = raw.trim().toLowerCase();
-    if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
+    const t = raw.trim();
+    if (t && !tags.some((x) => x.toLowerCase() === t.toLowerCase())) setTags((prev) => [...prev, t]);
   }
 
   function doSummarize() {
@@ -247,7 +241,7 @@ export function PreviewCard({
             {metadata.title}
           </CardTitle>
           <Badge data-testid="preview-platform" variant="outline" className="shrink-0">
-            {metadata.platform.label} · {TIER_LABELS[metadata.platform.tier]}
+            {metadata.platform.label}
           </Badge>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

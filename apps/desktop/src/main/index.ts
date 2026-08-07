@@ -60,7 +60,9 @@ import { createWhisperRunner } from "./sidecars/whisper";
 import { createAnthropicProvider } from "./ai/anthropic-provider";
 import { createOpenAiProvider } from "./ai/openai-provider";
 import { createOllamaProvider } from "./ai/ollama-provider";
+import { createClaudeCliProvider } from "./ai/claude-cli-provider";
 import { createCustomConfigStore } from "./ai/custom-config";
+import { createAiDefaultConfigStore } from "./settings/ai-default-config";
 import { createTranscriptConfigStore } from "./settings/transcript-config";
 import { createTranscriptMethodStore } from "./settings/transcript-method-config";
 import { createAutoTranscriptStore } from "./settings/auto-transcript-config";
@@ -74,6 +76,7 @@ import {
   binaryUpdatesConfigFile,
   cookiesFile,
   customConfigFile,
+  aiDefaultConfigFile,
   downloadsConfigFile,
   downloadsDir,
   framesDir,
@@ -779,6 +782,7 @@ app.whenReady().then(() => {
     const transcriptService = new TranscriptService({
       db: getDb(),
       registry: transcriptRegistry,
+      downloadsDir: e2eFixtureDir ? e2eDownloadsDir : () => downloadsConfigStore.get(),
       getPreferredLanguages: transcriptConfigStore.get,
       getMethod: () => transcriptMethodStore.get(),
       getCookiesFile: authManager.cookiesFileForUrl,
@@ -817,6 +821,9 @@ app.whenReady().then(() => {
     const customConfigStore = createCustomConfigStore({
       filePath: customConfigFile(),
     });
+
+    // The user's default provider + model (seeds the pickers). Keyless — non-secret JSON.
+    const aiDefaultStore = createAiDefaultConfigStore({ filePath: aiDefaultConfigFile() });
 
     /** Builds and registers a fresh provider for `providerId` after a key is set. */
     const rebuild = (providerId: string, key: string): void => {
@@ -859,6 +866,7 @@ app.whenReady().then(() => {
       // dials a real daemon — same canned stub, just a second registry id/label.
       aiRegistry.register(fixtureAiProvider("anthropic", "Fixture AI"));
       aiRegistry.register(fixtureAiProvider("ollama", "Fixture Ollama"));
+      aiRegistry.register(fixtureAiProvider("claude-cli", "Fixture Claude CLI"));
     } else {
       const apiKey = secretsFor("anthropic").getKey();
       if (apiKey) aiRegistry.register(createAnthropicProvider({ apiKey }));
@@ -872,6 +880,10 @@ app.whenReady().then(() => {
       // above which wait for a stored secret. Reachability is only checked when
       // summarize() actually dials the daemon.
       aiRegistry.register(createOllamaProvider({}));
+
+      // Claude Code CLI — keyless like Ollama; always registered. Uses the user's
+      // logged-in `claude` subscription (a missing/logged-out CLI errors at call time).
+      aiRegistry.register(createClaudeCliProvider({}));
 
       const customKey = secretsFor("custom").getKey();
       const customConfig = customConfigStore.get();
@@ -910,6 +922,7 @@ app.whenReady().then(() => {
         });
     const frameExportService = new FrameExportService({
       db: getDb(),
+      registry: aiRegistry,
       downloadsDir: e2eFixtureDir ? e2eDownloadsDir : () => downloadsConfigStore.get(),
       renderPdf,
     });
@@ -931,7 +944,7 @@ app.whenReady().then(() => {
     // Re-queue anything left 'running' by a crash, then drain in the background.
     queueWorker.recover();
 
-    registerAiProvidersIpc(aiRegistry, secretsFor, rebuild, customConfigStore);
+    registerAiProvidersIpc(aiRegistry, secretsFor, rebuild, customConfigStore, aiDefaultStore);
   }
   createWindow();
 
