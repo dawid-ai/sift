@@ -4,6 +4,12 @@ Cross-platform desktop app to **download, transcribe, and summarize** media from
 ~1800 [yt-dlp](https://github.com/yt-dlp/yt-dlp)–supported platforms. Local-first,
 open-source, no servers — your media and API keys never leave your machine.
 
+## Download
+
+**[⬇ Download Sift for Windows](https://github.com/dawid-ai/sift/releases/latest/download/Sift-Setup.exe)** — always the latest build.
+
+Or browse [all releases](https://github.com/dawid-ai/sift/releases) (installer is unsigned, so Windows SmartScreen shows an "unknown publisher" prompt — choose *More info → Run anyway*). The app updates itself after that.
+
 ## Features
 
 - **Download** any yt-dlp-supported video/audio, with a queue and per-format options.

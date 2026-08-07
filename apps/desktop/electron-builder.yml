@@ -21,7 +21,9 @@ asarUnpack:
 win:
   target:
     - nsis
-  # icon is optional — omit `icon:` to use Electron's default; add build/icon.ico to override.
+  # App icon: electron-builder auto-detects build/icon.ico (buildResources dir). Source vector is
+  # build/icon.svg; regenerate the .ico from it with scratchpad/icongen (resvg + png-to-ico).
+  icon: build/icon.ico
   # Signing: read from env (CSC_LINK + CSC_KEY_PASSWORD). Absent → unsigned build (no failure).
   # Update-signature verification pulls electron-builder's winCodeSign bundle, which contains
   # macOS dylibs stored as symlinks; extracting those requires Windows Developer Mode/admin and
@@ -32,6 +34,10 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  # Versionless installer name so the README can link a stable URL that always resolves to
+  # the newest build: github.com/dawid-ai/sift/releases/latest/download/Sift-Setup.exe.
+  # latest.yml (the update feed) references this exact name, so electron-updater still works.
+  artifactName: ${productName}-Setup.${ext}
 # Update feed / release host: GitHub Releases (generates latest.yml for electron-updater).
 # releaseType: release publishes directly (not a draft) so electron-updater can see it —
 # a draft release is invisible to the updater.

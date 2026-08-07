@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Copy, Check } from "lucide-react";
 import type {
   DownloadOption,
   DownloadProgress,
@@ -56,6 +57,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>(null);
   const [transcriptStage, setTranscriptStage] = useState<string | null>(null);
   const [transcriptRatio, setTranscriptRatio] = useState<number | null>(null);
+  const [urlCopied, setUrlCopied] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [frames, setFrames] = useState<FrameRecord[]>([]);
   const [extractingFrames, setExtractingFrames] = useState(false);
@@ -379,6 +381,13 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     window.sift.frames.setCrop(id, null).catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
   }
 
+  function copyUrl() {
+    void navigator.clipboard.writeText(media.sourceUrl).then(() => {
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 1200);
+    });
+  }
+
   async function handleSaveSlides() {
     setActionError(null);
     try {
@@ -531,11 +540,25 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
           <div>
             <h2 data-testid="media-detail-title" className="text-lg font-semibold leading-snug">{media.title}</h2>
             {metaLine && <p className="mt-1 text-sm text-foreground/55">{metaLine}</p>}
-            <button type="button" data-testid="media-detail-source"
-              onClick={() => void window.sift.library.openExternal(media.sourceUrl)}
-              className="mt-1.5 block max-w-full truncate text-xs text-primary hover:underline" title={media.sourceUrl}>
-              {sourceDisplay} ↗
-            </button>
+            <div className="mt-1.5 flex max-w-full items-center gap-1.5">
+              <button type="button" data-testid="media-detail-source"
+                onClick={copyUrl}
+                className="min-w-0 truncate text-xs text-primary hover:underline" title="Click to copy">
+                {sourceDisplay}
+              </button>
+              <div className="relative flex-none">
+                <button type="button" data-testid="media-detail-source-copy" aria-label="Copy URL"
+                  onClick={copyUrl}
+                  className="flex text-foreground/40 transition-colors hover:text-foreground">
+                  {urlCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+                {urlCopied && (
+                  <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 text-[10px] text-background shadow">
+                    Copied
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <TagEditor mediaId={media.id} tags={detail.tags} onChange={reload} />
         </div>

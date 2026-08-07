@@ -15,6 +15,7 @@ test("Settings → Whisper: offline install flow flips the card to Installed", a
     const window = await app.firstWindow();
 
     await window.getByRole("button", { name: "Settings" }).click();
+    await window.getByTestId("settings-tab-transcription").click();
 
     const card = window.getByTestId("binary-whisper");
     await expect(card).toBeVisible();

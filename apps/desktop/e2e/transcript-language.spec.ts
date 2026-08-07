@@ -14,6 +14,7 @@ test("Settings → Transcript language: adding a language round-trips through th
   try {
     const window = await app.firstWindow();
     await window.getByRole("button", { name: "Settings" }).click();
+    await window.getByTestId("settings-tab-transcription").click();
 
     const section = window.getByTestId("transcript-language-section");
     await expect(section).toBeVisible();

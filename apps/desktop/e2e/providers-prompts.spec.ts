@@ -55,6 +55,7 @@ test("Settings → Prompts: add-and-delete round-trips a user prompt", async () 
     const window = await app.firstWindow();
 
     await window.getByRole("button", { name: "Settings" }).click();
+    await window.getByTestId("settings-tab-ai").click();
 
     const promptsSection = window.getByTestId("prompts-section");
     await expect(promptsSection).toBeVisible();

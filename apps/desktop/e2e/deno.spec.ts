@@ -19,6 +19,7 @@ test("Settings → Binaries: Deno offline install flips the card to Installed", 
     const window = await app.firstWindow();
 
     await window.getByRole("button", { name: "Settings" }).click();
+    await window.getByTestId("settings-tab-system").click();
 
     const denoRow = window.getByTestId("binary-deno");
     await expect(denoRow).toBeVisible();

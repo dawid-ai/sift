@@ -17,6 +17,7 @@ test("Settings → Binaries: offline install flow persists and updates the UI", 
     const window = await app.firstWindow();
 
     await window.getByRole("button", { name: "Settings" }).click();
+    await window.getByTestId("settings-tab-system").click();
 
     const ytdlpRow = window.getByTestId("binary-ytdlp");
     await expect(ytdlpRow).toBeVisible();

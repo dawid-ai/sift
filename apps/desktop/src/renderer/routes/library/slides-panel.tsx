@@ -147,19 +147,21 @@ export function SlidesPanel({
             {cropEditing ? "Done" : hasCrop ? "Edit slide region" : "Set slide region"}
           </Button>
           {hasCrop && !cropEditing && (
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid="media-detail-clear-region"
+              disabled={!canExtract}
+              onClick={onClearCrop}
+              className="text-red-600 hover:text-red-600 dark:text-red-400"
+            >
+              Remove slide region
+            </Button>
+          )}
+          {hasCrop && !cropEditing && (
             <span className="text-foreground/50">Extraction limited to the marked region.</span>
           )}
           {cropEditing && <span className="text-foreground/50">Drag a box over the slide on the video.</span>}
-          {hasCrop && (
-            <button
-              type="button"
-              data-testid="media-detail-clear-region"
-              onClick={onClearCrop}
-              className="text-foreground/45 underline-offset-2 hover:text-foreground/70 hover:underline"
-            >
-              Clear region
-            </button>
-          )}
         </div>
 
         {/* AI slide detection: an Ollama vision model rejects talking heads / rooms / charts-in-a-room

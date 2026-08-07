@@ -3,10 +3,10 @@ import type { QueueItem, QueueSpec } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 import { QueueSpecControls } from "@/components/queue-spec-controls";
 
-/** Short human label for the selected download format, e.g. "1080p MP4", "Best video", "Audio only". */
+/** Short human label for the selected download format, e.g. "1080p MP4", "Video & Audio", "Audio only". */
 function formatLabel(f: QueueSpec["format"]): string {
   if (f.kind === "audio") return "Audio only";
-  const res = f.maxHeight ? `${f.maxHeight}p` : "Best video";
+  const res = f.maxHeight ? `${f.maxHeight}p` : "Video & Audio";
   return f.mp4 ? `${res} · MP4` : res;
 }
 

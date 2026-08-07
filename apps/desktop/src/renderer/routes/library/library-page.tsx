@@ -27,9 +27,11 @@ export interface LibraryPageProps {
   /** When set (e.g. from a channel's downloaded list), open this media's detail on mount. */
   focusMediaId?: number | null;
   onFocusMediaHandled?: () => void;
+  /** Increments when the Library nav is clicked — closes any open detail, back to the list. */
+  homeSignal?: number;
 }
 
-export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }: LibraryPageProps) {
+export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, homeSignal }: LibraryPageProps) {
   const [items, setItems] = useState<MediaListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -90,6 +92,12 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled }
     if (focusMediaId != null) onFocusMediaHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Library nav clicked — close any open detail. Guarded so the initial mount (homeSignal 0/undefined)
+  // doesn't clobber a focusMediaId-seeded detail.
+  useEffect(() => {
+    if (homeSignal) setSelectedId(null);
+  }, [homeSignal]);
 
   // Debounced DB search: empty query clears hits without an IPC round-trip.
   useEffect(() => {

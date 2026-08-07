@@ -370,7 +370,15 @@ export function App() {
   const [view, setView] = useState<View>("home");
   const [focusChannel, setFocusChannel] = useState<ChannelRecord | null>(null);
   const [focusMediaId, setFocusMediaId] = useState<number | null>(null);
+  // Bumped each time the Library nav is clicked, so LibraryPage closes any open detail
+  // and returns to the list — even when already on the library view (a no-op setView).
+  const [libraryHome, setLibraryHome] = useState(0);
   const [openChannelError, setOpenChannelError] = useState<string | null>(null);
+
+  const handleNavigate = useCallback((v: View) => {
+    if (v === "library") setLibraryHome((n) => n + 1);
+    setView(v);
+  }, []);
   const { state: updateState, dismiss: dismissUpdate } = useUpdates();
   const { state: binaryUpdateState, dismiss: dismissBinaryUpdate } = useBinaryUpdates();
 
@@ -395,7 +403,7 @@ export function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar view={view} onNavigate={setView} />
+      <Sidebar view={view} onNavigate={handleNavigate} />
       <div className="flex flex-1 flex-col overflow-auto">
         {openChannelError && (
           <p data-testid="open-channel-error" className="px-4 pt-2 text-sm text-danger">
@@ -408,6 +416,7 @@ export function App() {
             onOpenChannel={handleOpenChannel}
             focusMediaId={focusMediaId}
             onFocusMediaHandled={() => setFocusMediaId(null)}
+            homeSignal={libraryHome}
           />
         )}
         {view === "queue" && <QueuePage />}

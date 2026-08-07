@@ -1,5 +1,17 @@
 # Updates
 
+## v0.2.1 — 2026-08-07
+
+- **New app icon** — Sift now has its own teal icon in the taskbar and Start menu.
+- **Download page** — the README links a one-click "latest" installer; the app keeps
+  updating itself after that.
+- **Copy a video's URL** with one click from its detail page (with a "Copied" confirmation).
+- The sidebar **Library** button now returns to the list from a video's detail page.
+- **Settings** is now organized into tabs: General, Transcription, AI, System.
+- **Queue** is clearer: labeled fields, "Video & Audio" / "Best available" wording, and
+  tag suggestions as you type.
+- **Slides**: a clear **Remove slide region** button when a region is set.
+
 ## v0.2.0 — 2026-08-07
 
 - **AI-polished documents** from the Slides tab: turn a talk into a dense knowledge

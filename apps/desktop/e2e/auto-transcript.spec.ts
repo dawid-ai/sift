@@ -24,6 +24,7 @@ test("auto-transcript toggle gates transcribe-after-download", async () => {
 
     // Turn the toggle off in Settings.
     await window.getByRole("button", { name: "Settings" }).click();
+    await window.getByTestId("settings-tab-transcription").click();
     const toggle = window.getByTestId("auto-transcript-toggle");
     await expect(toggle).toHaveAttribute("aria-checked", "true");
     await toggle.click();
