@@ -2,11 +2,25 @@
 
 Single source of truth for continuing this work in a fresh session.
 
-> **Git state:** the raw slides feature shipped as **v0.1.0** (commits `394cb3d` feat(slides)
-> + `db0fd5c` release: v0.1.0, tag `v0.1.0` pushed) and a CI fix (`9fa9d7a`). Everything in the
-> **"LATEST SESSION"** block below (AI-polish tiers, Claude CLI provider, Files hub, Save slides,
-> prompt playground) is **UNCOMMITTED on `master`** — the user is testing/tuning before it's
-> committed. Do NOT commit without asking. Branch off master first per repo rules.
+> **Git state (2026-08-07): all shipped — working tree clean.** The raw slides feature was
+> **v0.1.0**; the AI-polish tiers / Claude CLI provider / Files hub / Save slides / prompt
+> playground / transcripts+summaries-as-files all shipped in **v0.2.0**; the cosmetic batch +
+> new app icon + README download link shipped in **v0.2.1** (tags `v0.2.0`, `v0.2.1` pushed,
+> GitHub Releases published, installer = `Sift-Setup.exe` versionless via `releases/latest/download/`).
+> Nothing here is uncommitted anymore. Normal repo rules apply again: branch off master for new work.
+>
+> **Still needs a real-hardware pass (NOT offline-testable — shipped unverified on real binaries):**
+> 1. **Whisper progress bar** — the `-pp` flag + `progress = N%` stderr regex are from whisper.cpp
+>    docs; confirm the bar actually moves on a live re-transcribe (`sidecars/whisper.ts`,
+>    `transcript-panel.tsx` testid `transcript-progress`). Flag name could differ by build.
+> 2. **Claude CLI provider** (`ai/claude-cli-provider.ts`) — real `claude -p` polish/summarize
+>    (offline-tested only; watch stdin vs arg, empty/hung output).
+> 3. **AI-polish output quality** — tune `POLISH_SYSTEM_PROMPT` against real `claude` / real Ollama
+>    (use Settings → Prompt playground).
+> 4. **Tesseract offline** (task #7) — still downloads `eng.traineddata` on first OCR run; vendor it
+>    + `extraResources` + `langPath` before claiming full offline.
+> 5. **Dev-mode window icon** — packaged `.exe` has the new icon; `pnpm dev` still shows Electron's
+>    default (set `BrowserWindow({ icon })` if it bothers you). Cosmetic only.
 
 ---
 
