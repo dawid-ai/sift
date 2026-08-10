@@ -1,5 +1,17 @@
 # Updates
 
+## v0.3.0 — 2026-08-10
+
+- **New look** — a darker, quieter interface: deeper background, coral accents for media
+  actions, violet for anything AI, and a compact icon sidebar.
+- **Filter the library by channel and platform** with dropdowns next to the search box.
+- **Tags now stack.** Click several tags to narrow to videos carrying all of them.
+- **Right-click a tag to hide it** — everything except those videos. Hidden tags dim and
+  show a red minus.
+- **Slides strip scrolls with a normal mouse wheel**, no side-scroll wheel needed.
+- **ffmpeg stops re-downloading itself every day.** Sift now follows ffmpeg's stable
+  releases instead of its daily development builds. (One last ~80 MB update, then quiet.)
+
 ## v0.2.1 — 2026-08-07
 
 - **New app icon** — Sift now has its own teal icon in the taskbar and Start menu.
