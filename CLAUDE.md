@@ -30,6 +30,10 @@ pnpm --filter @sift/desktop dist       # Windows installer (electron-builder)
 Run one test file: `pnpm --filter @sift/core exec vitest run src/transcript/vtt.test.ts`.
 Run one e2e spec: `pnpm --filter @sift/desktop exec playwright test e2e/download.spec.ts` (build once first).
 
+**The gate** (what CI runs, `.github/workflows/ci.yml`, windows-latest/Node 22):
+`pnpm typecheck && pnpm test && pnpm lint && pnpm build`. Green gate is the
+precondition for `/release-update`. E2E is not in CI — run it locally.
+
 ## Native-module gotcha (read before debugging install failures)
 
 `better-sqlite3` is a native addon compiled against **Electron's ABI, not Node's**.
@@ -37,11 +41,16 @@ After every `pnpm install` or Electron version bump it must be recompiled:
 
 - Use `pnpm --filter @sift/desktop run rebuild` — **with `run`**. Bare
   `pnpm --filter @sift/desktop rebuild` hits pnpm's built-in rebuild command
-  (relinks the whole tree, intermittently fails with `ERR_PNPM_EISDIR` on this
-  repo's exFAT volume), not the package's `electron-rebuild` script.
-- The repo's exFAT drive has no hard-link support, so `.npmrc` forces
-  `package-import-method=copy` and `better-sqlite3` is deliberately kept out of
-  `pnpm.onlyBuiltDependencies` (its Node-ABI build fails here and isn't needed).
+  (relinks the whole tree), not the package's `electron-rebuild` script.
+- `better-sqlite3` is deliberately kept out of `pnpm.onlyBuiltDependencies` — its
+  Node-ABI build isn't needed, since `electron-rebuild` compiles it for Electron.
+
+**Repo location matters for this project.** It used to live on an external USB
+exFAT drive; small-file reads there ran ~26x slower than NVMe/NTFS, which made
+`pnpm dev` take **105s to a window** (35-49s of that just bundling the main
+process). On `C:` it's **~3.5s**. If you find yourself on an exFAT/USB volume
+again, see `.npmrc` — `package-import-method=copy` becomes mandatory, and expect
+the old numbers back. An AV exclusion for the repo root is worth adding either way.
 
 ## Architecture
 
@@ -63,9 +72,11 @@ Three-process Electron app. The hard rules:
   `routes/` per feature, `lib/` hooks/helpers).
 - `packages/core` — framework-free domain code (no Electron, no Node addons):
   platform registry/tiering, filename building, transcript types + VTT parsing,
-  AI provider **types + registry**.
+  AI provider **types + registry**, frame heuristics (`frames/`: dhash,
+  brightness, keep, document).
 - `packages/db` — better-sqlite3 schema, numbered SQL migrations, per-table
-  accessors (`media`, `transcript`, `summary`, `prompt`, `asset`, …).
+  accessors (`media`, `transcript`, `summary`, `prompt`, `asset`, `frames`,
+  `frame-crop`, `documents`, …).
 - `packages/binaries` — on-demand yt-dlp/ffmpeg resolution + download-and-verify
   (sha256 from the release's own checksum file, never computed pre-download).
 - `packages/ipc-contract` — renderer⇄main channel + type definitions.
@@ -103,5 +114,13 @@ real-API behavior needs a documented human tuning pass (see DEVELOPMENT.md
 `docs/DEVELOPMENT.md` documents every flow (metadata, download, transcript,
 summarize, providers, library, channels/subscriptions, queue, whisper, auth,
 player, tags, playlist export, updates) file-by-file with `data-testid`s. Read
-the relevant section there before changing a flow. Release process:
+the relevant section there before changing a flow.
+
+**Not in DEVELOPMENT.md: the frames/slides flow.** ffmpeg frame extraction →
+`core/frames` dedupe+keep heuristics → `sidecars/ocr.ts` (tesseract.js) →
+`services/frame-classifier.ts` / `frame-service.ts` / `frame-export-service.ts`
+→ `ipc/frames.ts` → `db` `frames`/`frame-crop`/`documents`. Read those files
+plus `e2e/frames.spec.ts` and `e2e/frames-export.spec.ts` before touching it.
+
+Release process:
 `.claude/skills/release-update/SKILL.md` (`/release-update`); notes in `UPDATES.md`.
