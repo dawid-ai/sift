@@ -8,6 +8,7 @@ import type {
 } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
+import { FilterSelect } from "@/components/ui/filter-select";
 import {
   getLibraryView,
   setLibraryView,
@@ -41,7 +42,10 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
   const [selectedId, setSelectedId] = useState<number | null>(focusMediaId ?? null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<LibraryView>(getLibraryView());
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  // Tag filters. Positive tags AND together (each click narrows); right-clicking a tag
+  // instead hides everything carrying it. A tag is in at most one of the two lists.
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [excludedTags, setExcludedTags] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [searchHits, setSearchHits] = useState<Map<number, SearchHit> | null>(null);
   const [channel, setChannel] = useState<string | null>(null);
@@ -54,7 +58,8 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
 
   // The active filter, sent to the DB. Search contributes its matched ids (null = no search).
   const filter: MediaFilter = {
-    tag: activeTag,
+    tags: activeTags,
+    excludeTags: excludedTags,
     channel,
     platform,
     from: from ? Date.parse(`${from}T00:00:00`) : null,
@@ -62,8 +67,28 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
     ids: searchHits ? [...searchHits.keys()] : null,
   };
 
-  const anyFilter = !!(activeTag || channel || platform || from || to || searchHits);
+  const anyFilter = !!(
+    activeTags.length || excludedTags.length || channel || platform || from || to || searchHits
+  );
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+  const has = (list: string[], name: string) => list.some((t) => t.toLowerCase() === name.toLowerCase());
+  const without = (list: string[], name: string) =>
+    list.filter((t) => t.toLowerCase() !== name.toLowerCase());
+  const toggle = (list: string[], name: string) =>
+    has(list, name) ? without(list, name) : [...list, name];
+
+  /** Left-click: require the tag (AND with the others). Also drops it from the excluded set. */
+  function toggleActive(name: string) {
+    setActiveTags((prev) => toggle(prev, name));
+    setExcludedTags((prev) => without(prev, name));
+  }
+
+  /** Right-click: hide everything carrying the tag. A tag is never required and excluded at once. */
+  function toggleExcluded(name: string) {
+    setExcludedTags((prev) => toggle(prev, name));
+    setActiveTags((prev) => without(prev, name));
+  }
 
   function refresh() {
     setReloadKey((k) => k + 1);
@@ -117,15 +142,17 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
   // Any filter/search change returns to the first page.
   useEffect(() => {
     setPage(0);
-  }, [activeTag, channel, platform, from, to, searchHits]);
+  }, [activeTags, excludedTags, channel, platform, from, to, searchHits]);
 
   // A filtered value can vanish (its last video removed/retagged) while the filter still
   // references it — clear it so the view isn't stranded on an empty result with no visible reset.
   useEffect(() => {
-    if (activeTag && !facets.tags.some((t) => t.name.toLowerCase() === activeTag.toLowerCase())) {
-      setActiveTag(null);
-    }
-  }, [facets.tags, activeTag]);
+    const live = new Set(facets.tags.map((t) => t.name.toLowerCase()));
+    const prune = (prev: string[]) =>
+      prev.every((t) => live.has(t.toLowerCase())) ? prev : prev.filter((t) => live.has(t.toLowerCase()));
+    setActiveTags(prune);
+    setExcludedTags(prune);
+  }, [facets.tags]);
   useEffect(() => {
     if (channel && !facets.channels.includes(channel)) setChannel(null);
   }, [facets.channels, channel]);
@@ -149,7 +176,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
       .catch((e) => setError(String(e)));
     // filter is rebuilt each render; depend on its primitive parts instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTag, channel, platform, from, to, searchHits, page, pageSize, reloadKey]);
+  }, [activeTags, excludedTags, channel, platform, from, to, searchHits, page, pageSize, reloadKey]);
 
   if (selectedId != null) {
     return (
@@ -205,7 +232,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
     try {
       // Export the whole filtered set, not just the visible page.
       const ids = await window.sift.library.listIds(filter);
-      const name = activeTag ?? channel ?? "sift-library";
+      const name = activeTags.join("-") || channel || "sift-library";
       setExportResult(await window.sift.library.exportPlaylist(ids, name));
     } catch (e) {
       setExportError(String(e));
@@ -273,33 +300,21 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
           onChange={(e) => setSearch(e.target.value)}
           className="min-w-[16rem] flex-1 rounded border border-border bg-transparent px-2 py-1 text-sm"
         />
-        <select
-          data-testid="library-channel-filter"
-          value={channel ?? ""}
-          onChange={(e) => setChannel(e.target.value || null)}
-          className="rounded border border-border bg-transparent px-2 py-1 text-sm"
-        >
-          <option value="">All channels</option>
-          {facets.channels.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+        <FilterSelect
+          testId="library-channel-filter"
+          allLabel="All channels"
+          value={channel}
+          onChange={setChannel}
+          options={facets.channels.map((c) => ({ value: c, label: c }))}
+        />
         {facets.platforms.length > 1 && (
-          <select
-            data-testid="library-platform-filter"
-            value={platform ?? ""}
-            onChange={(e) => setPlatform(e.target.value || null)}
-            className="rounded border border-border bg-transparent px-2 py-1 text-sm"
-          >
-            <option value="">All platforms</option>
-            {facets.platforms.map((p) => (
-              <option key={p} value={p}>
-                {platformLabel(p)}
-              </option>
-            ))}
-          </select>
+          <FilterSelect
+            testId="library-platform-filter"
+            allLabel="All platforms"
+            value={platform}
+            onChange={setPlatform}
+            options={facets.platforms.map((p) => ({ value: p, label: platformLabel(p) }))}
+          />
         )}
         <input
           data-testid="library-date-from"
@@ -323,22 +338,52 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
           data-testid="tag-filter-bar"
           className="flex flex-wrap items-center gap-1.5 pb-2"
         >
-          {facets.tags.map((t) => (
-            <button
-              key={t.name}
-              type="button"
-              onClick={() => setActiveTag(activeTag === t.name ? null : t.name)}
-              className={activeTag === t.name ? "ring-1 ring-ring rounded" : ""}
-            >
-              <TagChip name={t.name} />
-            </button>
-          ))}
-          {activeTag && (
+          {facets.tags.map((t) => {
+            const excluded = has(excludedTags, t.name);
+            const active = has(activeTags, t.name);
+            return (
+              <button
+                key={t.name}
+                type="button"
+                data-testid="tag-filter"
+                data-tag-excluded={excluded ? "true" : undefined}
+                aria-pressed={active}
+                title={
+                  excluded
+                    ? `Hiding "${t.name}" — right-click to stop hiding`
+                    : `Click to require "${t.name}" (stacks with other tags), right-click to hide it`
+                }
+                onClick={() => toggleActive(t.name)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  toggleExcluded(t.name);
+                }}
+                className={`relative rounded ${active ? "ring-1 ring-ring" : ""} ${
+                  excluded ? "opacity-50" : ""
+                }`}
+              >
+                <TagChip name={t.name} />
+                {excluded && (
+                  <span
+                    aria-hidden
+                    className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white"
+                  >
+                    −
+                  </span>
+                )}
+                {excluded && <span className="sr-only"> (excluded)</span>}
+              </button>
+            );
+          })}
+          {(activeTags.length > 0 || excludedTags.length > 0) && (
             <button
               type="button"
               data-testid="tag-filter-clear"
               className="text-xs text-muted-foreground underline"
-              onClick={() => setActiveTag(null)}
+              onClick={() => {
+                setActiveTags([]);
+                setExcludedTags([]);
+              }}
             >
               Clear
             </button>
@@ -355,7 +400,8 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
             items={items}
             onOpen={handleOpen}
             onRemove={handleRemove}
-            onTagClick={setActiveTag}
+            onTagClick={toggleActive}
+            onTagExclude={toggleExcluded}
             hits={searchHits}
             query={search.trim()}
           />
@@ -370,7 +416,8 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                 item={item}
                 onOpen={handleOpen}
                 onRemove={handleRemove}
-                onTagClick={setActiveTag}
+                onTagClick={toggleActive}
+                onTagExclude={toggleExcluded}
                 hit={searchHits?.get(item.media.id)}
                 query={search.trim()}
               />

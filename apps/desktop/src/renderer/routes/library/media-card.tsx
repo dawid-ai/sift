@@ -20,12 +20,14 @@ export interface MediaCardProps {
   onOpen: (id: number) => void;
   onRemove: (id: number) => void;
   onTagClick: (name: string) => void;
+  /** Right-click a tag: toggles it as a negative filter (hide everything carrying it). */
+  onTagExclude?: (name: string) => void;
   hit?: SearchHit | undefined;
   query?: string | undefined;
 }
 
 /** Presentational card for a single library entry: open detail + inline-confirm remove. */
-export function MediaCard({ item, onOpen, onRemove, onTagClick, hit, query }: MediaCardProps) {
+export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, query }: MediaCardProps) {
   const [confirming, setConfirming] = useState(false);
   const { media, transcriptCount, transcriptLanguage, formats, summaryCount, tags } = item;
 
@@ -97,7 +99,16 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, hit, query }: Me
         {tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
             {tags.map((t) => (
-              <button key={t} type="button" onClick={() => onTagClick(t)}>
+              <button
+                key={t}
+                type="button"
+                onClick={() => onTagClick(t)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onTagExclude?.(t);
+                }}
+                title={`Click to filter by "${t}", right-click to hide it`}
+              >
                 <TagChip name={t} />
               </button>
             ))}

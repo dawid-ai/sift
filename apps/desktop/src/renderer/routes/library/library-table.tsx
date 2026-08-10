@@ -13,13 +13,15 @@ export interface LibraryTableProps {
   onOpen: (id: number) => void;
   onRemove: (id: number) => void;
   onTagClick: (name: string) => void;
+  /** Right-click a tag: toggles it as a negative filter (hide everything carrying it). */
+  onTagExclude?: (name: string) => void;
   hits?: Map<number, SearchHit> | null;
   query?: string;
 }
 
 /** Table-first library view: one row per media item, with format/transcript/summary counts
  * at a glance instead of requiring a detail-page visit. */
-export function LibraryTable({ items, onOpen, onRemove, onTagClick, hits, query }: LibraryTableProps) {
+export function LibraryTable({ items, onOpen, onRemove, onTagClick, onTagExclude, hits, query }: LibraryTableProps) {
   return (
     <table data-testid="library-table" className="w-full text-sm">
       <thead>
@@ -41,6 +43,7 @@ export function LibraryTable({ items, onOpen, onRemove, onTagClick, hits, query 
             onOpen={onOpen}
             onRemove={onRemove}
             onTagClick={onTagClick}
+            onTagExclude={onTagExclude}
             hit={hits?.get(item.media.id)}
             query={query}
           />
@@ -55,12 +58,14 @@ interface LibraryRowProps {
   onOpen: (id: number) => void;
   onRemove: (id: number) => void;
   onTagClick: (name: string) => void;
+  /** Right-click a tag: toggles it as a negative filter (hide everything carrying it). */
+  onTagExclude?: (name: string) => void;
   hit?: SearchHit | undefined;
   query?: string | undefined;
 }
 
 /** A single row, with its own inline-confirm state for Remove (mirrors MediaCard). */
-function LibraryRow({ item, onOpen, onRemove, onTagClick, hit, query }: LibraryRowProps) {
+function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, query }: LibraryRowProps) {
   const [confirming, setConfirming] = useState(false);
   const { media, transcriptCount, transcriptLanguage, formats, summaryCount, tags } = item;
 
@@ -104,7 +109,16 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, hit, query }: LibraryR
             {tags.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
                 {tags.map((t) => (
-                  <button key={t} type="button" onClick={() => onTagClick(t)}>
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => onTagClick(t)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      onTagExclude?.(t);
+                    }}
+                    title={`Click to filter by "${t}", right-click to hide it`}
+                  >
                     <TagChip name={t} />
                   </button>
                 ))}

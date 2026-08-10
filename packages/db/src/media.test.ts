@@ -115,7 +115,24 @@ describe("media queries", () => {
     // Filters constrain both rows and total.
     expect(listMediaPage(db, { channel: "Alice" }, 10, 0).total).toBe(3); // V0,V2,V4
     expect(listMediaPage(db, { platform: "twitter" }, 10, 0).total).toBe(2); // V3,V4
-    expect(listMediaPage(db, { tag: "music" }, 10, 0).rows.map((r) => r.title)).toEqual(["V4", "V0"]);
+    expect(listMediaPage(db, { tags: ["music"] }, 10, 0).rows.map((r) => r.title)).toEqual(["V4", "V0"]);
+
+    // Multiple tags AND together: V0 has both, V4 only "MUSIC".
+    addTag(db, rows[0]!.id, "live");
+    expect(listMediaPage(db, { tags: ["music", "Live"] }, 10, 0).rows.map((r) => r.title)).toEqual(["V0"]);
+    expect(listMediaPage(db, { tags: [] }, 10, 0).total).toBe(5); // empty list constrains nothing
+
+    // excludeTags is the negative filter: everything EXCEPT rows carrying the tag,
+    // case-insensitive, and it stacks with a positive filter.
+    expect(listMediaPage(db, { excludeTags: ["Music"] }, 10, 0).rows.map((r) => r.title)).toEqual([
+      "V3",
+      "V2",
+      "V1",
+    ]);
+    expect(listMediaPage(db, { excludeTags: [] }, 10, 0).total).toBe(5); // empty list constrains nothing
+    expect(
+      listMediaPage(db, { channel: "Alice", excludeTags: ["music"] }, 10, 0).rows.map((r) => r.title),
+    ).toEqual(["V2"]);
 
     // ids allowlist; empty allowlist matches nothing (empty search result).
     expect(listMediaPage(db, { ids: [rows[1]!.id, rows[3]!.id] }, 10, 0).rows.map((r) => r.title)).toEqual([

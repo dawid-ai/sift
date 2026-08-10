@@ -115,23 +115,36 @@ export function listMedia(db: SiftDatabase): MediaRow[] {
 /** Filters for the paged library list. All optional; omitted/null fields don't constrain.
  * `ids: []` matches nothing (an empty search result); `ids: [n,…]` restricts to those rows. */
 export interface MediaFilter {
-  tag?: string | null; // media_tag.name, case-insensitive
+  tags?: string[] | null; // rows carrying ALL of these media_tag names, case-insensitive
   channel?: string | null; // exact uploader
   platform?: string | null; // exact platform_id
   from?: number | null; // created_at >= (inclusive ms epoch)
   to?: number | null; // created_at <= (inclusive ms epoch)
   ids?: number[] | null; // restrict to these media ids (e.g. search results)
+  excludeTags?: string[] | null; // hide rows carrying any of these tags, case-insensitive
 }
 
 /** Builds a WHERE clause + named params from a MediaFilter. Empty string when nothing is set. */
 function mediaWhere(f: MediaFilter): { where: string; params: Record<string, unknown> } {
   const clauses: string[] = [];
   const params: Record<string, unknown> = {};
-  if (f.tag) {
+  // Multi-tag is AND (narrowing): one EXISTS per tag, so a row must carry every one.
+  f.tags?.forEach((t, i) => {
     clauses.push(
-      "EXISTS (SELECT 1 FROM media_tag mt WHERE mt.media_id = m.id AND mt.name = @tag COLLATE NOCASE)",
+      `EXISTS (SELECT 1 FROM media_tag mt WHERE mt.media_id = m.id AND mt.name = @tag${i} COLLATE NOCASE)`,
     );
-    params.tag = f.tag;
+    params[`tag${i}`] = t;
+  });
+  if (f.excludeTags?.length) {
+    const ph = f.excludeTags
+      .map((t, i) => {
+        params[`ntag${i}`] = t;
+        return `@ntag${i}`;
+      })
+      .join(",");
+    clauses.push(
+      `NOT EXISTS (SELECT 1 FROM media_tag mt WHERE mt.media_id = m.id AND mt.name COLLATE NOCASE IN (${ph}))`,
+    );
   }
   if (f.channel) {
     clauses.push("m.uploader = @channel");

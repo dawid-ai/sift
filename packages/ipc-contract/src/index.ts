@@ -345,12 +345,13 @@ export interface MediaListItem {
 /** Filters for the paged library list (contract's own copy of `@sift/db`'s `MediaFilter` —
  * ipc-contract must not import `@sift/db`). All optional; `ids: []` matches nothing. */
 export interface MediaFilter {
-  tag?: string | null;
+  tags?: string[] | null; // rows carrying ALL of these tags, case-insensitive
   channel?: string | null;
   platform?: string | null;
   from?: number | null; // created_at >= (inclusive ms epoch)
   to?: number | null; // created_at <= (inclusive ms epoch)
   ids?: number[] | null; // restrict to these media ids (e.g. search results)
+  excludeTags?: string[] | null; // hide rows carrying any of these tags, case-insensitive
 }
 
 /** One page of the library plus the total number of rows matching the filter (for the pager). */

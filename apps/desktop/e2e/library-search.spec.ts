@@ -81,14 +81,20 @@ test("search filters the library and shows a snippet", async () => {
     await window.getByTestId("library-search-input").fill("");
     await expect(window.getByTestId("library-row")).toHaveCount(2);
 
-    // 6. Channel filter: narrow to the untouched row's uploader, then reset to "All channels".
+    // 6. Channel filter: open the dropdown, type to narrow the option list down to the
+    //    untouched row's uploader, pick it, then reopen and reset to "All channels".
     const channelFilter = window.getByTestId("library-channel-filter");
-    await channelFilter.selectOption("Fixture Channel");
+    const channelOptions = window.getByTestId("library-channel-filter-option");
+    await channelFilter.click();
+    await window.getByTestId("library-channel-filter-search").fill("Fixture");
+    await expect(channelOptions).toHaveCount(1); // "All channels" filtered out too
+    await channelOptions.click();
     await expect(window.getByTestId("library-row")).toHaveCount(1);
     await expect(libraryTable).toContainText("Fixture Channel");
     await expect(libraryTable).not.toContainText("Other Channel");
 
-    await channelFilter.selectOption("");
+    await channelFilter.click();
+    await channelOptions.filter({ hasText: "All channels" }).click();
     await expect(window.getByTestId("library-row")).toHaveCount(2);
   } finally {
     await app.close();
