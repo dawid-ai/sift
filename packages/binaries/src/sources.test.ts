@@ -116,6 +116,34 @@ describe("ffmpegSource.resolveLatest", () => {
     expect(r.binaryName).toBe("ffmpeg");
   });
 
+  it("prefers the highest release-branch build over the daily master build", async () => {
+    const release = {
+      tag_name: "latest",
+      published_at: "2024-09-01T12:49:00Z",
+      assets: [
+        ...FFMPEG_RELEASE.assets,
+        { name: "ffmpeg-n7.1-latest-win64-gpl-7.1.zip", browser_download_url: "https://gh/n7.zip" },
+        { name: "ffmpeg-n8.1-latest-win64-gpl-8.1.zip", browser_download_url: "https://gh/n8.zip" },
+        // shared/lgpl variants must not win
+        { name: "ffmpeg-n8.1-latest-win64-gpl-shared-8.1.zip", browser_download_url: "https://gh/x" },
+        { name: "ffmpeg-n9.0-latest-win64-lgpl-9.0.zip", browser_download_url: "https://gh/x" },
+      ],
+    };
+    const doFetch = (async (url: string | URL) => {
+      const u = String(url);
+      if (u.includes("releases/latest")) return new Response(JSON.stringify(release), { status: 200 });
+      if (u.includes("checksums.sha256")) {
+        return new Response("999zzz  ffmpeg-n8.1-latest-win64-gpl-8.1.zip\n", { status: 200 });
+      }
+      throw new Error(`unexpected url ${u}`);
+    }) as unknown as typeof fetch;
+
+    const r = await ffmpegSource.resolveLatest("win-x64", doFetch);
+    expect(r.assetUrl).toBe("https://gh/n8.zip");
+    expect(r.version).toBe("n8.1");
+    expect(r.sha256).toBe("999zzz");
+  });
+
   it("throws a clear error for macOS (BtbN does not publish mac builds)", async () => {
     await expect(
       ffmpegSource.resolveLatest("mac-arm64", fakeFfmpegFetch()),
