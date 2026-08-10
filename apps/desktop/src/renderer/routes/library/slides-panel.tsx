@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { AiProviderInfo, FrameExportProgress, FrameProgress, FrameRecord } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 
@@ -82,6 +83,24 @@ export function SlidesPanel({
   onExport, onRevealDocument, onSaveSlides,
 }: SlidesPanelProps) {
   const includedCount = frames.filter((f) => f.included).length;
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  // A plain vertical wheel scrolls the filmstrip sideways — most mice have no tilt wheel.
+  // Has to be a native non-passive listener: React registers `wheel` as passive, so
+  // preventDefault() in an onWheel prop is a no-op and the page would scroll too.
+  const hasFrames = frames.length > 0;
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0 || e.shiftKey) return; // shift-wheel / trackpad already scroll sideways
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [hasFrames]);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-border bg-foreground/[0.02] p-4">
@@ -231,7 +250,9 @@ export function SlidesPanel({
           </div>
           {/* Horizontal filmstrip: slides can run to dozens, and a grid pushed the export
               controls off-screen. Scrolls sideways with snap so the panel keeps a fixed height. */}
-          <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
+          {/* snap-proximity, not mandatory: mandatory fights the incremental scrollLeft the
+              wheel handler applies, snapping back mid-gesture. */}
+          <div ref={stripRef} className="-mx-1 flex snap-x snap-proximity gap-3 overflow-x-auto px-1 pb-2">
             {frames.map((f) => (
               <div
                 key={f.id}
