@@ -75,7 +75,7 @@ export function TranscriptPanel({
         <div data-testid="transcript-progress" className="flex flex-col gap-1">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300"
+              className="h-full rounded-full bg-ai transition-[width] duration-300"
               style={{ width: `${Math.round(transcriptRatio * 100)}%` }}
             />
           </div>
@@ -132,12 +132,12 @@ export function TranscriptPanel({
                   data-active={active ? "true" : undefined}
                   onClick={() => onSeek(seg.start)}
                   className={`flex w-full items-baseline gap-3 border-b border-border/70 px-3 py-2 text-left text-sm leading-relaxed transition-colors last:border-b-0 ${
-                    active ? "bg-primary/15 text-foreground" : "hover:bg-foreground/[0.04]"
+                    active ? "bg-ai/[0.14] text-foreground" : "hover:bg-foreground/[0.04]"
                   }`}
                 >
                   <span
                     className={`flex-none font-mono text-xs tabular-nums ${
-                      active ? "text-primary" : "text-foreground/40"
+                      active ? "text-ai" : "text-foreground/40"
                     }`}
                   >
                     {formatTimestamp(seg.start)}

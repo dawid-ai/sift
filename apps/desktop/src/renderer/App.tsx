@@ -402,7 +402,7 @@ export function App() {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="app-canvas flex h-screen overflow-hidden">
       <Sidebar view={view} onNavigate={handleNavigate} />
       <div className="flex flex-1 flex-col overflow-auto">
         {openChannelError && (

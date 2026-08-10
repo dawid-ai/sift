@@ -229,7 +229,9 @@ export function SlidesPanel({
               Save slides…
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {/* Horizontal filmstrip: slides can run to dozens, and a grid pushed the export
+              controls off-screen. Scrolls sideways with snap so the panel keeps a fixed height. */}
+          <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
             {frames.map((f) => (
               <div
                 key={f.id}
@@ -239,8 +241,8 @@ export function SlidesPanel({
                   e.preventDefault();
                   onToggleInclude(f.id, !f.included);
                 }}
-                className={`flex flex-col overflow-hidden rounded-lg border transition-opacity ${
-                  f.included ? "border-border" : "border-dashed border-border opacity-40"
+                className={`flex w-44 flex-none snap-start flex-col overflow-hidden rounded-lg border transition-opacity ${
+                  f.included ? "border-border-strong" : "border-dashed border-border opacity-40"
                 }`}
                 title={`${f.ocrText ?? ""}\n(right-click to ${f.included ? "exclude" : "include"})`.trim()}
               >
@@ -262,7 +264,7 @@ export function SlidesPanel({
                     title={f.included ? "Included in document" : "Excluded"}
                   />
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-xs tabular-nums text-primary">
+                    <span className="font-mono text-[11px] tabular-nums text-primary">
                       {formatTs(f.tsMs)}
                       {f.kind === "manual" && <span className="text-foreground/40"> · manual</span>}
                     </span>
