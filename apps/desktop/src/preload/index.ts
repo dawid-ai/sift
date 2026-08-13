@@ -161,6 +161,7 @@ const api: SiftApi = {
     setMethod: (m) => ipcRenderer.invoke(IPC.transcriptSetMethod, m),
     getAutoDownload: () => ipcRenderer.invoke(IPC.transcriptGetAutoDownload),
     setAutoDownload: (enabled: boolean) => ipcRenderer.invoke(IPC.transcriptSetAutoDownload, enabled),
+    exportSrt: (transcriptId: number) => ipcRenderer.invoke(IPC.transcriptExportSrt, transcriptId),
   },
   summarize: {
     start: (input) => ipcRenderer.invoke(IPC.summarizeStart, input),

@@ -21,6 +21,7 @@ export interface TranscriptPanelProps {
   onGetTranscript: () => void;
   onRetranscribe: () => void;
   onRemoveTranscript: (id: number) => void;
+  onExportSrt: (id: number) => void;
 }
 
 /** The single transcript view: a synced, searchable segment list. Clicking a segment seeks the
@@ -29,7 +30,7 @@ export interface TranscriptPanelProps {
  * full-text block), plus the Get transcript / Re-transcribe actions. */
 export function TranscriptPanel({
   transcripts, hasPlayer, currentTime, transcribeMode, transcriptStage, transcriptRatio,
-  canRetranscribe, onSeek, onGetTranscript, onRetranscribe, onRemoveTranscript,
+  canRetranscribe, onSeek, onGetTranscript, onRetranscribe, onRemoveTranscript, onExportSrt,
 }: TranscriptPanelProps) {
   const [search, setSearch] = useState("");
   const timed = transcripts.find((t) => t.segments.length > 0) ?? null;
@@ -99,14 +100,24 @@ export function TranscriptPanel({
               {t.segments.length > 0 && (
                 <span className="text-foreground/45">· {t.segments.length} lines</span>
               )}
-              <button
-                type="button"
-                data-testid="media-detail-transcript-remove"
-                onClick={() => onRemoveTranscript(t.id)}
-                className="ml-auto text-foreground/45 hover:text-red-500"
-              >
-                Remove
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                <Button
+                  size="sm" variant="outline"
+                  data-testid={`transcript-export-srt-${t.id}`}
+                  disabled={busy || t.segments.length === 0}
+                  onClick={() => onExportSrt(t.id)}
+                >
+                  Export .srt
+                </Button>
+                <button
+                  type="button"
+                  data-testid="media-detail-transcript-remove"
+                  onClick={() => onRemoveTranscript(t.id)}
+                  className="text-foreground/45 hover:text-red-500"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           ))}
         </div>

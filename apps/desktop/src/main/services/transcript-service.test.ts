@@ -1,4 +1,6 @@
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openTestDatabase } from "@sift/db/testing";
 import {
@@ -535,6 +537,69 @@ describe("TranscriptService", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]!.id).toBe(oldRow.id);
     expect(rows[0]!.text).toBe("old captions text");
+
+    db.close();
+  });
+
+  it("exportSrt writes a .srt next to the transcript and returns its path", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const dir = mkdtempSync(join(tmpdir(), "sift-srt-"));
+    const registry = new TranscriptRegistry();
+    const service = new TranscriptService({
+      db,
+      registry,
+      downloadsDir: () => dir,
+      getPreferredLanguages: () => ["en"],
+      getMethod: () => "auto",
+    });
+    const media = insertMedia(db, {
+      source_url: "https://example.com/srt-1", platform_id: "youtube", external_id: "srt1",
+      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
+      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
+      metadata_json: "{}", download_status: "none",
+    });
+    const t = insertTranscript(db, {
+      media_id: media.id,
+      provider_id: "whisper",
+      language: "en",
+      text: "Hello there",
+      segments_json: JSON.stringify([{ start: 0, end: 2, text: "Hello there" }]),
+      model: "ggml-small",
+    });
+
+    const path = await service.exportSrt(t.id);
+
+    expect(path.endsWith(".srt")).toBe(true);
+    expect(readFileSync(path, "utf8")).toBe("1\n00:00:00,000 --> 00:00:02,000\nHello there\n");
+
+    db.close();
+  });
+
+  it("exportSrt rejects a transcript that has no segments", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const dir = mkdtempSync(join(tmpdir(), "sift-srt-"));
+    const registry = new TranscriptRegistry();
+    const service = new TranscriptService({
+      db,
+      registry,
+      downloadsDir: () => dir,
+      getPreferredLanguages: () => ["en"],
+      getMethod: () => "auto",
+    });
+    const media = insertMedia(db, {
+      source_url: "https://example.com/srt-2", platform_id: "youtube", external_id: "srt2",
+      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
+      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
+      metadata_json: "{}", download_status: "none",
+    });
+    const t = insertTranscript(db, {
+      media_id: media.id, provider_id: "captions", language: "en",
+      text: "no timings", segments_json: null, model: null,
+    });
+
+    await expect(service.exportSrt(t.id)).rejects.toThrow(/no timestamps/);
 
     db.close();
   });

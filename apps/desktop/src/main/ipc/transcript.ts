@@ -28,4 +28,7 @@ export function registerTranscriptIpc(
   ipcMain.handle(IPC.transcriptSetAutoDownload, (_event, enabled: boolean) =>
     autoDownloadStore.set(enabled),
   );
+  ipcMain.handle(IPC.transcriptExportSrt, (_event, transcriptId: number) =>
+    service.exportSrt(transcriptId),
+  );
 }

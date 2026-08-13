@@ -5,17 +5,21 @@ import type {
   TranscriptMethod,
   TranscriptProgressFn,
   TranscriptRegistry,
+  TranscriptSegment,
 } from "@sift/core";
 import {
   buildOutputBaseName,
   pickTranscriptLanguage,
   resolveTranscriptProvider,
   sanitizeFilename,
+  segmentsToSrt,
 } from "@sift/core";
 import type { NewMedia, SiftDatabase, TranscriptRow } from "@sift/db";
 import {
   deleteTranscript,
+  getMediaById,
   getMediaBySourceUrl,
+  getTranscriptById,
   getTranscriptsByMediaId,
   insertMedia,
   insertTranscript,
@@ -209,5 +213,27 @@ export class TranscriptService {
       for (const t of existing) deleteTranscript(db, t.id);
     }
     return toRecord(row, media.id);
+  }
+
+  /**
+   * Writes a transcript's segments to `<base>__transcript-<provider>.srt` under the downloads
+   * dir and returns the absolute path. Throws when the transcript has no timestamps — a
+   * caption source can produce text with no segments, and an empty .srt is worse than an error.
+   */
+  async exportSrt(transcriptId: number): Promise<string> {
+    const { db } = this.opts;
+    const row = getTranscriptById(db, transcriptId);
+    if (!row) throw new Error("Transcript not found.");
+    const segments = row.segments_json ? (JSON.parse(row.segments_json) as TranscriptSegment[]) : [];
+    const srt = segmentsToSrt(segments);
+    if (!srt) throw new Error("This transcript has no timestamps, so it can't be exported as subtitles.");
+    const media = getMediaById(db, row.media_id);
+    if (!media) throw new Error("Media not found.");
+    const dir = this.opts.downloadsDir();
+    const base = buildOutputBaseName(media.uploader, media.title);
+    const path = join(dir, `${sanitizeFilename(`${base}__transcript-${row.provider_id}`)}.srt`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path, srt, "utf8");
+    return path;
   }
 }

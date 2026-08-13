@@ -50,6 +50,7 @@ export const IPC = {
   transcriptSetMethod: "transcript:setMethod",
   transcriptGetAutoDownload: "transcript:getAutoDownload",
   transcriptSetAutoDownload: "transcript:setAutoDownload",
+  transcriptExportSrt: "transcript:exportSrt",
   summarizeStart: "summarize:start",
   summarizeToken: "summarize:token",
   summarizeExport: "summarize:export",
@@ -715,6 +716,9 @@ export interface SiftApi {
     getAutoDownload(): Promise<boolean>;
     /** Persists the auto-fetch-after-download toggle. */
     setAutoDownload(enabled: boolean): Promise<void>;
+    /** Writes a transcript's segments to a .srt file under the downloads dir; returns the
+     * absolute path. Rejects if the transcript has no timestamps. */
+    exportSrt(transcriptId: number): Promise<string>;
   };
   summarize: {
     /** Streams a summary for the newest transcript of `metadata`'s URL; persists + returns the record. */
