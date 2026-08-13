@@ -2,8 +2,9 @@
 
 Sift downloads media from ~1800 [yt-dlp](https://github.com/yt-dlp/yt-dlp)–supported
 sites, transcribes it, and summarizes it — chained together locally, with your own AI
-key. Tools like [Stacher](https://stacher.io/) stop once the file is on disk. Local
-Whisper apps like [Buzz](https://github.com/chidiwilliams/buzz) or
+key. Your media and API keys never leave your machine. Tools like
+[Stacher](https://stacher.io/) stop once the file is on disk. Local Whisper apps like
+[Buzz](https://github.com/chidiwilliams/buzz) or
 [Vibe](https://github.com/thewh1teagle/vibe) transcribe but don't download, summarize,
 or keep a searchable library. Cloud tools like NotebookLM or Eightify summarize but only
 read captions that already exist and never give you the media file — free use is
@@ -63,7 +64,7 @@ The app updates itself after that. Both points are explained in the [FAQ](./docs
 ## Money model
 
 Free. [MIT](./LICENSE)-licensed. No subscription, no telemetry, no accounts, no
-monetization planned. Your media and API keys never leave your machine.
+monetization planned.
 
 ## Develop
 
