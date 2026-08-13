@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createOcrRunner, toOcrResult } from "./ocr";
+import { createOcrRunner, toOcrResult, workerOptions } from "./ocr";
 
 describe("toOcrResult", () => {
   it("counts words and trims, passing confidence through", () => {
@@ -33,5 +33,34 @@ describe("createOcrRunner", () => {
 
     expect(make).toHaveBeenCalledTimes(1); // single worker for both frames
     expect(close).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("workerOptions", () => {
+  // Regression coverage for a real hang: tesseract.js defaults `gzip` to `true`, and with
+  // a local (non-URL) `langPath` it then reads `<lang>.traineddata.gz`. The bundled
+  // resources/tessdata file is plain, uncompressed `eng.traineddata`, so any `langPath`
+  // must always come with `gzip: false` or the worker never resolves and never rejects.
+  it("forces gzip: false whenever langPath is set", () => {
+    expect(workerOptions({ langPath: "/resources/tessdata" })).toEqual({
+      langPath: "/resources/tessdata",
+      gzip: false,
+    });
+  });
+
+  it("pairs langPath and cachePath, both with gzip: false", () => {
+    expect(workerOptions({ langPath: "/resources/tessdata", cachePath: "/cache/tesseract" })).toEqual({
+      langPath: "/resources/tessdata",
+      cachePath: "/cache/tesseract",
+      gzip: false,
+    });
+  });
+
+  it("omits gzip entirely when langPath is unset, so tesseract.js's CDN default (gzip: true) still applies", () => {
+    expect(workerOptions({ cachePath: "/cache/tesseract" })).toEqual({ cachePath: "/cache/tesseract" });
+  });
+
+  it("returns an empty object when nothing is set", () => {
+    expect(workerOptions({})).toEqual({});
   });
 });
