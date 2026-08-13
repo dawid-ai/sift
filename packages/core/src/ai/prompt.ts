@@ -78,6 +78,10 @@ export function assembleSummaryContent(
   segments: TranscriptLine[] = [],
 ): string {
   const wantsTimestamps = promptBody.includes(TIMESTAMPS_TOKEN);
+  // ponytail: handles a single/edge-placed marker cleanly; a marker placed mid-sentence or
+  // repeated more than once leaves a double space where it was removed (trim() only cleans
+  // the ends). Upgrade path: collapse `/ {2,}/g` after stripping, or validate token placement
+  // on prompt save.
   const body = wantsTimestamps
     ? promptBody.split(TIMESTAMPS_TOKEN).join("").trim()
     : promptBody.trim();
