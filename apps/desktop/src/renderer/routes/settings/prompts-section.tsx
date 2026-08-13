@@ -18,6 +18,7 @@ export function PromptsSection() {
   const [editBody, setEditBody] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +90,31 @@ export function PromptsSection() {
     }
   }
 
+  async function handleImport() {
+    setError(null);
+    setNotice(null);
+    try {
+      const count = await window.sift.prompts.import();
+      if (count > 0) {
+        setNotice(`Imported ${count} prompt${count === 1 ? "" : "s"}.`);
+        await refresh();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleExport() {
+    setError(null);
+    setNotice(null);
+    try {
+      const path = await window.sift.prompts.export();
+      if (path) setNotice(`Exported to ${path}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <div data-testid="prompts-section" className="flex flex-col gap-4">
       {error && (
@@ -96,6 +122,32 @@ export function PromptsSection() {
           {error}
         </p>
       )}
+
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          data-testid="prompts-import"
+          disabled={adding || busyId !== null}
+          onClick={() => void handleImport()}
+        >
+          Import pack
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          data-testid="prompts-export"
+          disabled={adding || busyId !== null}
+          onClick={() => void handleExport()}
+        >
+          Export pack
+        </Button>
+        {notice && (
+          <span data-testid="prompts-notice" className="self-center text-sm text-foreground/60">
+            {notice}
+          </span>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         {prompts.map((p) => (

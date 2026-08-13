@@ -58,6 +58,8 @@ export const IPC = {
   promptsCreate: "prompts:create",
   promptsUpdate: "prompts:update",
   promptsDelete: "prompts:delete",
+  promptsExport: "prompts:export",
+  promptsImport: "prompts:import",
   aiProvidersList: "ai:providers",
   aiKeyStatus: "ai:keyStatus",
   aiKeySet: "ai:keySet",
@@ -500,6 +502,13 @@ export interface PromptInfo {
   isBuiltin: boolean;
 }
 
+/** One entry in an exported prompt pack file (`sift-prompts.json`). The file is a bare array
+ * of these — deliberately the smallest shape that can be hand-edited and diffed. */
+export interface PromptPackEntry {
+  name: string;
+  body: string;
+}
+
 /** A registered AI provider and the models it offers. */
 export interface AiProviderInfo {
   id: string;
@@ -773,6 +782,10 @@ export interface SiftApi {
     create(input: { name: string; body: string }): Promise<PromptInfo>;
     update(id: number, input: { name: string; body: string }): Promise<PromptInfo>;
     delete(id: number): Promise<void>;
+    /** Writes the user's non-builtin prompts to a chosen .json path; null if cancelled. */
+    export(): Promise<string | null>;
+    /** Imports a pack, upserting by name. Resolves to the number imported (0 if cancelled). */
+    import(): Promise<number>;
   };
   aiProviders: {
     list(): Promise<AiProviderInfo[]>;
