@@ -382,4 +382,179 @@ describe("SummarizeService", () => {
 
     db.close();
   });
+
+  it("degrades to flat text when segments_json is invalid JSON syntax", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const media = insertMedia(db, {
+      source_url: metadata.sourceUrl,
+      platform_id: metadata.platform.id,
+      external_id: metadata.externalId,
+      title: metadata.title,
+      uploader: metadata.uploader,
+      uploader_url: metadata.uploaderUrl,
+      duration_s: metadata.durationSec,
+      thumbnail_path: metadata.thumbnailUrl,
+      view_count: metadata.viewCount,
+      like_count: metadata.likeCount,
+      published_at: null,
+      metadata_json: JSON.stringify(metadata.raw),
+      download_status: "none",
+    });
+    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    insertTranscript(db, {
+      media_id: media.id,
+      provider_id: "whisper",
+      language: "en",
+      text: "one two",
+      segments_json: "{not valid json",
+      model: "ggml-small",
+    });
+
+    const { provider, lastInput } = makeFakeProvider();
+    const registry = new AiRegistry();
+    registry.register(provider);
+    const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
+    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+
+    await expect(
+      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+    ).resolves.toBeDefined();
+
+    expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
+    expect(lastInput()?.content).not.toContain("[00:00]");
+
+    db.close();
+  });
+
+  it("degrades to flat text when segments_json is valid JSON but not an array", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const media = insertMedia(db, {
+      source_url: metadata.sourceUrl,
+      platform_id: metadata.platform.id,
+      external_id: metadata.externalId,
+      title: metadata.title,
+      uploader: metadata.uploader,
+      uploader_url: metadata.uploaderUrl,
+      duration_s: metadata.durationSec,
+      thumbnail_path: metadata.thumbnailUrl,
+      view_count: metadata.viewCount,
+      like_count: metadata.likeCount,
+      published_at: null,
+      metadata_json: JSON.stringify(metadata.raw),
+      download_status: "none",
+    });
+    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    insertTranscript(db, {
+      media_id: media.id,
+      provider_id: "whisper",
+      language: "en",
+      text: "one two",
+      segments_json: JSON.stringify({ start: 0, text: "not an array" }),
+      model: "ggml-small",
+    });
+
+    const { provider, lastInput } = makeFakeProvider();
+    const registry = new AiRegistry();
+    registry.register(provider);
+    const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
+    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+
+    await expect(
+      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+    ).resolves.toBeDefined();
+
+    expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
+    expect(lastInput()?.content).not.toContain("[00:00]");
+
+    db.close();
+  });
+
+  it("degrades to flat text when segments_json is an array of wrong-shaped elements", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const media = insertMedia(db, {
+      source_url: metadata.sourceUrl,
+      platform_id: metadata.platform.id,
+      external_id: metadata.externalId,
+      title: metadata.title,
+      uploader: metadata.uploader,
+      uploader_url: metadata.uploaderUrl,
+      duration_s: metadata.durationSec,
+      thumbnail_path: metadata.thumbnailUrl,
+      view_count: metadata.viewCount,
+      like_count: metadata.likeCount,
+      published_at: null,
+      metadata_json: JSON.stringify(metadata.raw),
+      download_status: "none",
+    });
+    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    insertTranscript(db, {
+      media_id: media.id,
+      provider_id: "whisper",
+      language: "en",
+      text: "one two",
+      segments_json: JSON.stringify([1, 2, 3]),
+      model: "ggml-small",
+    });
+
+    const { provider, lastInput } = makeFakeProvider();
+    const registry = new AiRegistry();
+    registry.register(provider);
+    const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
+    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+
+    await expect(
+      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+    ).resolves.toBeDefined();
+
+    expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
+    expect(lastInput()?.content).not.toContain("[00:00]");
+
+    db.close();
+  });
+
+  it("drops only the wrong-shaped elements from a mixed segments_json array", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const media = insertMedia(db, {
+      source_url: metadata.sourceUrl,
+      platform_id: metadata.platform.id,
+      external_id: metadata.externalId,
+      title: metadata.title,
+      uploader: metadata.uploader,
+      uploader_url: metadata.uploaderUrl,
+      duration_s: metadata.durationSec,
+      thumbnail_path: metadata.thumbnailUrl,
+      view_count: metadata.viewCount,
+      like_count: metadata.likeCount,
+      published_at: null,
+      metadata_json: JSON.stringify(metadata.raw),
+      download_status: "none",
+    });
+    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    insertTranscript(db, {
+      media_id: media.id,
+      provider_id: "whisper",
+      language: "en",
+      text: "one two",
+      segments_json: JSON.stringify([{ start: 0, end: 3, text: "one" }, { foo: "bar" }]),
+      model: "ggml-small",
+    });
+
+    const { provider, lastInput } = makeFakeProvider();
+    const registry = new AiRegistry();
+    registry.register(provider);
+    const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
+    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+
+    await expect(
+      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+    ).resolves.toBeDefined();
+
+    expect(lastInput()?.content).toContain("[00:00] one");
+
+    db.close();
+  });
 });

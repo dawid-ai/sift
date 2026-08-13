@@ -47,6 +47,16 @@ function fromMetadata(m: MediaMetadata): NewMedia {
   };
 }
 
+/** Type guard for one parsed `segments_json` element — a wrong-shaped element is dropped, not thrown. */
+function isTranscriptLine(value: unknown): value is TranscriptLine {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { start?: unknown }).start === "number" &&
+    typeof (value as { text?: unknown }).text === "string"
+  );
+}
+
 /** Maps a `summary` row into the renderer-facing `SummaryRecord` (snake_case → camelCase). */
 function toRecord(row: SummaryRow, mediaId: number): SummaryRecord {
   return {
@@ -103,12 +113,15 @@ export class SummarizeService {
       .filter((f) => f.included === 1 && f.ocr_text)
       .map((f) => ({ tsMs: f.ts_ms, text: f.ocr_text! }));
     // Segments are only used when the prompt opts in with {{TIMESTAMPS}} (see core/ai/prompt).
-    // A malformed or absent segments_json degrades to the flat transcript rather than failing
+    // segments_json can be absent, invalid JSON, valid JSON that isn't an array (null, a number,
+    // an object), or an array containing wrong-shaped elements — every one of those degrades to
+    // the flat transcript (dropping only the bad elements of a mixed array) rather than failing
     // the whole summarize run.
     let segments: TranscriptLine[] = [];
     if (transcript.segments_json) {
       try {
-        segments = JSON.parse(transcript.segments_json) as TranscriptLine[];
+        const parsed: unknown = JSON.parse(transcript.segments_json);
+        if (Array.isArray(parsed)) segments = parsed.filter(isTranscriptLine);
       } catch {
         segments = [];
       }
