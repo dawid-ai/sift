@@ -6,10 +6,11 @@ key. Tools like [Stacher](https://stacher.io/) stop once the file is on disk. Lo
 Whisper apps like [Buzz](https://github.com/chidiwilliams/buzz) or
 [Vibe](https://github.com/thewh1teagle/vibe) transcribe but don't download, summarize,
 or keep a searchable library. Cloud tools like NotebookLM or Eightify summarize but only
-read captions that already exist, never give you the media file, and meter you by
-subscription. Sift does the whole chain — download, transcribe (even with no captions,
-via local [whisper.cpp](https://github.com/ggerganov/whisper.cpp)), summarize, and keep
-a searchable library — on your machine, with no subscription.
+read captions that already exist and never give you the media file — free use is
+usage-capped (NotebookLM) or subscription-gated (Eightify) rather than open-ended. Sift
+does the whole chain — download, transcribe (even with no captions, via local
+[whisper.cpp](https://github.com/ggerganov/whisper.cpp)), summarize, and keep a
+searchable library — on your machine, with no subscription.
 
 <!-- Screenshots/GIF go here once captured — see docs/images/CAPTURE.md. -->
 
@@ -38,12 +39,14 @@ The app updates itself after that. Both points are explained in the [FAQ](./docs
 - **Summarize** with your own AI key — Anthropic, OpenAI, Ollama (local, free), a custom
   OpenAI-compatible endpoint, or the Claude Code CLI provider (uses an existing `claude`
   login instead of an API key). Keys are stored encrypted at rest.
-- **Prompt library and playground** — author and edit prompts, and tune one against a real
-  transcript before saving it. Ships with a seeded creator pack (YouTube chapters, title
-  ideas, description, podcast show notes, blog post, newsletter issue, short-form moments —
-  all editable), and prompt packs export/import as JSON so a set can be shared. A prompt
-  carrying the `{{TIMESTAMPS}}` marker gets a timestamped transcript, so chapters and clip
-  timings are read off the real transcript rather than invented.
+- **Prompt library** — author and edit your own prompts alongside a seeded creator pack
+  (YouTube chapters, title ideas, description, podcast show notes, blog post, newsletter
+  issue, short-form moments — all editable), with export/import as JSON so a set can be
+  shared. A prompt carrying the `{{TIMESTAMPS}}` marker gets a timestamped transcript, so
+  chapters and clip timings are read off the real transcript rather than invented.
+- **Prompt playground** — a separate scratch space in Settings to test prompt wording
+  against a pasted transcript before committing to it; output isn't saved, and it starts
+  from the document-polish prompt rather than a library entry.
 - **Library** with full-text search, tags (multi-select, negative filter), channel/platform
   filters, and a synced, click-to-seek in-app player.
 - **Channels & subscriptions** — track a channel, see new-video counts, browse

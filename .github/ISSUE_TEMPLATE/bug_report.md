@@ -7,7 +7,7 @@ labels: bug
 
 **OS / Windows version:**
 
-**Sift version** (Settings → System, or the installer filename you downloaded):
+**Sift version** (the version shown on the Home screen, or the installer filename you downloaded):
 
 **What were you doing?** (platform/site, URL type — e.g. a public YouTube video, a
 members-only stream, a channel sync, a Slides export, etc.)

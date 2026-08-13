@@ -9,9 +9,13 @@ anyway**. The app auto-updates itself after the first install, so you should onl
 this once. If it bothers you, read the source — the whole repo is here — or build it
 yourself with the commands in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
-Once a `winget` manifest is published, `winget install` will skip the SmartScreen
-prompt entirely (winget-installed apps go through a separate trust path). That's
-tracked, not shipped yet — check [`UPDATES.md`](../UPDATES.md) for whether it's landed.
+A `winget` manifest is planned but **not published yet** — check
+[`UPDATES.md`](../UPDATES.md) for whether it's landed. Once it is, `winget install` will
+skip the browser's own download warning (the "keep/discard this file?" prompt), but that
+isn't the same as skipping SmartScreen: the binary itself is still unsigned, so Windows'
+reputation-based SmartScreen check can still flag it on first run the same way a direct
+download would. Signing (and the reputation SmartScreen builds up over time for a signed,
+widely-run binary) is what actually removes the warning, not the install method.
 
 ## Why is there a ~466 MB download the first time I transcribe something?
 
