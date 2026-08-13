@@ -80,6 +80,7 @@ import {
   downloadsConfigFile,
   downloadsDir,
   framesDir,
+  tessdataDir,
   tesseractCacheDir,
   secretsFile,
   thumbnailsDir,
@@ -909,15 +910,14 @@ app.whenReady().then(() => {
     registerSummarizeIpc(summarizeService);
 
     // Slide/data-frame extraction: reuses the managed ffmpeg binary; OCR via a lazily
-    // created Tesseract worker per run. ponytail: no langPath yet → tesseract.js fetches
-    // eng.traineddata from a CDN on first run (works in dev, breaks offline). Bundling
-    // eng.traineddata + pointing langPath at it is the packaging step before release.
+    // created Tesseract worker per run. langPath points at the bundled eng.traineddata
+    // (see paths.tessdataDir), so first-run OCR is fully offline.
     const frameService = e2eFixtureDir
       ? fixtureFrameService(getDb())
       : new FrameService({
           db: getDb(),
           ffmpeg: createFfmpegRunner({ getBinaryPath: () => assetPath("ffmpeg") }),
-          makeOcr: () => createOcrRunner({ cachePath: tesseractCacheDir() }),
+          makeOcr: () => createOcrRunner({ langPath: tessdataDir(), cachePath: tesseractCacheDir() }),
           framesDir,
         });
     const frameExportService = new FrameExportService({

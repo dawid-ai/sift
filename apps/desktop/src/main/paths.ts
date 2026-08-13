@@ -94,6 +94,15 @@ export function tesseractCacheDir(): string {
   return join(app.getPath("userData"), "tesseract");
 }
 
+/** Directory holding the bundled `eng.traineddata`, so OCR never needs the CDN.
+ * Packaged: unpacked next to the asar via electron-builder `extraResources`. Dev: the
+ * source tree copy. */
+export function tessdataDir(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, "tessdata")
+    : join(app.getAppPath(), "resources", "tessdata");
+}
+
 /** The single exported yt-dlp cookies.txt for the whole sign-in session.
  * NOTE: the folder must NOT be "cookies" — on case-insensitive Windows that collides with
  * Chromium's reserved `Cookies` network-store file, which then can't be migrated/deleted

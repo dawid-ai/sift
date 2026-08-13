@@ -36,9 +36,9 @@ export interface OcrDeps {
  * One Tesseract worker reused across every frame of a video (worker spin-up is the
  * expensive part). Lazily created on first recognize, terminated on close.
  *
- * ponytail: OFFLINE GAP — tesseract.js downloads `<lang>.traineddata` from a CDN on first
- * run unless `langPath` points at a bundled copy. `cachePath` persists that download so it
- * happens at most once; fully-offline first-run still needs a vendored traineddata + langPath.
+ * ponytail: `langPath` points at the bundled `eng.traineddata` (see paths.tessdataDir), so
+ * first-run OCR is fully offline. `cachePath` remains as a fallback if langPath is ever unset.
+ * English only — add more traineddata files to resources/tessdata if non-Latin slides matter.
  */
 export function createOcrRunner(deps: OcrDeps = {}): OcrRunner {
   const make = deps.makeRecognizer ?? (() => defaultRecognizer(deps));
