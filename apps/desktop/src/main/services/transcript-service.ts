@@ -160,14 +160,14 @@ export class TranscriptService {
       provider = registry.list().find((p) => p.local && p.canHandle(ctx)) ?? null;
       if (!provider) {
         throw new Error(
-          "Whisper can't transcribe this video. Make sure Whisper is installed (Settings → Binaries) and the video has been downloaded.",
+          "Whisper can't transcribe this video. Make sure Whisper is installed (Settings → Transcription → Whisper) and the video has been downloaded.",
         );
       }
     } else {
       provider = resolveTranscriptProvider(registry.list(), ctx, this.opts.getMethod());
       if (!provider) {
         throw new Error(
-          "No captions found. Install Whisper (Settings → Binaries) to transcribe downloaded videos locally.",
+          "No captions found. Install Whisper (Settings → Transcription → Whisper) to transcribe downloaded videos locally.",
         );
       }
     }

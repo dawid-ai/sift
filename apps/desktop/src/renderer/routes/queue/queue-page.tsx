@@ -107,7 +107,11 @@ export function QueuePage() {
       </div>
 
       <div className="flex flex-col gap-2">
-        {items.length === 0 && <p className="text-sm text-muted-foreground">Queue is empty.</p>}
+        {items.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Queue is empty — add videos from a channel page or paste several URLs on Home.
+          </p>
+        )}
         {items.map((it) => (
           <div data-testid="queue-item" key={it.id} className="flex items-center gap-3 rounded border border-border p-3">
             <div className="flex-1 overflow-hidden">

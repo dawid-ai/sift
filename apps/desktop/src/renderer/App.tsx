@@ -13,7 +13,6 @@ import type {
   TranscriptProgress,
   TranscriptRecord,
 } from "@sift/ipc-contract";
-import { Button } from "@/components/ui/button";
 import { Sidebar, type View } from "@/components/app-shell";
 import { SettingsPage } from "@/routes/settings/settings-page";
 import { UrlInput } from "@/routes/home/url-input";
@@ -284,7 +283,7 @@ function HomeView() {
       <p data-testid="app-version" className="text-sm text-foreground/60">
         v{version}
       </p>
-      <p data-testid="db-ready" className="text-sm text-foreground/60">
+      <p data-testid="db-ready" className="sr-only">
         {dbReady ? "db-ok" : "db-…"}
       </p>
 
@@ -361,7 +360,11 @@ function HomeView() {
         }}
       />
 
-      {!metadata && !loading && !error && <Button variant="outline">Get started</Button>}
+      {!metadata && !loading && !error && (
+        <p className="max-w-md text-center text-sm text-foreground/60">
+          Paste a video, playlist, or channel URL above to fetch it.
+        </p>
+      )}
     </main>
   );
 }
