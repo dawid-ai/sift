@@ -1,5 +1,12 @@
-import { dialog, ipcMain } from "electron";
+import {
+  dialog,
+  ipcMain,
+  type BrowserWindow,
+  type OpenDialogOptions,
+  type SaveDialogOptions,
+} from "electron";
 import { readFileSync, writeFileSync } from "node:fs";
+import { branding } from "@sift/core";
 import {
   listPrompts,
   createPrompt,
@@ -35,7 +42,10 @@ function toPromptInfo(row: PromptRow): PromptInfo {
  * Tokens go to `event.sender` (the caller's webContents), not all windows: `requestId`
  * is a per-view counter, so a broadcast would let two windows collide on the same id.
  */
-export function registerSummarizeIpc(service: SummarizeService): void {
+export function registerSummarizeIpc(
+  service: SummarizeService,
+  getWindows: () => BrowserWindow[],
+): void {
   ipcMain.handle(
     IPC.summarizeStart,
     (
@@ -74,24 +84,32 @@ export function registerSummarizeIpc(service: SummarizeService): void {
     const pack: PromptPackEntry[] = listPrompts(getDb())
       .filter((p) => p.is_builtin === 0)
       .map((p) => ({ name: p.name, body: p.body }));
-    const { canceled, filePath } = await dialog.showSaveDialog({
+    const win = getWindows()[0];
+    const dialogOpts: SaveDialogOptions = {
       title: "Export prompts",
-      defaultPath: "sift-prompts.json",
+      defaultPath: `${branding.slug}-prompts.json`,
       filters: [{ name: "Prompt pack", extensions: ["json"] }],
-    });
+    };
+    const { canceled, filePath } = win
+      ? await dialog.showSaveDialog(win, dialogOpts)
+      : await dialog.showSaveDialog(dialogOpts);
     if (canceled || !filePath) return null;
     writeFileSync(filePath, `${JSON.stringify(pack, null, 2)}\n`, "utf8");
     return filePath;
   });
 
   ipcMain.handle(IPC.promptsImport, async (): Promise<PromptImportResult> => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
+    const win = getWindows()[0];
+    const dialogOpts: OpenDialogOptions = {
       title: "Import prompts",
       properties: ["openFile"],
       filters: [{ name: "Prompt pack", extensions: ["json"] }],
-    });
+    };
+    const { canceled, filePaths } = win
+      ? await dialog.showOpenDialog(win, dialogOpts)
+      : await dialog.showOpenDialog(dialogOpts);
     const file = filePaths[0];
-    if (canceled || !file) return { imported: 0, skipped: 0 };
+    if (canceled || !file) return { imported: 0, skipped: 0, created: 0, replaced: 0 };
     const { entries, skipped } = parsePromptPack(readFileSync(file, "utf8"));
     if (entries.length === 0) {
       throw new Error(
@@ -114,9 +132,13 @@ export function registerSummarizeIpc(service: SummarizeService): void {
     // interface (both the better-sqlite3 and sql.js drivers support it) and wrap this loop
     // if packs grow large enough for partial-apply to matter beyond this messaging.
     let imported = 0;
+    let created = 0;
+    let replaced = 0;
     try {
       for (const e of entries) {
-        upsertPromptByName(db, { name: e.name.trim(), body: e.body });
+        const result = upsertPromptByName(db, { name: e.name.trim(), body: e.body });
+        if (result.created) created++;
+        else replaced++;
         imported++;
       }
     } catch (err) {
@@ -127,6 +149,6 @@ export function registerSummarizeIpc(service: SummarizeService): void {
           : reason,
       );
     }
-    return { imported, skipped };
+    return { imported, skipped, created, replaced };
   });
 }

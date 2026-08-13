@@ -510,12 +510,17 @@ export interface PromptPackEntry {
 }
 
 /** Outcome of a prompt-pack import: how many entries were upserted vs. dropped for being
- * malformed (missing/empty/wrong-typed `name` or `body`). Surfacing both — not just the
- * imported count — is what lets the renderer tell the user a hand-edited pack had typos
- * instead of silently importing a subset. Both are 0 if the dialog was cancelled. */
+ * malformed (missing/empty/wrong-typed `name` or `body`), plus how many of the upserted
+ * entries were brand new (`created`) versus replaced the body of an existing same-named
+ * prompt (`replaced`, `imported = created + replaced`). Surfacing the created/replaced
+ * split — not just a combined `imported` count — is what lets the renderer tell the user
+ * that importing a pack silently overwrote prompts they'd edited, rather than reporting a
+ * bare success. All four fields are 0 if the dialog was cancelled. */
 export interface PromptImportResult {
   imported: number;
   skipped: number;
+  created: number;
+  replaced: number;
 }
 
 /** A registered AI provider and the models it offers. */
@@ -794,8 +799,11 @@ export interface SiftApi {
     /** Writes the user's non-builtin prompts to a chosen .json path; null if cancelled. */
     export(): Promise<string | null>;
     /** Imports a pack, upserting by name. Reports counts of imported vs. skipped-as-malformed
-     * entries ({ imported: 0, skipped: 0 } if the dialog was cancelled). Rejects if the file
-     * isn't valid JSON, isn't an array, or has zero usable entries — never a silent no-op. */
+     * entries, and splits `imported` into `created` (new prompts) vs. `replaced` (an existing
+     * same-named prompt's body was overwritten) so the caller can warn about overwritten edits
+     * ({ imported: 0, skipped: 0, created: 0, replaced: 0 } if the dialog was cancelled).
+     * Rejects if the file isn't valid JSON, isn't an array, or has zero usable entries — never
+     * a silent no-op. */
     import(): Promise<PromptImportResult>;
   };
   aiProviders: {

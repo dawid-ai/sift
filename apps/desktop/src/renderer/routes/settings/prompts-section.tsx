@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 const TEXTAREA_CLASS =
   "flex min-h-[80px] w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
 
+// Shown under every prompt-body textarea so a user editing a seeded prompt (several of
+// which carry the marker) knows what it does before deleting it.
+const TIMESTAMPS_HINT = "Include {{TIMESTAMPS}} to get a timestamped transcript ([mm:ss] per line) instead of flat text — needed for chapters, clip timings, or anything that must cite times.";
+
 export function PromptsSection() {
   const [prompts, setPrompts] = useState<PromptInfo[]>([]);
   const [name, setName] = useState("");
@@ -94,14 +98,18 @@ export function PromptsSection() {
     setError(null);
     setNotice(null);
     try {
-      const { imported, skipped } = await window.sift.prompts.import();
+      const { imported, skipped, replaced } = await window.sift.prompts.import();
       if (imported > 0 || skipped > 0) {
         const total = imported + skipped;
-        setNotice(
+        const countPart =
           skipped > 0
             ? `Imported ${imported} of ${total}; skipped ${skipped} malformed entr${skipped === 1 ? "y" : "ies"}.`
-            : `Imported ${imported} prompt${imported === 1 ? "" : "s"}.`,
-        );
+            : `Imported ${imported} prompt${imported === 1 ? "" : "s"}.`;
+        const replacedPart =
+          replaced > 0
+            ? ` ${replaced} replaced existing prompt${replaced === 1 ? "" : "s"} of the same name.`
+            : "";
+        setNotice(`${countPart}${replacedPart}`);
         await refresh();
       }
     } catch (e) {
@@ -187,6 +195,7 @@ export function PromptsSection() {
                       disabled={busyId === p.id}
                       onChange={(e) => setEditBody(e.target.value)}
                     />
+                    <p className="text-xs text-foreground/50">{TIMESTAMPS_HINT}</p>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -255,6 +264,7 @@ export function PromptsSection() {
             disabled={adding}
             onChange={(e) => setBody(e.target.value)}
           />
+          <p className="text-xs text-foreground/50">{TIMESTAMPS_HINT}</p>
           <Button
             data-testid="prompt-add"
             disabled={adding || !name || !body}

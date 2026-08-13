@@ -104,40 +104,75 @@ describe("prompt queries", () => {
 });
 
 describe("upsertPromptByName", () => {
-  it("creates a prompt when the name is new", async () => {
+  it("creates a prompt when the name is new, reporting created: true", async () => {
     const db = await openTestDatabase();
     runMigrations(db);
-    const row = upsertPromptByName(db, { name: "Fresh pack entry", body: "Do the thing." });
+    const { row, created } = upsertPromptByName(db, { name: "Fresh pack entry", body: "Do the thing." });
+    expect(created).toBe(true);
     expect(row.name).toBe("Fresh pack entry");
     expect(row.is_builtin).toBe(0);
     expect(getPromptById(db, row.id)?.body).toBe("Do the thing.");
   });
 
-  it("updates the body in place when the name already exists", async () => {
+  it("updates the body in place when the name already exists, reporting created: false", async () => {
     const db = await openTestDatabase();
     runMigrations(db);
     const first = upsertPromptByName(db, { name: "Pack entry", body: "v1" });
+    expect(first.created).toBe(true);
     const second = upsertPromptByName(db, { name: "Pack entry", body: "v2" });
-    expect(second.id).toBe(first.id);
-    expect(second.body).toBe("v2");
+    expect(second.created).toBe(false);
+    expect(second.row.id).toBe(first.row.id);
+    expect(second.row.body).toBe("v2");
     expect(listPrompts(db).filter((p) => p.name === "Pack entry")).toHaveLength(1);
   });
 
   it("updates a prompt that saved summaries reference (delete would throw here)", async () => {
     const db = await openTestDatabase();
     runMigrations(db);
-    const p = upsertPromptByName(db, { name: "Used", body: "v1" });
+    const { row: p } = upsertPromptByName(db, { name: "Used", body: "v1" });
     const mediaId = media(db);
     insertSummary(db, {
       media_id: mediaId, prompt_id: p.id, provider_id: "anthropic",
       model: "m", text: "a summary",
     });
-    expect(upsertPromptByName(db, { name: "Used", body: "v2" }).body).toBe("v2");
+    const updated = upsertPromptByName(db, { name: "Used", body: "v2" });
+    expect(updated.created).toBe(false);
+    expect(updated.row.body).toBe("v2");
   });
 
   it("refuses to overwrite a built-in prompt", async () => {
     const db = await openTestDatabase();
     runMigrations(db);
     expect(() => upsertPromptByName(db, { name: "TL;DR", body: "hijacked" })).toThrow(/built-in/i);
+  });
+
+  // Mirrors what `prompts:import` does with the result of each call: fold `created` across a
+  // whole pack into `{ created, replaced }` totals for the renderer's import notice (see
+  // apps/desktop/src/main/ipc/summarize.ts). Covers the exact scenario the review that added
+  // this flagged — a pack re-importing over prompts the user already edited must report how
+  // many were replaced, not just a bare "imported N" count.
+  it("lets a caller tally created vs. replaced across a whole pack import", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    // Pre-seed one prompt as if it survived from an earlier import/edit.
+    upsertPromptByName(db, { name: "YouTube chapters", body: "user-edited body" });
+
+    const pack = [
+      { name: "YouTube chapters", body: "official pack body" }, // collides -> replaced
+      { name: "Custom pack entry A", body: "new body" }, // new -> created
+      { name: "Custom pack entry B", body: "new body" }, // new -> created
+    ];
+    let created = 0;
+    let replaced = 0;
+    for (const entry of pack) {
+      const result = upsertPromptByName(db, entry);
+      if (result.created) created++;
+      else replaced++;
+    }
+    expect(created).toBe(2);
+    expect(replaced).toBe(1);
+    expect(getPromptById(db, listPrompts(db).find((p) => p.name === "YouTube chapters")!.id)?.body).toBe(
+      "official pack body",
+    );
   });
 });

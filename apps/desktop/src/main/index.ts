@@ -907,7 +907,7 @@ app.whenReady().then(() => {
         ? e2eDownloadsDir
         : () => downloadsConfigStore.get(),
     });
-    registerSummarizeIpc(summarizeService);
+    registerSummarizeIpc(summarizeService, () => BrowserWindow.getAllWindows());
 
     // Slide/data-frame extraction: reuses the managed ffmpeg binary; OCR via a lazily
     // created Tesseract worker per run. langPath points at the bundled eng.traineddata
