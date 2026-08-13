@@ -208,7 +208,7 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                       {score != null && score >= OUTLIER_THRESHOLD && (
                         <span
                           data-testid={`channel-video-outlier-${v.externalId}`}
-                          title="Views versus this channel's median — not adjusted for video age"
+                          title="Views versus the median of the videos currently listed — not adjusted for video age"
                           className="ml-2 flex-none rounded-full border border-primary/40 px-2 py-0.5 text-xs font-medium text-primary"
                         >
                           {score.toFixed(1)}×

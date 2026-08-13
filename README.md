@@ -51,8 +51,8 @@ The app updates itself after that. Both points are explained in the [FAQ](./docs
   filters, and a synced, click-to-seek in-app player.
 - **Channels & subscriptions** — track a channel, see new-video counts, browse
   videos/shorts/live, batch-queue a selection, and sync your YouTube subscriptions via the
-  sign-in browser. A channel's videos beating its own median view count get an outlier badge
-  (competitor-research signal; not adjusted for video age).
+  sign-in browser. Videos beating the median view count of the currently listed videos get
+  an outlier badge (competitor-research signal; not adjusted for video age).
 - **Sign-in browser** — an in-app browser window for signing in to gated sites; the cookie
   jar is handed to yt-dlp so members-only and age-restricted media works. Cookies never
   leave the machine.
