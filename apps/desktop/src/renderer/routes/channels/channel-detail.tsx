@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChannelRecord, ChannelVideo, ChannelVideoStatus, ChannelContentType, ChannelOrder, DownloadedVideo, QueueSpec } from "@sift/ipc-contract";
+import { medianViews, outlierScore, OUTLIER_THRESHOLD } from "@sift/core";
 import { Button } from "@/components/ui/button";
 import { thumbUrl, videoThumbUrl } from "@/lib/utils";
 import { extractLinks } from "@/lib/extract-links";
@@ -49,6 +50,7 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
   const [error, setError] = useState<string | null>(null);
   const [spec, setSpec] = useState<QueueSpec | null>(null);
   const onSpec = useCallback((s: QueueSpec) => setSpec(s), []);
+  const median = useMemo(() => medianViews(videos), [videos]);
 
   const getVideos = async () => {
     setBusy(true); setError(null); setNote(null); setSelected(new Set()); setStatuses({});
@@ -190,6 +192,7 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
               const locked = status === "queued" || status === "downloaded";
               const isSelected = selected.has(v.url);
               const meta = [fmtDuration(v.durationSec), v.viewCount != null ? `${v.viewCount.toLocaleString()} views` : null, v.isShort ? "Short" : null].filter(Boolean).join(" · ");
+              const score = outlierScore(v.viewCount, median);
               return (
                 <label
                   data-testid="channel-video"
@@ -200,7 +203,18 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                 >
                   <input data-testid="channel-video-checkbox" type="checkbox" className="h-4 w-4 flex-none accent-primary" checked={isSelected} disabled={locked} onChange={() => toggle(v.url)} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{v.title}</p>
+                    <p className="flex items-center">
+                      <span className="min-w-0 flex-1 truncate font-medium">{v.title}</span>
+                      {score != null && score >= OUTLIER_THRESHOLD && (
+                        <span
+                          data-testid={`channel-video-outlier-${v.externalId}`}
+                          title="Views versus this channel's median — not adjusted for video age"
+                          className="ml-2 flex-none rounded-full border border-primary/40 px-2 py-0.5 text-xs font-medium text-primary"
+                        >
+                          {score.toFixed(1)}×
+                        </span>
+                      )}
+                    </p>
                     {meta && <p className="truncate text-xs text-foreground/45">{meta}</p>}
                   </div>
                   {status === "queued" && <span data-testid="channel-video-queued" className="flex-none rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600">Queued</span>}

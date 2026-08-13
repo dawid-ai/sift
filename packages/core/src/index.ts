@@ -16,6 +16,7 @@ export { baseLangCode, pickTranscriptLanguage } from "./transcript/language";
 export { parseJson3 } from "./transcript/json3";
 
 export * from "./channel/normalize";
+export { medianViews, outlierScore, OUTLIER_THRESHOLD } from "./channel/outlier";
 
 export { isDataFrame, KEEP_FRAME_DEFAULTS } from "./frames/keep";
 export type { FrameOcr, KeepFrameOptions } from "./frames/keep";
