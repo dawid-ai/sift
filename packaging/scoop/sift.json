@@ -1,4 +1,16 @@
 {
+  "##": [
+    "NOT submittable as-is. This manifest has no bin/shortcuts/installer/pre_install stanza,",
+    "so `scoop install sift` would only cache Sift-Setup.exe (renamed dl.exe) with nothing",
+    "runnable — no shim, no shortcut, no invocation of the installer.",
+    "The usual Expand-7zipArchive pre_install workaround for electron-builder NSIS apps (e.g.",
+    "ScoopInstaller/Extras obsidian.json) depends on electron-builder's one-click NSIS packaging",
+    "(a single embedded 7z at a fixed path). Sift sets nsis.oneClick: false (assisted, multi-page",
+    "installer), so that trick does not apply, and there is no established Scoop pattern for",
+    "assisted-mode NSIS installers — see ScoopInstaller/Extras#1531 (open since 2018, unresolved).",
+    "Do not open the Extras PR until a real install stanza exists and `scoop install sift`",
+    "has been verified to produce a working, launchable app on a clean machine."
+  ],
   "version": "0.3.0",
   "description": "Turns any video into a searchable, transcribed, summarized library — 100% local.",
   "homepage": "https://github.com/dawid-ai/sift",
