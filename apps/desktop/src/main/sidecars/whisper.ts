@@ -56,8 +56,8 @@ export function createWhisperRunner(deps: {
     transcribe({ wavPath, language }, onProgress) {
       const binary = deps.getBinaryPath();
       const model = deps.getModelPath();
-      if (!binary) throw new Error("whisper is not installed — install it in Settings → Binaries");
-      if (!model) throw new Error("whisper model is missing — install it in Settings → Binaries");
+      if (!binary) throw new Error("whisper is not installed — install it in Settings → Transcription → Whisper");
+      if (!model) throw new Error("whisper model is missing — install it in Settings → Transcription → Whisper");
 
       const outBase = join(tmpdir(), `sift-whisper-${randomUUID()}`);
       const jsonPath = `${outBase}.json`;

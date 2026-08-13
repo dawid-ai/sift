@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { openTestDatabase } from "./testing";
 import { runMigrations } from "./migrations";
+import { listPrompts } from "./prompt";
 
 describe("runMigrations", () => {
   it("creates the asset table and is idempotent", async () => {
@@ -16,7 +17,7 @@ describe("runMigrations", () => {
     const applied = db
       .prepare<{ version: number }>("SELECT version FROM schema_migrations")
       .all();
-    expect(applied).toHaveLength(16);
+    expect(applied).toHaveLength(17);
     db.close();
   });
 
@@ -36,6 +37,26 @@ describe("runMigrations", () => {
       .prepare<{ version: number }>("SELECT version FROM schema_migrations")
       .all();
     expect(applied).toHaveLength(0); // version not recorded
+    db.close();
+  });
+
+  it("seeds the creator prompt pack as editable (non-builtin) rows", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const prompts = listPrompts(db);
+    const names = prompts.map((p) => p.name);
+
+    expect(names).toContain("YouTube chapters");
+    expect(names).toContain("Title ideas");
+    expect(names).toContain("Blog post");
+
+    const chapters = prompts.find((p) => p.name === "YouTube chapters")!;
+    expect(chapters.is_builtin).toBe(0);
+    // Chapters are worthless without real times — the prompt must opt into timestamps.
+    expect(chapters.body).toContain("{{TIMESTAMPS}}");
+
+    const showNotes = prompts.find((p) => p.name === "Podcast show notes")!;
+    expect(showNotes.body).toContain("{{TIMESTAMPS}}");
     db.close();
   });
 });

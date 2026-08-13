@@ -12,6 +12,10 @@ directories:
 files:
   - out/**/*
   - package.json
+# Bundled tesseract language data — keeps OCR fully offline (see main/sidecars/ocr.ts).
+extraResources:
+  - from: resources/tessdata
+    to: tessdata
 # better-sqlite3 is a native addon and MUST run unpacked (not inside app.asar).
 asar: true
 asarUnpack:

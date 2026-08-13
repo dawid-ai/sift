@@ -36,3 +36,56 @@ describe("SUMMARY_SYSTEM_PROMPT", () => {
     expect(SUMMARY_SYSTEM_PROMPT.length).toBeGreaterThan(0);
   });
 });
+
+describe("assembleSummaryContent with {{TIMESTAMPS}}", () => {
+  const segments = [
+    { start: 0, text: "Intro and hello" },
+    { start: 72, text: "The first real point" },
+    { start: 3723, text: "Wrapping up" },
+  ];
+
+  it("ignores segments when the prompt does not opt in", () => {
+    expect(assembleSummaryContent("Summarize this.", "flat text", [], segments)).toBe(
+      "Summarize this.\n\n----- TRANSCRIPT -----\nflat text",
+    );
+  });
+
+  it("renders a timestamped transcript and strips the marker from the prompt", () => {
+    expect(
+      assembleSummaryContent("List chapters. {{TIMESTAMPS}}", "flat text", [], segments),
+    ).toBe(
+      "List chapters.\n\n----- TRANSCRIPT -----\n" +
+        "[00:00] Intro and hello\n[01:12] The first real point\n[1:02:03] Wrapping up",
+    );
+  });
+
+  it("falls back to the flat text when the transcript has no segments", () => {
+    expect(assembleSummaryContent("List chapters. {{TIMESTAMPS}}", "flat text", [], [])).toBe(
+      "List chapters.\n\n----- TRANSCRIPT -----\nflat text",
+    );
+  });
+
+  it("still appends the slides section when timestamps are on", () => {
+    expect(
+      assembleSummaryContent(
+        "List chapters. {{TIMESTAMPS}}",
+        "flat text",
+        [{ tsMs: 12_000, text: "Q3 Revenue" }],
+        segments,
+      ),
+    ).toBe(
+      "List chapters.\n\n----- TRANSCRIPT -----\n" +
+        "[00:00] Intro and hello\n[01:12] The first real point\n[1:02:03] Wrapping up\n\n" +
+        "----- ON-SCREEN TEXT (SLIDES) -----\n[00:12] Q3 Revenue",
+    );
+  });
+
+  it("skips blank segments", () => {
+    expect(
+      assembleSummaryContent("Chapters {{TIMESTAMPS}}", "flat", [], [
+        { start: 0, text: "Kept" },
+        { start: 5, text: "   " },
+      ]),
+    ).toBe("Chapters\n\n----- TRANSCRIPT -----\n[00:00] Kept");
+  });
+});

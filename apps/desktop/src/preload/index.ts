@@ -161,6 +161,7 @@ const api: SiftApi = {
     setMethod: (m) => ipcRenderer.invoke(IPC.transcriptSetMethod, m),
     getAutoDownload: () => ipcRenderer.invoke(IPC.transcriptGetAutoDownload),
     setAutoDownload: (enabled: boolean) => ipcRenderer.invoke(IPC.transcriptSetAutoDownload, enabled),
+    exportSrt: (transcriptId: number) => ipcRenderer.invoke(IPC.transcriptExportSrt, transcriptId),
   },
   summarize: {
     start: (input) => ipcRenderer.invoke(IPC.summarizeStart, input),
@@ -203,6 +204,8 @@ const api: SiftApi = {
     update: (id: number, input: { name: string; body: string }) =>
       ipcRenderer.invoke(IPC.promptsUpdate, id, input),
     delete: (id: number) => ipcRenderer.invoke(IPC.promptsDelete, id),
+    export: () => ipcRenderer.invoke(IPC.promptsExport),
+    import: () => ipcRenderer.invoke(IPC.promptsImport),
   },
   aiProviders: {
     list: () => ipcRenderer.invoke(IPC.aiProvidersList),

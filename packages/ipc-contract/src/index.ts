@@ -50,6 +50,7 @@ export const IPC = {
   transcriptSetMethod: "transcript:setMethod",
   transcriptGetAutoDownload: "transcript:getAutoDownload",
   transcriptSetAutoDownload: "transcript:setAutoDownload",
+  transcriptExportSrt: "transcript:exportSrt",
   summarizeStart: "summarize:start",
   summarizeToken: "summarize:token",
   summarizeExport: "summarize:export",
@@ -57,6 +58,8 @@ export const IPC = {
   promptsCreate: "prompts:create",
   promptsUpdate: "prompts:update",
   promptsDelete: "prompts:delete",
+  promptsExport: "prompts:export",
+  promptsImport: "prompts:import",
   aiProvidersList: "ai:providers",
   aiKeyStatus: "ai:keyStatus",
   aiKeySet: "ai:keySet",
@@ -499,6 +502,27 @@ export interface PromptInfo {
   isBuiltin: boolean;
 }
 
+/** One entry in an exported prompt pack file (`sift-prompts.json`). The file is a bare array
+ * of these — deliberately the smallest shape that can be hand-edited and diffed. */
+export interface PromptPackEntry {
+  name: string;
+  body: string;
+}
+
+/** Outcome of a prompt-pack import: how many entries were upserted vs. dropped for being
+ * malformed (missing/empty/wrong-typed `name` or `body`), plus how many of the upserted
+ * entries were brand new (`created`) versus replaced the body of an existing same-named
+ * prompt (`replaced`, `imported = created + replaced`). Surfacing the created/replaced
+ * split — not just a combined `imported` count — is what lets the renderer tell the user
+ * that importing a pack silently overwrote prompts they'd edited, rather than reporting a
+ * bare success. All four fields are 0 if the dialog was cancelled. */
+export interface PromptImportResult {
+  imported: number;
+  skipped: number;
+  created: number;
+  replaced: number;
+}
+
 /** A registered AI provider and the models it offers. */
 export interface AiProviderInfo {
   id: string;
@@ -715,6 +739,9 @@ export interface SiftApi {
     getAutoDownload(): Promise<boolean>;
     /** Persists the auto-fetch-after-download toggle. */
     setAutoDownload(enabled: boolean): Promise<void>;
+    /** Writes a transcript's segments to a .srt file under the downloads dir; returns the
+     * absolute path. Rejects if the transcript has no timestamps. */
+    exportSrt(transcriptId: number): Promise<string>;
   };
   summarize: {
     /** Streams a summary for the newest transcript of `metadata`'s URL; persists + returns the record. */
@@ -769,6 +796,15 @@ export interface SiftApi {
     create(input: { name: string; body: string }): Promise<PromptInfo>;
     update(id: number, input: { name: string; body: string }): Promise<PromptInfo>;
     delete(id: number): Promise<void>;
+    /** Writes the user's non-builtin prompts to a chosen .json path; null if cancelled. */
+    export(): Promise<string | null>;
+    /** Imports a pack, upserting by name. Reports counts of imported vs. skipped-as-malformed
+     * entries, and splits `imported` into `created` (new prompts) vs. `replaced` (an existing
+     * same-named prompt's body was overwritten) so the caller can warn about overwritten edits
+     * ({ imported: 0, skipped: 0, created: 0, replaced: 0 } if the dialog was cancelled).
+     * Rejects if the file isn't valid JSON, isn't an array, or has zero usable entries — never
+     * a silent no-op. */
+    import(): Promise<PromptImportResult>;
   };
   aiProviders: {
     list(): Promise<AiProviderInfo[]>;

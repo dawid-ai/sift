@@ -203,7 +203,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
     return (
       <main className="flex flex-1 items-center justify-center p-8">
         <p data-testid="library-empty" className="text-sm text-foreground/60">
-          No downloads yet
+          No downloads yet — paste a URL on the Home tab to add your first video.
         </p>
       </main>
     );

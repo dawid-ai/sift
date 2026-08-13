@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AiRegistry } from "@sift/core";
+import type { AiRegistry, TranscriptLine } from "@sift/core";
 import { assembleSummaryContent, buildOutputBaseName, sanitizeFilename, SUMMARY_SYSTEM_PROMPT } from "@sift/core";
 import type { NewMedia, SiftDatabase, SummaryRow } from "@sift/db";
 import {
@@ -19,6 +19,12 @@ import type { MediaMetadata, SummaryRecord } from "@sift/ipc-contract";
 // Note: deliberately does NOT import `../paths` (which imports `electron`) — this
 // service must stay loadable under plain Node for its Vitest suite, mirroring
 // `transcript-service.ts` / `download-service.ts`.
+
+// Matches the prompt playground's ceiling. 4096 (~3k words) truncated long-form outputs like
+// "write a blog post from this transcript".
+// ponytail: one constant, not a per-request knob — no caller needs to vary it. If a provider
+// ever rejects 8192, clamp inside that provider, not here.
+const SUMMARY_MAX_TOKENS = 8192;
 
 // duplicated (not shared with DownloadService's/TranscriptService's private
 // mapper) — same ~12-line camel→snake literal, only `download_status` differs ("none"
@@ -39,6 +45,16 @@ function fromMetadata(m: MediaMetadata): NewMedia {
     metadata_json: JSON.stringify(m.raw),
     download_status: "none",
   };
+}
+
+/** Type guard for one parsed `segments_json` element — a wrong-shaped element is dropped, not thrown. */
+function isTranscriptLine(value: unknown): value is TranscriptLine {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { start?: unknown }).start === "number" &&
+    typeof (value as { text?: unknown }).text === "string"
+  );
 }
 
 /** Maps a `summary` row into the renderer-facing `SummaryRecord` (snake_case → camelCase). */
@@ -96,9 +112,23 @@ export class SummarizeService {
     const frames = getFramesByMediaId(db, media.id)
       .filter((f) => f.included === 1 && f.ocr_text)
       .map((f) => ({ tsMs: f.ts_ms, text: f.ocr_text! }));
-    const content = assembleSummaryContent(prompt.body, transcript.text, frames);
+    // Segments are only used when the prompt opts in with {{TIMESTAMPS}} (see core/ai/prompt).
+    // segments_json can be absent, invalid JSON, valid JSON that isn't an array (null, a number,
+    // an object), or an array containing wrong-shaped elements — every one of those degrades to
+    // the flat transcript (dropping only the bad elements of a mixed array) rather than failing
+    // the whole summarize run.
+    let segments: TranscriptLine[] = [];
+    if (transcript.segments_json) {
+      try {
+        const parsed: unknown = JSON.parse(transcript.segments_json);
+        if (Array.isArray(parsed)) segments = parsed.filter(isTranscriptLine);
+      } catch {
+        segments = [];
+      }
+    }
+    const content = assembleSummaryContent(prompt.body, transcript.text, frames, segments);
     const text = await provider.summarize(
-      { model: input.model, systemPrompt: SUMMARY_SYSTEM_PROMPT, content, maxTokens: 4096 },
+      { model: input.model, systemPrompt: SUMMARY_SYSTEM_PROMPT, content, maxTokens: SUMMARY_MAX_TOKENS },
       (delta) => onToken?.(delta),
     );
 

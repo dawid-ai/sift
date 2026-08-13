@@ -402,6 +402,34 @@ Polish via the input + add button, and asserts the row count and "Polish"
 label update — reusing the same `SIFT_E2E_FIXTURE_DIR` isolation as the other
 e2e specs.
 
+### Transcript export (`.srt`)
+
+Any timestamped transcript can be exported as standalone SubRip subtitles, independent of
+summarize/download:
+
+- **Serializer** (`packages/core/src/transcript/srt.ts`, `segmentsToSrt`): pure, dependency-free.
+  Drops blank segments without gapping the cue numbering, and gives a cue whose `end` isn't after
+  its `start` a one-second minimum duration (some players silently discard zero-length cues, and
+  auto-caption segments occasionally carry equal start/end times). Returns `""` for zero usable
+  cues — the caller treats that as "nothing to export".
+- **Service** (`apps/desktop/src/main/services/transcript-service.ts`, `TranscriptService.exportSrt`):
+  loads the transcript row, parses `segments_json`, and throws `"This transcript has no
+  timestamps, so it can't be exported as subtitles."` if `segmentsToSrt` comes back empty (a
+  caption source can produce text with no segments). Otherwise writes
+  `<base>__transcript-<providerId>.srt` under the downloads dir (same `buildOutputBaseName` +
+  `sanitizeFilename` naming helper as every other export) and returns the absolute path.
+- **IPC** (`transcript:exportSrt`, `apps/desktop/src/main/ipc/transcript.ts`,
+  `apps/desktop/src/preload/index.ts`'s `transcript.exportSrt`): a single
+  `transcriptId → Promise<string>` call; errors (including "no timestamps") propagate as a
+  rejected `invoke()`.
+- **Renderer** (`apps/desktop/src/renderer/routes/library/transcript-panel.tsx`,
+  `media-detail.tsx`'s `handleExportSrt`): each transcript card has a
+  `data-testid="transcript-export-srt-<id>"` button, disabled when `segments.length === 0` (so
+  a flat-text-only transcript never offers an export that would just throw). On success the
+  written file is revealed via `library.reveal(path)`, same as other file-producing actions.
+  `.srt` exports don't appear in the Files tab (they're written straight to the downloads dir,
+  not tracked as a `document` row) — a later nicety, not a gap in this flow.
+
 ## Summarize flow (AI registry → Anthropic streaming → prompt assembly → summary row → export)
 
 Phase 5a adds "Summarize" for videos with a transcript. Like the transcript
@@ -458,12 +486,29 @@ registry, the design is a provider registry so OpenAI/Ollama/custom providers
   built-ins — "Key points", "Detailed summary", "TL;DR". `listPrompts`/
   `getPromptById` are the only accessors 5a needs; **user-authored
   prompt CRUD (add/edit/delete) is Phase 5b** — 5a's picker only ever shows
-  the three seeded rows.
+  the three seeded rows. Migration 017 (`017-creator-prompts.sql.ts`, later)
+  additionally seeds a **creator prompt pack** — seven starter prompts
+  (YouTube chapters, title ideas, video description, podcast show notes, blog
+  post, newsletter issue, short-form moments) inserted with `is_builtin = 0`
+  on purpose, since they're meant to be rewritten and built-ins can't be
+  edited or deleted; two of them ("YouTube chapters", "Short-form moments")
+  carry the `{{TIMESTAMPS}}` marker (see "Prompt assembly" below).
 - **Prompt assembly** (`packages/core/src/ai/prompt.ts`):
   `SUMMARY_SYSTEM_PROMPT` is a fixed system message (summarize spoken-word
   transcripts faithfully, no invented information); `assembleSummaryContent
-  (promptBody, transcriptText)` returns `${promptBody}\n\n----- TRANSCRIPT
-  -----\n${transcriptText}` — the single user message sent to the provider.
+  (promptBody, transcriptText, frames?, segments?)` builds the user message:
+  prompt body + `----- TRANSCRIPT -----` + transcript text, plus a
+  `----- ON-SCREEN TEXT (SLIDES) -----` section when `frames` (OCR'd
+  on-screen text, timestamped) are present — frame extraction itself is the
+  slides flow, which this file doesn't cover yet (see `CLAUDE.md`'s "Not in
+  DEVELOPMENT.md" note). A prompt body containing the `{{TIMESTAMPS}}`
+  marker (`TIMESTAMPS_TOKEN = "{{TIMESTAMPS}}"`) opts into a **timestamped
+  transcript**: the marker is stripped from the prompt body, and the
+  transcript section renders each `segments` line as `[mm:ss] line` instead
+  of the flat joined text (falling back to flat text if there are no usable
+  segments). Without the marker, `segments` is ignored and the assembled
+  content is unchanged. This is what lets prompts like the seeded "YouTube
+  chapters" cite real times instead of inventing them.
 - **Storage** (`packages/db/src/migrations/005-summary.sql.ts`,
   `packages/db/src/summary.ts`): a `summary` table (`media_id`, `prompt_id`,
   `provider_id`, `model`, `text`, `created_at`), one row per summarize call;
@@ -685,7 +730,38 @@ providers (see "Offline e2e fixture hook" below).
   past summary can't silently disappear out from under that summary's
   provenance. `PromptInfo` (the IPC/renderer type) now carries `body` (not
   just `id`/`name`/`isBuiltin`) specifically so `startEdit(p)` can pre-fill
-  the edit form with the current body instead of an empty textarea.
+  the edit form with the current body instead of an empty textarea. Both the
+  Add-prompt and edit-prompt body textareas carry a short helper line
+  mentioning the `{{TIMESTAMPS}}` marker, so a user editing the seeded
+  "YouTube chapters" prompt (or writing their own) doesn't delete it without
+  knowing what it does.
+- **Prompt pack import/export** (`prompts:export`/`prompts:import`,
+  `apps/desktop/src/main/ipc/summarize.ts`, `apps/desktop/src/main/ipc/
+  prompt-pack.ts`, `packages/db/src/prompt.ts`'s `upsertPromptByName`):
+  `prompts:export` (`data-testid="prompts-export"`) writes every non-builtin
+  prompt (`{ name, body }[]`) to a user-chosen `.json` file via a native save
+  dialog (parented to the focused window, defaulting to
+  `<branding.slug>-prompts.json`), returning `null` if the user cancels.
+  `prompts:import` (`data-testid="prompts-import"`) opens a native open
+  dialog (also parented) and hands the file contents to `parsePromptPack`
+  (`prompt-pack.ts` — Electron- and db-free by design, unit-tested on its
+  own), which validates each entry's `name`/`body` and drops malformed ones
+  without failing the whole import (`skipped` count). Every valid entry is
+  then upserted **by name** via `upsertPromptByName`: a new name creates a
+  prompt, a name matching an existing user prompt replaces its body in
+  place (this is what makes a pack re-importable after edits), and a name
+  matching a built-in throws rather than shadowing it. `upsertPromptByName`
+  reports whether each entry was created or replaced an existing same-named
+  row, folded into `PromptImportResult { imported, skipped, created,
+  replaced }`; the renderer's `data-testid="prompts-notice"` banner
+  (`prompts-section.tsx`) surfaces that split — e.g. "Imported 7 — 5
+  replaced existing prompts of the same name." — so importing a pack over
+  hand-edited prompts (the seeded creator pack's own names are the obvious
+  collision case) is never a silent, unannounced overwrite. If a pack import
+  fails partway (e.g. a later entry's name collides with a built-in), the
+  entries upserted before the failure are left in place — safe to retry
+  after fixing the pack, since re-running import doesn't duplicate what
+  already landed.
 - **Home provider/model/prompt picker**
   (`apps/desktop/src/renderer/lib/ai-provider-catalog.ts`,
   `.../home/preview-card.tsx`): `KNOWN_PROVIDERS` is a **static** mirror of
@@ -1120,6 +1196,22 @@ batch of its videos straight into the Queue, on top of the same
   auth/bot-check error from yt-dlp) is caught and swallowed — the click is a
   silent no-op rather than an error toast, since "this video has no
   resolvable channel" isn't actionable for the user.
+- **Outlier badge** (`packages/core/src/channel/outlier.ts`,
+  `apps/desktop/src/renderer/routes/channels/channel-detail.tsx`): pure,
+  dependency-free like the rest of `core/channel`. `medianViews(videos)`
+  takes the median `viewCount` across whatever page of videos is **currently
+  listed** in the Get-videos result — the `count`/`order` combo the user has
+  loaded (default 25, and `order: "most_viewed"` changes which pool that is)
+  — not the channel's whole catalog. `outlierScore(viewCount, median)` is
+  `viewCount / median` (`null` if either input is missing or median is 0);
+  any video scoring at or above `OUTLIER_THRESHOLD = 2` renders a
+  `data-testid="channel-video-outlier-<externalId>"` badge (`"<score>×"`)
+  next to its title, with a tooltip and the `README.md` feature line both
+  worded to match what's actually computed — the listed page's median, not
+  a channel-wide figure. No age normalization: yt-dlp's flat-playlist dump
+  carries no upload date, so an old evergreen hit can read as an outlier
+  (see the `ponytail` comment in `outlier.ts` for the reasoning and what a
+  real fix would need).
 
 ### Offline channel-tools e2e
 

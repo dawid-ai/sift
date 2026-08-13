@@ -442,6 +442,15 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     }
   }
 
+  async function handleExportSrt(transcriptId: number) {
+    try {
+      const path = await window.sift.transcript.exportSrt(transcriptId);
+      await window.sift.library.reveal(path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   async function handleRemoveSummary(summaryId: number) {
     try {
       await window.sift.library.removeSummary(summaryId);
@@ -611,6 +620,7 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 onGetTranscript={() => void handleGetTranscript()}
                 onRetranscribe={() => void handleRetranscribe()}
                 onRemoveTranscript={(id) => void handleRemoveTranscript(id)}
+                onExportSrt={(id) => void handleExportSrt(id)}
               />
             )}
             {tab === "summary" && (

@@ -60,7 +60,14 @@ export {
   downloadExistsByFilePath,
 } from "./download";
 export type { DownloadRow, NewDownload } from "./download";
-export { listPrompts, getPromptById, createPrompt, updatePrompt, deletePrompt } from "./prompt";
+export {
+  listPrompts,
+  getPromptById,
+  createPrompt,
+  updatePrompt,
+  deletePrompt,
+  upsertPromptByName,
+} from "./prompt";
 export type { PromptRow } from "./prompt";
 export {
   insertQueueItem,

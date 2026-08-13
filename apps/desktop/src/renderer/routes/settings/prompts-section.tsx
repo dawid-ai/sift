@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 const TEXTAREA_CLASS =
   "flex min-h-[80px] w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
 
+// Shown under every prompt-body textarea so a user editing a seeded prompt (several of
+// which carry the marker) knows what it does before deleting it.
+const TIMESTAMPS_HINT = "Include {{TIMESTAMPS}} to get a timestamped transcript ([mm:ss] per line) instead of flat text — needed for chapters, clip timings, or anything that must cite times.";
+
 export function PromptsSection() {
   const [prompts, setPrompts] = useState<PromptInfo[]>([]);
   const [name, setName] = useState("");
@@ -18,6 +22,7 @@ export function PromptsSection() {
   const [editBody, setEditBody] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +94,44 @@ export function PromptsSection() {
     }
   }
 
+  async function handleImport() {
+    setError(null);
+    setNotice(null);
+    try {
+      const { imported, skipped, replaced } = await window.sift.prompts.import();
+      if (imported > 0 || skipped > 0) {
+        const total = imported + skipped;
+        const countPart =
+          skipped > 0
+            ? `Imported ${imported} of ${total}; skipped ${skipped} malformed entr${skipped === 1 ? "y" : "ies"}.`
+            : `Imported ${imported} prompt${imported === 1 ? "" : "s"}.`;
+        const replacedPart =
+          replaced > 0
+            ? ` ${replaced} replaced existing prompt${replaced === 1 ? "" : "s"} of the same name.`
+            : "";
+        setNotice(`${countPart}${replacedPart}`);
+        await refresh();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      // A thrown error can still follow a partial write (e.g. a later pack entry collided
+      // with a built-in name after earlier entries were already upserted) — refresh so the
+      // list reflects what actually happened rather than going stale under the error.
+      await refresh();
+    }
+  }
+
+  async function handleExport() {
+    setError(null);
+    setNotice(null);
+    try {
+      const path = await window.sift.prompts.export();
+      if (path) setNotice(`Exported to ${path}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <div data-testid="prompts-section" className="flex flex-col gap-4">
       {error && (
@@ -96,6 +139,32 @@ export function PromptsSection() {
           {error}
         </p>
       )}
+
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          data-testid="prompts-import"
+          disabled={adding || busyId !== null}
+          onClick={() => void handleImport()}
+        >
+          Import pack
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          data-testid="prompts-export"
+          disabled={adding || busyId !== null}
+          onClick={() => void handleExport()}
+        >
+          Export pack
+        </Button>
+        {notice && (
+          <span data-testid="prompts-notice" className="self-center text-sm text-foreground/60">
+            {notice}
+          </span>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         {prompts.map((p) => (
@@ -126,6 +195,7 @@ export function PromptsSection() {
                       disabled={busyId === p.id}
                       onChange={(e) => setEditBody(e.target.value)}
                     />
+                    <p className="text-xs text-foreground/50">{TIMESTAMPS_HINT}</p>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -194,6 +264,7 @@ export function PromptsSection() {
             disabled={adding}
             onChange={(e) => setBody(e.target.value)}
           />
+          <p className="text-xs text-foreground/50">{TIMESTAMPS_HINT}</p>
           <Button
             data-testid="prompt-add"
             disabled={adding || !name || !body}
