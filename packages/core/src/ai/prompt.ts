@@ -46,18 +46,51 @@ function formatTimestamp(ms: number): string {
 }
 
 /**
+ * Marker a prompt body includes to ask for a timestamped transcript (`[mm:ss] line`) instead
+ * of flat text — needed by anything that must cite times: YouTube chapters, clip finding,
+ * show notes. Lives in the body rather than a `prompt` column so it survives prompt
+ * import/export, which carries only name + body.
+ */
+export const TIMESTAMPS_TOKEN = "{{TIMESTAMPS}}";
+
+/** One transcript segment reduced to what the assembler needs. `start` is in seconds. */
+export interface TranscriptLine {
+  start: number;
+  text: string;
+}
+
+/**
  * Assembles the AI content: the prompt, the transcript, and — when frames were
  * extracted — a timestamped list of on-screen slide text. Kept as a separate section
  * (not interleaved) so the model correlates it to the transcript by timestamp; this
  * stays text-only, so no AI provider needs an image/vision code path. With no frames
  * the output is byte-identical to the transcript-only form.
+ *
+ * When the prompt body contains `{{TIMESTAMPS}}` (`TIMESTAMPS_TOKEN`), the marker is stripped from the
+ * prompt and the transcript section is rendered as `[mm:ss] line` per segment instead of
+ * flat text (falling back to flat text if there are no usable segments). Without the
+ * marker, `segments` is ignored and the output is unchanged.
  */
 export function assembleSummaryContent(
   promptBody: string,
   transcriptText: string,
   frames: FrameNote[] = [],
+  segments: TranscriptLine[] = [],
 ): string {
-  const base = `${promptBody.trim()}\n\n----- TRANSCRIPT -----\n${transcriptText.trim()}`;
+  const wantsTimestamps = promptBody.includes(TIMESTAMPS_TOKEN);
+  const body = wantsTimestamps
+    ? promptBody.split(TIMESTAMPS_TOKEN).join("").trim()
+    : promptBody.trim();
+
+  const timed = wantsTimestamps
+    ? segments
+        .filter((s) => s.text.trim())
+        .map((s) => `[${formatTimestamp(s.start * 1000)}] ${s.text.trim()}`)
+        .join("\n")
+    : "";
+  const transcript = timed || transcriptText.trim();
+
+  const base = `${body}\n\n----- TRANSCRIPT -----\n${transcript}`;
   const slides = frames.filter((f) => f.text.trim());
   if (slides.length === 0) return base;
   const lines = slides.map((f) => `[${formatTimestamp(f.tsMs)}] ${f.text.trim()}`).join("\n");

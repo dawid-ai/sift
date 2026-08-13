@@ -36,5 +36,5 @@ export type { DocSegment, DocFrame, Block } from "./frames/document";
 
 export * from "./ai/types";
 export { AiRegistry } from "./ai/registry";
-export { assembleSummaryContent, SUMMARY_SYSTEM_PROMPT, POLISH_SYSTEM_PROMPT } from "./ai/prompt";
-export type { FrameNote } from "./ai/prompt";
+export { assembleSummaryContent, SUMMARY_SYSTEM_PROMPT, POLISH_SYSTEM_PROMPT, TIMESTAMPS_TOKEN } from "./ai/prompt";
+export type { FrameNote, TranscriptLine } from "./ai/prompt";
