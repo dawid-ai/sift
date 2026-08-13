@@ -11,6 +11,7 @@ export * from "./transcript/types";
 export { TranscriptRegistry } from "./transcript/registry";
 export { resolveTranscriptProvider } from "./transcript/resolve";
 export { parseVtt, segmentsToText } from "./transcript/vtt";
+export { segmentsToSrt } from "./transcript/srt";
 export { baseLangCode, pickTranscriptLanguage } from "./transcript/language";
 export { parseJson3 } from "./transcript/json3";
 
