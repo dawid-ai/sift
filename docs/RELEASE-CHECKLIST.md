@@ -30,5 +30,11 @@ Both of these are one-time setup, not part of the per-release flow below.
 
 See [`.claude/skills/release-update/SKILL.md`](../.claude/skills/release-update/SKILL.md)
 (`/release-update`) for the actual cut-a-release flow: version bump, `UPDATES.md` entry,
-commit + tag, and the Windows installer build. Notes on releases already shipped live in
-[`UPDATES.md`](../UPDATES.md).
+commit + tag, the Windows installer build, and — once the tag's installer is published —
+bumping the `packaging/winget/` and `packaging/scoop/sift.json` manifests to the new
+version/URL/hash before any upstream winget-pkgs or Scoop Extras submission. Notes on
+releases already shipped live in [`UPDATES.md`](../UPDATES.md).
+
+The manifests checked into `packaging/` right now pin whatever version they were last
+bumped to — treat them as stale until the skill's manifest-bump step has run for the
+version you're about to submit upstream.

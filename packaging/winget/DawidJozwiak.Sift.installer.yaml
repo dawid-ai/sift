@@ -1,0 +1,13 @@
+PackageIdentifier: DawidJozwiak.Sift
+PackageVersion: 0.3.0
+InstallerType: nullsoft
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/dawid-ai/sift/releases/download/v0.3.0/Sift-Setup.exe
+    InstallerSha256: 586CEC6B39BF35525A19AC5B7477911BDFD43220907886E1AB81254458E3803F
+ManifestType: installer
+ManifestVersion: 1.6.0

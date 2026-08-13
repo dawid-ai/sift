@@ -1,0 +1,23 @@
+{
+  "version": "0.3.0",
+  "description": "Turns any video into a searchable, transcribed, summarized library — 100% local.",
+  "homepage": "https://github.com/dawid-ai/sift",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/dawid-ai/sift/releases/download/v0.3.0/Sift-Setup.exe#/dl.exe",
+      "hash": "586cec6b39bf35525a19ac5b7477911bdfd43220907886e1ab81254458e3803f"
+    }
+  },
+  "innosetup": false,
+  "checkver": {
+    "github": "https://github.com/dawid-ai/sift"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/dawid-ai/sift/releases/download/v$version/Sift-Setup.exe#/dl.exe"
+      }
+    }
+  }
+}
