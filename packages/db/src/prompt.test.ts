@@ -7,6 +7,7 @@ import {
   createPrompt,
   updatePrompt,
   deletePrompt,
+  upsertPromptByName,
   insertMedia,
   insertSummary,
 } from "./index";
@@ -99,5 +100,44 @@ describe("prompt queries", () => {
     });
     expect(() => deletePrompt(db, created.id)).toThrow(/used by saved summaries/);
     expect(getPromptById(db, created.id)).toBeDefined();
+  });
+});
+
+describe("upsertPromptByName", () => {
+  it("creates a prompt when the name is new", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const row = upsertPromptByName(db, { name: "Fresh pack entry", body: "Do the thing." });
+    expect(row.name).toBe("Fresh pack entry");
+    expect(row.is_builtin).toBe(0);
+    expect(getPromptById(db, row.id)?.body).toBe("Do the thing.");
+  });
+
+  it("updates the body in place when the name already exists", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const first = upsertPromptByName(db, { name: "Pack entry", body: "v1" });
+    const second = upsertPromptByName(db, { name: "Pack entry", body: "v2" });
+    expect(second.id).toBe(first.id);
+    expect(second.body).toBe("v2");
+    expect(listPrompts(db).filter((p) => p.name === "Pack entry")).toHaveLength(1);
+  });
+
+  it("updates a prompt that saved summaries reference (delete would throw here)", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const p = upsertPromptByName(db, { name: "Used", body: "v1" });
+    const mediaId = media(db);
+    insertSummary(db, {
+      media_id: mediaId, prompt_id: p.id, provider_id: "anthropic",
+      model: "m", text: "a summary",
+    });
+    expect(upsertPromptByName(db, { name: "Used", body: "v2" }).body).toBe("v2");
+  });
+
+  it("refuses to overwrite a built-in prompt", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    expect(() => upsertPromptByName(db, { name: "TL;DR", body: "hijacked" })).toThrow(/built-in/i);
   });
 });

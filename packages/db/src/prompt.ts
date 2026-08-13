@@ -47,6 +47,29 @@ export function updatePrompt(
   return getPromptById(db, id)!;
 }
 
+/**
+ * Creates the prompt, or replaces the body of the existing prompt with the same name.
+ * Used by prompt-pack import: matching on NAME (not id) is what makes a pack re-importable
+ * after an update, and updating in place avoids `deletePrompt`'s "used by saved summaries"
+ * guard — a re-import must not fail on the prompts the user actually ran.
+ * Built-ins are refused rather than silently skipped, so a pack can't shadow them.
+ */
+export function upsertPromptByName(
+  db: SiftDatabase,
+  input: { name: string; body: string },
+): PromptRow {
+  const existing = db
+    .prepare<PromptRow>("SELECT * FROM prompt WHERE name = @name ORDER BY id ASC LIMIT 1")
+    .get({ name: input.name });
+  if (!existing) return createPrompt(db, input);
+  if (existing.is_builtin === 1) throw new Error(`"${input.name}" is a built-in prompt`);
+  db.prepare("UPDATE prompt SET body = @body WHERE id = @id").run({
+    body: input.body,
+    id: existing.id,
+  });
+  return getPromptById(db, existing.id)!;
+}
+
 export function deletePrompt(db: SiftDatabase, id: number): void {
   const existing = getPromptById(db, id);
   if (!existing) return;
