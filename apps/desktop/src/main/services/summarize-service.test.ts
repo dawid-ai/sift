@@ -294,4 +294,92 @@ describe("SummarizeService", () => {
 
     db.close();
   });
+
+  it("passes a timestamped transcript when the prompt opts in", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const media = insertMedia(db, {
+      source_url: metadata.sourceUrl,
+      platform_id: metadata.platform.id,
+      external_id: metadata.externalId,
+      title: metadata.title,
+      uploader: metadata.uploader,
+      uploader_url: metadata.uploaderUrl,
+      duration_s: metadata.durationSec,
+      thumbnail_path: metadata.thumbnailUrl,
+      view_count: metadata.viewCount,
+      like_count: metadata.likeCount,
+      published_at: null,
+      metadata_json: JSON.stringify(metadata.raw),
+      download_status: "none",
+    });
+    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    insertTranscript(db, {
+      media_id: media.id,
+      provider_id: "whisper",
+      language: "en",
+      text: "one two",
+      segments_json: JSON.stringify([
+        { start: 0, end: 3, text: "one" },
+        { start: 65, end: 70, text: "two" },
+      ]),
+      model: "ggml-small",
+    });
+
+    const { provider, lastInput } = makeFakeProvider();
+    const registry = new AiRegistry();
+    registry.register(provider);
+    const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
+    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+
+    await service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id });
+
+    expect(lastInput()?.content).toContain("[00:00] one");
+    expect(lastInput()?.content).toContain("[01:05] two");
+    expect(lastInput()?.content).not.toContain("{{TIMESTAMPS}}");
+
+    db.close();
+  });
+
+  it("leaves a prompt without the marker on flat text", async () => {
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const media = insertMedia(db, {
+      source_url: metadata.sourceUrl,
+      platform_id: metadata.platform.id,
+      external_id: metadata.externalId,
+      title: metadata.title,
+      uploader: metadata.uploader,
+      uploader_url: metadata.uploaderUrl,
+      duration_s: metadata.durationSec,
+      thumbnail_path: metadata.thumbnailUrl,
+      view_count: metadata.viewCount,
+      like_count: metadata.likeCount,
+      published_at: null,
+      metadata_json: JSON.stringify(metadata.raw),
+      download_status: "none",
+    });
+    const prompt = createPrompt(db, { name: "Plain", body: "Summarize." });
+    insertTranscript(db, {
+      media_id: media.id,
+      provider_id: "whisper",
+      language: "en",
+      text: "one two",
+      segments_json: JSON.stringify([{ start: 0, end: 3, text: "one" }]),
+      model: null,
+    });
+
+    const { provider, lastInput } = makeFakeProvider();
+    const registry = new AiRegistry();
+    registry.register(provider);
+    const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
+    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+
+    await service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id });
+
+    expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
+    expect(lastInput()?.content).not.toContain("[00:00]");
+
+    db.close();
+  });
 });
