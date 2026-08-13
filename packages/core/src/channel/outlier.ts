@@ -4,7 +4,11 @@
 // no age normalisation — yt-dlp's flat channel listing carries no upload date, and fetching
 // per-video dates for a 200-video pool is a separate (slow) request per video. An old evergreen
 // hit therefore reads as an outlier. Position in the newest-first list is the age proxy the UI
-// gives the user. If real age normalisation ever matters, persist upload dates first.
+// gives the user. If real age normalisation ever matters, persist upload dates first — and note
+// `media.published_at` (packages/db/src/migrations/002-media.sql.ts) is declared INTEGER while
+// the only value yt-dlp gives per-video is `upload_date`, a "YYYYMMDD" string, so every insert
+// site writes null there today; a backfill/column-type fix has to land before this column is
+// usable as that date source.
 
 /** Videos this many times the channel median count as outliers. */
 export const OUTLIER_THRESHOLD = 2;
