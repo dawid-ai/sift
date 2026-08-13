@@ -15,6 +15,7 @@ import { migration013 } from "./migrations/013-frame-included.sql";
 import { migration014 } from "./migrations/014-frame-crop.sql";
 import { migration015 } from "./migrations/015-document.sql";
 import { migration016 } from "./migrations/016-artifact-file-path.sql";
+import { migration017CreatorPrompts } from "./migrations/017-creator-prompts.sql";
 
 const MIGRATIONS: { version: number; sql: string }[] = [
   { version: 1, sql: migration001 },
@@ -33,6 +34,7 @@ const MIGRATIONS: { version: number; sql: string }[] = [
   { version: 14, sql: migration014 },
   { version: 15, sql: migration015 },
   { version: 16, sql: migration016 },
+  { version: 17, sql: migration017CreatorPrompts },
 ];
 
 // `migrations` param defaults to the real list; overridable so tests can inject a

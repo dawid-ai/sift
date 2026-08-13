@@ -27,10 +27,13 @@ describe("prompt queries", () => {
   beforeEach(async () => { db = await openTestDatabase(); runMigrations(db); });
 
   it("returns the 3 seeded built-ins in seed order", () => {
+    // listPrompts also returns the (non-builtin) creator prompt pack seeded by migration
+    // 017, so this asserts the built-ins are present and ordered first rather than a bare
+    // total count of every row.
     const prompts = listPrompts(db);
-    expect(prompts).toHaveLength(3);
-    expect(prompts.every((p) => p.is_builtin === 1)).toBe(true);
-    expect(prompts.map((p) => p.name)).toEqual(["Key points", "Detailed summary", "TL;DR"]);
+    const builtins = prompts.filter((p) => p.is_builtin === 1);
+    expect(builtins.map((p) => p.name)).toEqual(["Key points", "Detailed summary", "TL;DR"]);
+    expect(prompts.slice(0, 3)).toEqual(builtins);
   });
 
   it("getPromptById returns the matching row", () => {
@@ -39,6 +42,9 @@ describe("prompt queries", () => {
   });
 
   it("createPrompt inserts a user prompt after the built-ins", () => {
+    // Baseline includes the 3 built-ins plus the (non-builtin) creator prompt pack seeded
+    // by migration 017, so this asserts growth and ordering rather than a fixed total.
+    const before = listPrompts(db);
     const row = createPrompt(db, { name: "My prompt", body: "Do the thing" });
     expect(row.is_builtin).toBe(0);
     expect(row.name).toBe("My prompt");
@@ -46,8 +52,8 @@ describe("prompt queries", () => {
     expect(row.created_at).toBeGreaterThan(0);
 
     const prompts = listPrompts(db);
-    expect(prompts).toHaveLength(4);
-    expect(prompts[3]).toEqual(row);
+    expect(prompts).toHaveLength(before.length + 1);
+    expect(prompts.at(-1)).toEqual(row);
   });
 
   it("updatePrompt changes name/body of a user prompt and returns it", () => {
