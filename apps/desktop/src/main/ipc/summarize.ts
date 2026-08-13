@@ -11,12 +11,14 @@ import {
 import {
   IPC,
   type MediaMetadata,
+  type PromptImportResult,
   type PromptInfo,
   type PromptPackEntry,
   type SummaryToken,
 } from "@sift/ipc-contract";
 import type { SummarizeService } from "../services/summarize-service";
 import { getDb } from "../index";
+import { parsePromptPack } from "./prompt-pack";
 
 function toPromptInfo(row: PromptRow): PromptInfo {
   return { id: row.id, name: row.name, body: row.body, isBuiltin: row.is_builtin === 1 };
@@ -82,38 +84,49 @@ export function registerSummarizeIpc(service: SummarizeService): void {
     return filePath;
   });
 
-  ipcMain.handle(IPC.promptsImport, async () => {
+  ipcMain.handle(IPC.promptsImport, async (): Promise<PromptImportResult> => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
       title: "Import prompts",
       properties: ["openFile"],
       filters: [{ name: "Prompt pack", extensions: ["json"] }],
     });
     const file = filePaths[0];
-    if (canceled || !file) return 0;
-    const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
-    if (!Array.isArray(parsed)) {
-      throw new Error("That file isn't a prompt pack (expected a JSON array).");
+    if (canceled || !file) return { imported: 0, skipped: 0 };
+    const { entries, skipped } = parsePromptPack(readFileSync(file, "utf8"));
+    if (entries.length === 0) {
+      throw new Error(
+        skipped > 0
+          ? `No valid prompts in that file — all ${skipped} entries were malformed.`
+          : "No valid prompts in that file.",
+      );
     }
-    const entries = parsed.filter(
-      (e): e is PromptPackEntry =>
-        typeof e === "object" &&
-        e !== null &&
-        typeof (e as PromptPackEntry).name === "string" &&
-        (e as PromptPackEntry).name.trim() !== "" &&
-        typeof (e as PromptPackEntry).body === "string" &&
-        (e as PromptPackEntry).body.trim() !== "",
-    );
-    if (entries.length === 0) throw new Error("No valid prompts in that file.");
     const db = getDb();
     // ponytail: not wrapped in a transaction — SiftDatabase exposes only exec/prepare
     // (no `.transaction`), matching every other multi-row db write in this codebase
     // (see subscription.ts's replaceSubscriptions). Ceiling: if a later entry's name
     // collides with a built-in, upsertPromptByName throws after earlier entries in the
-    // same pack already landed — acceptable since built-in names are reserved and packs
-    // are hand-authored/reviewed, not adversarial input. Upgrade path: add `.transaction`
-    // to the SiftDatabase interface (both the better-sqlite3 and sql.js drivers support
-    // it) and wrap this loop if packs grow large enough for partial-apply to matter.
-    for (const e of entries) upsertPromptByName(db, { name: e.name.trim(), body: e.body });
-    return entries.length;
+    // same pack already landed. That partial write is now made visible rather than
+    // hidden: the catch below counts how many succeeded and folds that into the thrown
+    // message, and the renderer's catch branch calls refresh() so the prompt list shows
+    // the true post-failure state instead of going stale. It's also safe to retry —
+    // upsert-by-name means re-running import after fixing the pack does not duplicate the
+    // entries that already landed. Upgrade path: add `.transaction` to the SiftDatabase
+    // interface (both the better-sqlite3 and sql.js drivers support it) and wrap this loop
+    // if packs grow large enough for partial-apply to matter beyond this messaging.
+    let imported = 0;
+    try {
+      for (const e of entries) {
+        upsertPromptByName(db, { name: e.name.trim(), body: e.body });
+        imported++;
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        imported > 0
+          ? `${reason} (${imported} of ${entries.length} entries in this pack were already imported before this failure — fixing the pack and re-running import is safe, it won't duplicate them.)`
+          : reason,
+      );
+    }
+    return { imported, skipped };
   });
 }

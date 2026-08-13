@@ -509,6 +509,15 @@ export interface PromptPackEntry {
   body: string;
 }
 
+/** Outcome of a prompt-pack import: how many entries were upserted vs. dropped for being
+ * malformed (missing/empty/wrong-typed `name` or `body`). Surfacing both — not just the
+ * imported count — is what lets the renderer tell the user a hand-edited pack had typos
+ * instead of silently importing a subset. Both are 0 if the dialog was cancelled. */
+export interface PromptImportResult {
+  imported: number;
+  skipped: number;
+}
+
 /** A registered AI provider and the models it offers. */
 export interface AiProviderInfo {
   id: string;
@@ -784,8 +793,10 @@ export interface SiftApi {
     delete(id: number): Promise<void>;
     /** Writes the user's non-builtin prompts to a chosen .json path; null if cancelled. */
     export(): Promise<string | null>;
-    /** Imports a pack, upserting by name. Resolves to the number imported (0 if cancelled). */
-    import(): Promise<number>;
+    /** Imports a pack, upserting by name. Reports counts of imported vs. skipped-as-malformed
+     * entries ({ imported: 0, skipped: 0 } if the dialog was cancelled). Rejects if the file
+     * isn't valid JSON, isn't an array, or has zero usable entries — never a silent no-op. */
+    import(): Promise<PromptImportResult>;
   };
   aiProviders: {
     list(): Promise<AiProviderInfo[]>;

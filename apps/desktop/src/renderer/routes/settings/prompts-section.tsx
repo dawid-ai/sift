@@ -94,13 +94,22 @@ export function PromptsSection() {
     setError(null);
     setNotice(null);
     try {
-      const count = await window.sift.prompts.import();
-      if (count > 0) {
-        setNotice(`Imported ${count} prompt${count === 1 ? "" : "s"}.`);
+      const { imported, skipped } = await window.sift.prompts.import();
+      if (imported > 0 || skipped > 0) {
+        const total = imported + skipped;
+        setNotice(
+          skipped > 0
+            ? `Imported ${imported} of ${total}; skipped ${skipped} malformed entr${skipped === 1 ? "y" : "ies"}.`
+            : `Imported ${imported} prompt${imported === 1 ? "" : "s"}.`,
+        );
         await refresh();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      // A thrown error can still follow a partial write (e.g. a later pack entry collided
+      // with a built-in name after earlier entries were already upserted) — refresh so the
+      // list reflects what actually happened rather than going stale under the error.
+      await refresh();
     }
   }
 
