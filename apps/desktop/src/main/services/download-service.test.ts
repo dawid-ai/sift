@@ -9,6 +9,7 @@ import {
   getMediaById,
   getSummariesByMediaId,
   getTranscriptsByMediaId,
+  insertDownload,
   insertMedia,
   insertSummary,
   insertTranscript,
@@ -20,6 +21,7 @@ import {
 } from "@sift/db";
 import type { DownloadOption, DownloadProgress, MediaMetadata } from "@sift/ipc-contract";
 import type { DownloadOpts, RawDownloadProgress, YtDlpRunner } from "../sidecars/ytdlp";
+import { LOCAL_FORMAT_ID } from "../local-file";
 import { DownloadService, downloadDisplayLabel } from "./download-service";
 
 describe("downloadDisplayLabel", () => {
@@ -859,6 +861,84 @@ describe("DownloadService", () => {
 
     expect(getSummariesByMediaId(db, m.id)).toHaveLength(0);
     expect(getMediaById(db, m.id)).toBeDefined();
+
+    db.close();
+  });
+
+  it("remove() deletes the rows but never unlinks an imported local file", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner({ filePaths: ["/dl/Chan__Vid.mp4"] });
+    const { service, unlinked } = makeService({ db, runner, downloadsDir });
+
+    // A normal download (its file IS ours to delete) …
+    await service.start({ metadata, option: OPTION });
+    const mediaId = listMedia(db)[0]!.id;
+    // … plus an imported local file on the same media row (referenced in place, NOT ours).
+    insertDownload(db, {
+      media_id: mediaId,
+      format_id: LOCAL_FORMAT_ID,
+      label: "Local file",
+      ext: "mp4",
+      height: null,
+      file_path: "D:\\my-videos\\precious.mp4",
+      file_size: 123,
+      status: "done",
+      error: null,
+    });
+
+    await service.remove(mediaId);
+
+    expect(unlinked).toEqual(["/dl/Chan__Vid.mp4"]);
+    expect(unlinked).not.toContain("D:\\my-videos\\precious.mp4");
+    expect(getMediaById(db, mediaId)).toBeUndefined();
+    expect(listDownloadsByMediaId(db, mediaId)).toHaveLength(0);
+
+    db.close();
+  });
+
+  it("removeDownload() deletes an imported row without unlinking the user's file", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    const { service, unlinked } = makeService({ db, runner, downloadsDir });
+
+    const media = insertMedia(db, {
+      source_url: "file:///D:/my-videos/precious.mp4",
+      platform_id: "local",
+      external_id: null,
+      title: "precious",
+      uploader: null,
+      uploader_url: null,
+      duration_s: null,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      channel_id: null,
+      download_status: "none",
+    });
+    const row = insertDownload(db, {
+      media_id: media.id,
+      format_id: LOCAL_FORMAT_ID,
+      label: "Local file",
+      ext: "mp4",
+      height: null,
+      file_path: "D:\\my-videos\\precious.mp4",
+      file_size: 123,
+      status: "done",
+      error: null,
+    });
+
+    await service.removeDownload(row.id);
+
+    expect(unlinked).toEqual([]);
+    expect(listDownloadsByMediaId(db, media.id)).toHaveLength(0);
 
     db.close();
   });

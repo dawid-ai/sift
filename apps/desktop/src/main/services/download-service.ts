@@ -49,6 +49,7 @@ import { isAuthError } from "../auth/status";
 import { buildM3U } from "./m3u";
 import type { YtDlpRunner } from "../sidecars/ytdlp";
 import { resolveAssetPath } from "../asset-path";
+import { LOCAL_FORMAT_ID } from "../local-file";
 
 // Note: deliberately does NOT import `../paths` (which imports `electron`) — this
 // service must stay loadable under plain Node for its Vitest suite. `mkdirSync` is
@@ -304,6 +305,9 @@ export class DownloadService {
     const unlink = this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
 
     for (const d of listDownloadsByMediaId(db, id)) {
+      // Imported local files are referenced where the user keeps them, never copied —
+      // so removing the library row must never delete their file. The row still goes.
+      if (d.format_id === LOCAL_FORMAT_ID) continue;
       if (d.file_path && fileExists(d.file_path)) unlink(d.file_path);
     }
     deleteMedia(db, id);
@@ -356,7 +360,10 @@ export class DownloadService {
     const unlink = this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
 
     const row = getDownloadById(db, id);
-    if (row?.file_path && fileExists(row.file_path)) unlink(row.file_path);
+    // Same guard as remove(): an imported local file is the user's, not ours to delete.
+    if (row && row.format_id !== LOCAL_FORMAT_ID && row.file_path && fileExists(row.file_path)) {
+      unlink(row.file_path);
+    }
     deleteDownload(db, id);
   }
 
