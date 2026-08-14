@@ -155,3 +155,41 @@ describe("MetadataService", () => {
     expect(seen).toBe("/c/youtube.txt");
   });
 });
+
+describe("MetadataService.fetch — local files", () => {
+  it("synthesizes metadata for a file: URL without invoking yt-dlp", async () => {
+    let dumpJsonCalls = 0;
+    const service = new MetadataService(
+      fakeRunner({
+        dumpJson: async () => {
+          dumpJsonCalls += 1;
+          return CANNED_YOUTUBE_JSON;
+        },
+      }),
+    );
+
+    const meta = await service.fetch("file:///D:/vids/Team%20Standup.mp4");
+
+    expect(dumpJsonCalls).toBe(0);
+    expect(meta.title).toBe("Team Standup");
+    expect(meta.platform.id).toBe("local");
+    expect(meta.hasCaptions).toBe(false);
+    expect(meta.sourceUrl).toBe("file:///D:/vids/Team%20Standup.mp4");
+  });
+
+  it("still goes to yt-dlp for a remote URL", async () => {
+    let dumpJsonCalls = 0;
+    const service = new MetadataService(
+      fakeRunner({
+        dumpJson: async () => {
+          dumpJsonCalls += 1;
+          return CANNED_YOUTUBE_JSON;
+        },
+      }),
+    );
+
+    await service.fetch("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+
+    expect(dumpJsonCalls).toBe(1);
+  });
+});

@@ -1,6 +1,7 @@
 import { baseLangCode, resolvePlatform } from "@sift/core";
 import type { MediaMetadata } from "@sift/ipc-contract";
 import { isAuthError } from "../auth/status";
+import { filePathFromUrl, isLocalFileUrl, localFileMetadata } from "../local-file";
 import type { YtDlpRunner } from "../sidecars/ytdlp";
 import { computeDownloadOptions } from "./download-options";
 
@@ -97,6 +98,16 @@ export class MetadataService {
   ) {}
 
   async fetch(url: string): Promise<MediaMetadata> {
+    // Imported local files never touch yt-dlp — their metadata is synthesized from the
+    // path. media-detail.tsx's ensureMetadata() routes every transcribe/summarize action
+    // through here, so without this an imported item's detail page fails on every action.
+    //
+    // durationSec is null on this path, deliberately: it's display-only, it's already
+    // persisted on the media row at import time, and nothing in the transcript or
+    // summarize path reads metadata.durationSec. Do not "fix" this with a DB lookup —
+    // that would give a framework-free service a database dependency.
+    if (isLocalFileUrl(url)) return localFileMetadata(filePathFromUrl(url));
+
     const getCookiesFile = this.opts.getCookiesFile ?? (async () => null);
     const cookiesFile = (await getCookiesFile(url)) ?? undefined;
     let raw: unknown;
