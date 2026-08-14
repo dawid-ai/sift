@@ -7,6 +7,8 @@ export type { PlatformTier, PlatformInfo } from "./platforms/registry";
 
 export { sanitizeFilename, buildOutputBaseName } from "./filename/sanitize";
 
+export * from "./media/extensions";
+
 export * from "./transcript/types";
 export { TranscriptRegistry } from "./transcript/registry";
 export { resolveTranscriptProvider } from "./transcript/resolve";
