@@ -229,6 +229,142 @@ progress bar visibly tracks (not just jumps 0→100), and (c) the Library row
 flips from `downloading` to `done`. This is tracked as a Phase 3 follow-up, not
 a gap in the automated suite.
 
+## Local file import (drop/pick → skip download → transcribe)
+
+A media file the user already has on disk can be dropped onto the window (or chosen
+via a picker) to become library media and go straight to transcription — no yt-dlp
+call, no download stage:
+
+- **Helpers** (`apps/desktop/src/main/local-file.ts`): `LOCAL_FORMAT_ID` (`"local"`,
+  the `download.format_id` for an imported file — see "Design decisions" below),
+  `isLocalFileUrl(url)` (true for `file:` URLs — the identity key for imported
+  media), `filePathFromUrl(url)` (`fileURLToPath`, the inverse), and
+  `localFileMetadata(absPath, durationSec?)`, which synthesizes a full
+  `MediaMetadata` with no yt-dlp involved: `sourceUrl` is
+  `pathToFileURL(absPath).href`, `platform: { id: "local", label: "Local file",
+  tier: "tested" }` (the pseudo-platform is built here rather than added to the
+  curated `TESTED_PLATFORMS` list of real yt-dlp extractor keys, since `"tested"`
+  here only suppresses the UI's "this platform is untested" caution, not a claim
+  about yt-dlp coverage), and `hasCaptions: false` — load-bearing, since it makes
+  `ytdlp-subs`'s `canHandle` false, so provider resolution falls straight through to
+  Whisper with no change to any provider or to `resolveTranscriptProvider`.
+  Deliberately **not** in `@sift/core`: it needs `node:url` for correct Windows
+  path→URL encoding (drive letters, backslashes, spaces, non-ASCII), and core has
+  zero `node:` imports because the renderer imports it directly. It also
+  deliberately skips `../paths` (which imports `electron`), matching
+  `download-service.ts`/`metadata-service.ts`, so it stays loadable under plain
+  Node for its own Vitest suite.
+- **Service** (`DownloadService.importLocal`,
+  `apps/desktop/src/main/services/download-service.ts`): rejects if the file no
+  longer exists, then finds-or-creates the identity `media` row by the `file://`
+  source URL (same find-or-create as `start()`) and upserts a `download` row with
+  `format_id: LOCAL_FORMAT_ID`, `status: "done"`, and `file_path` set to **the
+  user's own path** — imports are referenced in place, never copied. That done row
+  is the whole trick: `TranscriptService` reads it as `audioPath`, exactly what
+  Whisper's `canHandle` requires, and `sift-media://` gates on download-table
+  membership rather than a path prefix, so the file plays in-app from wherever it
+  lives. Re-importing the same path is idempotent — same media row, same download
+  row upserted.
+- **Delete guard** (`remove()` / `removeDownload()`, same file): both skip the
+  on-disk unlink when `d.format_id === LOCAL_FORMAT_ID`, before deleting the DB row
+  either way. See "Design decisions" below for why this isn't cleanup work.
+- **Metadata short-circuit** (`MetadataService.fetch`,
+  `apps/desktop/src/main/services/metadata-service.ts`): the first line of `fetch`
+  checks `isLocalFileUrl(url)` and returns `localFileMetadata(filePathFromUrl(url))`
+  with no yt-dlp call. `media-detail.tsx`'s `ensureMetadata()` — the single choke
+  point every transcribe/summarize/retry-download action in the detail view routes
+  through — calls `metadata:fetch(media.sourceUrl)` unconditionally; because the
+  short-circuit lives inside the service, the renderer needs **no branch** for
+  imported media, it just works. `durationSec` comes back `null` on this path
+  deliberately: it's display-only, already persisted on the media row at import
+  time, and nothing downstream reads `metadata.durationSec` — a DB lookup here
+  would give a framework-free service a database dependency.
+- **IPC** (`apps/desktop/src/main/ipc/import.ts`, `registerImportIpc`):
+  `import:local` invokes `DownloadService.importLocal`, letting errors propagate
+  (`ipcMain.handle` → rejected renderer `invoke()`). `import:pick` opens
+  `dialog.showOpenDialog` filtered to `MEDIA_EXTENSIONS` (`packages/core`, shared
+  with the renderer's drop filter so the two entry points can never accept
+  different file sets), multi-select. `registerImportIpc` takes a window getter
+  (`() => BrowserWindow.getAllWindows()`, wired in `main/index.ts` next to
+  `registerDownloadIpc`) and parents the dialog to the first window so it's
+  app-modal, matching `frames.ts`/`summarize.ts`. Returns `[]` on cancel.
+- **Renderer — hook** (`apps/desktop/src/renderer/lib/use-file-import.ts`,
+  `useFileImport(onDone)`): wires `dragover`/`dragleave`/`drop` on `window`
+  (`preventDefault` on both `dragover` and `drop` — without it, Electron's default
+  behavior navigates the whole window to the dropped file) plus the `pick()` entry
+  point. Dropped/picked files run through `runImports`, strictly one at a time,
+  each calling `import.local` → `metadata.fetch` → `transcript.get` in sequence,
+  reporting any per-file failure but continuing the batch, then calling `onDone()`
+  (navigates to Library) once at least one import succeeded. A `running` ref (not
+  state, so the drag-listener effect only depends on `runImports` and registers its
+  listeners exactly once) rejects a second drop/pick while a batch is in flight —
+  this is load-bearing, not just UX polish: `TranscriptService` only dedupes
+  in-flight jobs per `sourceUrl`, so two *different* files dropped together would
+  otherwise both launch a Whisper run concurrently. Classification is delegated to
+  a pure, exported `partitionDropped(files)` helper — DOM-free so it's
+  unit-testable without jsdom (`use-file-import.test.ts`) — which sorts each
+  dropped file into accepted, "not a media file" (fails `isMediaFile`), or
+  "couldn't read where it lives on disk" (`File.path` missing — see the
+  `ponytail:` note on `droppedPath` for why that's Electron-version-sensitive), and
+  returns one combined notice string covering everything skipped so a mixed drop
+  never silently loses part of itself. `onDrop` re-pairs `partitionDropped`'s
+  accepted entries back to their `File` objects (same filter, same order) to run
+  `probeDuration` — a throwaway `<video>` element that resolves a file's duration
+  for display, failing safe to `null` on decode error or a 5s timeout, no ffprobe
+  involved.
+- **Renderer — overlay** (`apps/desktop/src/renderer/components/drop-overlay.tsx`,
+  rendered by `App()` so a drop works from any view): a full-window affordance
+  while dragging (`data-testid="drop-overlay"`, "Drop to transcribe"), a busy line
+  while a file is importing (`data-testid="import-busy"`, "Importing `<name>`…"),
+  and an error line (`data-testid="import-error"`). `HomeView` additionally shows a
+  `data-testid="home-drop-hint"` line with a `data-testid="home-pick-file"` button
+  for the native picker, for anyone who doesn't know they can drag onto the window.
+
+### Offline import e2e
+
+`apps/desktop/e2e/import.spec.ts` writes a throwaway `.mp4` (contents don't
+matter — the fixture Whisper provider only requires a `done` download row to
+exist) and drives the same pipeline the drop handler drives, directly from the
+page context: `window.sift.import.local({ path, durationSec })` →
+`window.sift.metadata.fetch(record.sourceUrl)` →
+`window.sift.transcript.get({ metadata })`. It does this rather than a real
+`DataTransfer` drop because a Playwright-constructed `File` can't carry
+Electron's `path` through a synthetic drag event (see the human-test caveat
+below). It then navigates to Library, asserts the row appears, opens it, and
+asserts the transcript renders — using `media-detail-transcript-segment`, the
+Library detail view's own test id (`routes/library/transcript-panel.tsx`), not
+the Home-flow `transcript-segment` used by `transcript.spec.ts`.
+
+**Human-test caveat:** the drag gesture and the native picker have no automated
+coverage — a Playwright-constructed `File` can't carry Electron's non-standard
+`path` through a synthetic `DataTransfer`, and the picker dialog is app-modal,
+outside Playwright's reach. A human pass must verify:
+
+1. Dragging a media file over the window shows the "Drop to transcribe" overlay.
+2. Dropping it imports, transcribes, and lands in the library.
+3. Dropping a `.zip` shows "not an audio or video file" and imports nothing.
+4. **A mixed drop of a media file plus a `.zip` still shows the rejection
+   notice** — `partitionDropped`'s classification is unit-tested for exactly this
+   case (`use-file-import.test.ts`), but nothing exercises the real `drop` event
+   end-to-end (same `File.path`-via-`DataTransfer` limitation as above), so a
+   regression in `onDrop`'s wiring specifically — not the classification logic —
+   would silently skip files with no test catching it.
+5. The "choose a file" button opens the native picker; cancelling does nothing.
+6. Deleting an imported item from the library leaves the original file on disk.
+7. Pressing Esc mid-drag dismisses the overlay rather than leaving it stuck.
+
+### Design decisions
+
+- **The `remove`/`removeDownload` delete guard is not dead code to clean up.**
+  Imported downloads reference files where the user already keeps them, not a copy
+  in the downloads dir — removing the `format_id === LOCAL_FORMAT_ID` check would
+  make deleting a library item delete the user's original file.
+- **`format_id: "local"` is deliberately a value, not a schema column.** No
+  migration was needed to add it, and it slots into `downloadDisplayLabel`'s
+  existing non-`"legacy"` path (`d.format_id !== "legacy"` returns `d.label`
+  verbatim) with no extra branch needed. It doubles as the discriminator the
+  delete guard above checks.
+
 ## Transcript flow (registry → `ytdlp-subs` provider → VTT parsing → transcript row)
 
 Phase 4a adds "Get transcript" for captioned videos. The design is a provider
