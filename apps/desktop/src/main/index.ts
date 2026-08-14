@@ -728,7 +728,7 @@ app.whenReady().then(() => {
       reportAuthFailure: authManager.reportAuthFailure,
     });
     registerDownloadIpc(downloadService, () => BrowserWindow.getAllWindows());
-    registerImportIpc(downloadService);
+    registerImportIpc(downloadService, () => BrowserWindow.getAllWindows());
     registerLibraryIpc(downloadService);
     registerTagsIpc(getDb());
 

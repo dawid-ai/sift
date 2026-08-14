@@ -146,14 +146,26 @@ export function useFileImport(onDone: () => void): FileImportState {
       setError(ALREADY_RUNNING);
       return;
     }
+    // Claim the flag *before* the dialog await, not after it resolves — otherwise a
+    // second click while the native picker is still open passes the check above too
+    // (check-then-set with an await in the gap). Only the two early-return paths below
+    // (cancelled / IPC rejects) release it here; the success path hands the flag to
+    // `runImports`, which already holds it (re-set is a harmless no-op) and clears it
+    // itself once the batch finishes — no unconditional `finally` here, or it would
+    // clear the flag out from under the batch that's now running.
+    running.current = true;
     let paths: string[];
     try {
       paths = await window.sift.import.pick();
     } catch (e) {
+      running.current = false;
       setError(e instanceof Error ? e.message : String(e));
       return;
     }
-    if (paths.length === 0) return;
+    if (paths.length === 0) {
+      running.current = false;
+      return;
+    }
     await runImports(paths.map((path) => ({ path, name: path.split(/[\\/]/).pop() ?? path })));
   }, [runImports]);
 
