@@ -21,7 +21,7 @@ export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
       )}
       {busy && (
         <p data-testid="import-busy" role="status" className="px-4 pt-2 text-sm text-foreground/60">
-          Importing {busy}…
+          Importing and transcribing {busy}…
         </p>
       )}
       {error && (

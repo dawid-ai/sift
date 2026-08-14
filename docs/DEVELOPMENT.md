@@ -283,42 +283,63 @@ call, no download stage:
   `import:local` invokes `DownloadService.importLocal`, letting errors propagate
   (`ipcMain.handle` → rejected renderer `invoke()`). `import:pick` opens
   `dialog.showOpenDialog` filtered to `MEDIA_EXTENSIONS` (`packages/core`, shared
-  with the renderer's drop filter so the two entry points can never accept
-  different file sets), multi-select. `registerImportIpc` takes a window getter
-  (`() => BrowserWindow.getAllWindows()`, wired in `main/index.ts` next to
-  `registerDownloadIpc`) and parents the dialog to the first window so it's
-  app-modal, matching `frames.ts`/`summarize.ts`. Returns `[]` on cancel.
+  with the renderer's drop filter), multi-select, dialog options hoisted to one
+  `dialogOpts` const shared by both the parented and unparented branches
+  (`summarize.ts`'s export/import dialogs are the house shape for this). The
+  filter is advisory only — Windows lets a user type any path into the filename
+  box past it — so the two entry points staying in sync is enforced on the
+  renderer side (`pick()`, below), not by the filter alone. `registerImportIpc`
+  takes a window getter (`() => BrowserWindow.getAllWindows()`, wired in
+  `main/index.ts` next to `registerDownloadIpc`) and parents the dialog to the
+  first window so it's app-modal, matching `frames.ts`/`summarize.ts`. Returns
+  `[]` on cancel.
 - **Renderer — hook** (`apps/desktop/src/renderer/lib/use-file-import.ts`,
-  `useFileImport(onDone)`): wires `dragover`/`dragleave`/`drop` on `window`
-  (`preventDefault` on both `dragover` and `drop` — without it, Electron's default
-  behavior navigates the whole window to the dropped file) plus the `pick()` entry
-  point. Dropped/picked files run through `runImports`, strictly one at a time,
-  each calling `import.local` → `metadata.fetch` → `transcript.get` in sequence,
-  reporting any per-file failure but continuing the batch, then calling `onDone()`
-  (navigates to Library) once at least one import succeeded. A `running` ref (not
-  state, so the drag-listener effect only depends on `runImports` and registers its
-  listeners exactly once) rejects a second drop/pick while a batch is in flight —
-  this is load-bearing, not just UX polish: `TranscriptService` only dedupes
-  in-flight jobs per `sourceUrl`, so two *different* files dropped together would
-  otherwise both launch a Whisper run concurrently. Classification is delegated to
-  a pure, exported `partitionDropped(files)` helper — DOM-free so it's
-  unit-testable without jsdom (`use-file-import.test.ts`) — which sorts each
-  dropped file into accepted, "not a media file" (fails `isMediaFile`), or
-  "couldn't read where it lives on disk" (`File.path` missing — see the
-  `ponytail:` note on `droppedPath` for why that's Electron-version-sensitive), and
-  returns one combined notice string covering everything skipped so a mixed drop
-  never silently loses part of itself. `onDrop` re-pairs `partitionDropped`'s
-  accepted entries back to their `File` objects (same filter, same order) to run
+  `useFileImport(onDone)`): wires `dragover`/`dragleave`/`drop` on `window`, both
+  gated on `e.dataTransfer.types.includes("Files")` so a dropped link or plain
+  text falls through to the browser's own default handling (e.g. filling the
+  Home URL input) instead of being blocked — `main/index.ts`'s `will-navigate`
+  handler on the window's `webContents` is the backstop that keeps that
+  fallthrough from ever navigating the app away. For a "Files" drag,
+  `preventDefault` on both `dragover` and `drop` is what stops Electron's default
+  behavior of navigating the window to the dropped file. `pick()` re-runs picked
+  paths through `partitionDropped` too (see below), so the native picker rejects
+  a non-media file with the same notice the drop path does, rather than letting
+  it fail later inside Whisper. Dropped/picked files run through `runImports`,
+  strictly one at a time, each calling `import.local` → `metadata.fetch` →
+  `transcript.get` in sequence. `import.local` is what commits the library row,
+  so that's tracked separately (as "landed") from a successful transcribe:
+  `onDone()` (navigates to Library) fires once at least one file *landed*, even
+  if every transcribe in the batch failed — Whisper is an on-demand binary, not
+  installed by default, so a failed transcribe on a fresh install is the common
+  case, not an edge case, and the row must still be visible. Each per-file
+  transcribe failure is reported but doesn't abort the batch, and is joined with
+  the caller's own classification notice (e.g. a `.zip` in the same drop) into
+  one combined error message so neither overwrites the other. A `running` ref
+  (not state, so the drag-listener effect only depends on `runImports` and
+  registers its listeners exactly once) rejects a second drop/pick while a batch
+  is in flight — this is load-bearing, not just UX polish: `TranscriptService`
+  only dedupes in-flight jobs per `sourceUrl`, so two *different* files dropped
+  together would otherwise both launch a Whisper run concurrently. Classification
+  is delegated to a pure, exported `partitionDropped(files)` helper — DOM-free so
+  it's unit-testable without jsdom (`use-file-import.test.ts`) — which sorts each
+  file into accepted, "not a media file" (fails `isMediaFile`), or "couldn't read
+  where it lives on disk" (`File.path` missing — see the `ponytail:` note on
+  `droppedPath` for why that's Electron-version-sensitive), and returns one
+  combined notice string covering everything skipped so a mixed batch never
+  silently loses part of itself. `onDrop` re-pairs `partitionDropped`'s accepted
+  entries back to their `File` objects (same filter, same order) to run
   `probeDuration` — a throwaway `<video>` element that resolves a file's duration
   for display, failing safe to `null` on decode error or a 5s timeout, no ffprobe
   involved.
 - **Renderer — overlay** (`apps/desktop/src/renderer/components/drop-overlay.tsx`,
   rendered by `App()` so a drop works from any view): a full-window affordance
   while dragging (`data-testid="drop-overlay"`, "Drop to transcribe"), a busy line
-  while a file is importing (`data-testid="import-busy"`, "Importing `<name>`…"),
-  and an error line (`data-testid="import-error"`). `HomeView` additionally shows a
-  `data-testid="home-drop-hint"` line with a `data-testid="home-pick-file"` button
-  for the native picker, for anyone who doesn't know they can drag onto the window.
+  for the whole import-and-transcribe span, which can run several minutes under a
+  real Whisper model (`data-testid="import-busy"`, "Importing and transcribing
+  `<name>`…"), and an error line (`data-testid="import-error"`). `HomeView`
+  additionally shows a `data-testid="home-drop-hint"` line with a
+  `data-testid="home-pick-file"` button for the native picker, for anyone who
+  doesn't know they can drag onto the window.
 
 ### Offline import e2e
 
@@ -342,7 +363,7 @@ outside Playwright's reach. A human pass must verify:
 
 1. Dragging a media file over the window shows the "Drop to transcribe" overlay.
 2. Dropping it imports, transcribes, and lands in the library.
-3. Dropping a `.zip` shows "not an audio or video file" and imports nothing.
+3. Dropping a `.zip` shows `Not an audio or video file: <name>` and imports nothing.
 4. **A mixed drop of a media file plus a `.zip` still shows the rejection
    notice** — `partitionDropped`'s classification is unit-tested for exactly this
    case (`use-file-import.test.ts`), but nothing exercises the real `drop` event
@@ -352,13 +373,24 @@ outside Playwright's reach. A human pass must verify:
 5. The "choose a file" button opens the native picker; cancelling does nothing.
 6. Deleting an imported item from the library leaves the original file on disk.
 7. Pressing Esc mid-drag dismisses the overlay rather than leaving it stuck.
+8. **Drag a file slowly across the window over several UI elements — the
+   overlay must stay solid, not flicker.** `onDragLeave`'s `relatedTarget ===
+   null` check is a shaky "left the window" test in Chromium; if it flickers,
+   the fix is a dragenter/dragleave depth counter.
+9. **Drag a link from a browser into the window — the app must not navigate
+   away**, and the Home URL input should still accept a dropped URL normally.
 
 ### Design decisions
 
 - **The `remove`/`removeDownload` delete guard is not dead code to clean up.**
   Imported downloads reference files where the user already keeps them, not a copy
   in the downloads dir — removing the `format_id === LOCAL_FORMAT_ID` check would
-  make deleting a library item delete the user's original file.
+  make deleting a library item delete the user's original file. `start()`'s
+  prior-file unlink (on a same-format re-download) carries the identical guard as
+  belt-and-braces: `computeDownloadOptions` never emits a `DownloadOption` with id
+  `"local"`, so it's unreachable today, but the failure mode of getting it wrong is
+  the same permanent deletion, on a line that's cheap to guard. All three unlink
+  sites in `download-service.ts` now read the same way.
 - **`format_id: "local"` is deliberately a value, not a schema column.** No
   migration was needed to add it, and it slots into `downloadDisplayLabel`'s
   existing non-`"legacy"` path (`d.format_id !== "legacy"` returns `d.label`

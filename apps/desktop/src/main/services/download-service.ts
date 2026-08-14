@@ -228,9 +228,16 @@ export class DownloadService {
       }
       // Re-downloading the same format collapses to one row: drop the prior file on disk
       // once the new one has landed at a different path (last download wins).
-      // This unlink is deliberately not guarded by LOCAL_FORMAT_ID: it only fires when
-      // re-downloading the same format_id, and no DownloadOption is ever constructed with id "local".
-      if (prior?.file_path && prior.file_path !== filePath && fileExists(prior.file_path)) {
+      // The LOCAL_FORMAT_ID check is unreachable today — computeDownloadOptions is the
+      // only producer of DownloadOption and only ever emits "${h}p"/"best"/"audio" ids,
+      // never "local" — guarded anyway because the failure mode is deleting a file we
+      // never copied.
+      if (
+        prior?.file_path &&
+        prior.file_path !== filePath &&
+        prior.format_id !== LOCAL_FORMAT_ID &&
+        fileExists(prior.file_path)
+      ) {
         unlink(prior.file_path);
       }
       setDownloadStatus(db, dl.id, "done", filePath, null, null);
