@@ -25,6 +25,7 @@ import { registerDbIpc } from "./ipc/db";
 import { registerBinariesIpc, registerBinaryUpdatesIpc } from "./ipc/binaries";
 import { registerMetadataIpc } from "./ipc/metadata";
 import { registerDownloadIpc } from "./ipc/download";
+import { registerImportIpc } from "./ipc/import";
 import { registerLibraryIpc } from "./ipc/library";
 import { registerTagsIpc } from "./ipc/tags";
 import { registerTranscriptIpc } from "./ipc/transcript";
@@ -727,6 +728,7 @@ app.whenReady().then(() => {
       reportAuthFailure: authManager.reportAuthFailure,
     });
     registerDownloadIpc(downloadService, () => BrowserWindow.getAllWindows());
+    registerImportIpc(downloadService);
     registerLibraryIpc(downloadService);
     registerTagsIpc(getDb());
 

@@ -26,6 +26,8 @@ export const IPC = {
   metadataListExtractors: "metadata:listExtractors",
   downloadStart: "download:start",
   downloadProgress: "download:progress",
+  importLocal: "import:local",
+  importPick: "import:pick",
   libraryList: "library:list",
   libraryListPage: "library:listPage",
   libraryFacets: "library:facets",
@@ -619,6 +621,18 @@ export interface SiftApi {
     }): Promise<MediaRecord>;
     /** Subscribes to download progress events. Returns an unsubscribe function. */
     onProgress(cb: (p: DownloadProgress) => void): () => void;
+  };
+  import: {
+    /** Registers an existing local media file as library media — referenced in place,
+     * never copied — and returns its media row. Rejects if the file is gone. */
+    local(input: {
+      path: string;
+      durationSec?: number | null;
+      tags?: string[];
+    }): Promise<MediaRecord>;
+    /** Opens the native file picker filtered to supported media extensions. Returns the
+     * chosen absolute paths, or `[]` when cancelled. */
+    pick(): Promise<string[]>;
   };
   ollama: {
     health(): Promise<boolean>;
