@@ -31,7 +31,7 @@ import { transcriptStageLabel } from "@/lib/transcript-stage-label";
 import { DropOverlay } from "@/components/drop-overlay";
 import { useFileImport } from "@/lib/use-file-import";
 
-function HomeView({ onPickFiles }: { onPickFiles: () => void }) {
+function HomeView({ onPickFiles, busy }: { onPickFiles: () => void; busy: string | null }) {
   const [version, setVersion] = useState("…");
   const [dbReady, setDbReady] = useState(false);
   const [metadata, setMetadata] = useState<MediaMetadata | null>(null);
@@ -297,7 +297,8 @@ function HomeView({ onPickFiles }: { onPickFiles: () => void }) {
           type="button"
           data-testid="home-pick-file"
           onClick={onPickFiles}
-          className="underline underline-offset-2 hover:text-foreground"
+          disabled={busy !== null}
+          className="underline underline-offset-2 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
           choose a file
         </button>
@@ -431,7 +432,9 @@ export function App() {
             {openChannelError}
           </p>
         )}
-        {view === "home" && <HomeView onPickFiles={() => void fileImport.pick()} />}
+        {view === "home" && (
+          <HomeView onPickFiles={() => void fileImport.pick()} busy={fileImport.busy} />
+        )}
         {view === "library" && (
           <LibraryPage
             onOpenChannel={handleOpenChannel}

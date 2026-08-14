@@ -25,7 +25,7 @@ export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
         </p>
       )}
       {error && (
-        <p data-testid="import-error" className="px-4 pt-2 text-sm text-danger">
+        <p data-testid="import-error" role="alert" className="px-4 pt-2 text-sm text-danger">
           {error}
         </p>
       )}

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isMediaFile } from "@sift/core";
 
 const PROBE_TIMEOUT_MS = 5000;
+const ALREADY_RUNNING = "An import is already running — wait for it to finish.";
 
 /**
  * Reads the absolute path Electron attaches to a dropped `File`.
@@ -43,6 +44,45 @@ function probeDuration(file: File): Promise<number | null> {
   });
 }
 
+/**
+ * Classifies dropped files into ones ready to import and a single combined notice
+ * describing anything skipped — either not a media file, or (per the `ponytail:` note
+ * on `droppedPath` above) a media file whose path Electron didn't attach. Pure and
+ * DOM-free so the classification is unit-testable without jsdom; `onDrop` re-pairs the
+ * accepted entries with their `File` objects afterward for `probeDuration`.
+ */
+export function partitionDropped(
+  files: { name: string; path: string | null }[],
+): { entries: { path: string; name: string }[]; notice: string | null } {
+  const entries: { path: string; name: string }[] = [];
+  const notMedia: string[] = [];
+  const unreadable: string[] = [];
+
+  for (const file of files) {
+    if (!isMediaFile(file.name)) {
+      notMedia.push(file.name);
+      continue;
+    }
+    if (!file.path) {
+      unreadable.push(file.name);
+      continue;
+    }
+    entries.push({ path: file.path, name: file.name });
+  }
+
+  const notices: string[] = [];
+  if (notMedia.length > 0) {
+    notices.push(`Not an audio or video file: ${notMedia.join(", ")}`);
+  }
+  if (unreadable.length > 0) {
+    const verb = unreadable.length > 1 ? "live" : "lives";
+    notices.push(
+      `Couldn't read where ${unreadable.join(", ")} ${verb} on disk — go to Home and use “choose a file” instead.`,
+    );
+  }
+  return { entries, notice: notices.length > 0 ? notices.join(" ") : null };
+}
+
 export interface FileImportState {
   /** True while a drag carrying files is over the window. */
   dragging: boolean;
@@ -62,34 +102,57 @@ export function useFileImport(onDone: () => void): FileImportState {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Ref, not state: a second drop/pick while a batch is in flight must be rejected
+  // synchronously, and keeping this out of state means the drag-listener effect below
+  // still only depends on `runImports` and registers its listeners exactly once.
+  const running = useRef(false);
 
   const runImports = useCallback(
     async (entries: { path: string; file?: File; name: string }[]) => {
-      setError(null);
+      running.current = true;
+      const failures: string[] = [];
       let imported = 0;
-      for (const entry of entries) {
-        setBusy(entry.name);
-        try {
-          const durationSec = entry.file ? await probeDuration(entry.file) : null;
-          const record = await window.sift.import.local({ path: entry.path, durationSec });
-          // Short-circuits to synthesized metadata for file: URLs — no yt-dlp round trip.
-          const metadata = await window.sift.metadata.fetch(record.sourceUrl);
-          await window.sift.transcript.get({ metadata });
-          imported += 1;
-        } catch (e) {
-          // Report and keep going: one undecodable file shouldn't abort the rest of the
-          // batch. The row is already in the library even when the transcribe fails.
-          setError(`${entry.name}: ${e instanceof Error ? e.message : String(e)}`);
+      try {
+        for (const entry of entries) {
+          setBusy(entry.name);
+          try {
+            const durationSec = entry.file ? await probeDuration(entry.file) : null;
+            const record = await window.sift.import.local({ path: entry.path, durationSec });
+            // Short-circuits to synthesized metadata for file: URLs — no yt-dlp round trip.
+            const metadata = await window.sift.metadata.fetch(record.sourceUrl);
+            await window.sift.transcript.get({ metadata });
+            imported += 1;
+          } catch (e) {
+            // Report and keep going: one undecodable file shouldn't abort the rest of the
+            // batch. The row is already in the library even when the transcribe fails.
+            failures.push(`${entry.name}: ${e instanceof Error ? e.message : String(e)}`);
+          }
         }
+      } finally {
+        running.current = false;
+        setBusy(null);
       }
-      setBusy(null);
+      // One combined message so an earlier failure (e.g. file 2 of 5) isn't overwritten
+      // by a later one (file 4) — every failure in the batch stays visible.
+      if (failures.length > 0) setError(failures.join("; "));
       if (imported > 0) onDone();
     },
     [onDone],
   );
 
   const pick = useCallback(async () => {
-    const paths = await window.sift.import.pick();
+    setError(null);
+    if (running.current) {
+      setError(ALREADY_RUNNING);
+      return;
+    }
+    let paths: string[];
+    try {
+      paths = await window.sift.import.pick();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return;
+    }
     if (paths.length === 0) return;
     await runImports(paths.map((path) => ({ path, name: path.split(/[\\/]/).pop() ?? path })));
   }, [runImports]);
@@ -108,29 +171,26 @@ export function useFileImport(onDone: () => void): FileImportState {
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
       setDragging(false);
+      setError(null);
+      if (running.current) {
+        setError(ALREADY_RUNNING);
+        return;
+      }
       const files = [...(e.dataTransfer?.files ?? [])];
       if (files.length === 0) return;
 
-      const entries: { path: string; file?: File; name: string }[] = [];
-      const rejected: string[] = [];
-      for (const file of files) {
-        if (!isMediaFile(file.name)) {
-          rejected.push(file.name);
-          continue;
-        }
-        const path = droppedPath(file);
-        if (!path) {
-          setError(
-            `Couldn't read where ${file.name} lives on disk. Use “Choose file…” instead.`,
-          );
-          continue;
-        }
-        entries.push({ path, file, name: file.name });
-      }
-      if (rejected.length > 0) {
-        setError(`Not an audio or video file: ${rejected.join(", ")}`);
-      }
-      if (entries.length > 0) void runImports(entries);
+      const { entries, notice } = partitionDropped(
+        files.map((file) => ({ name: file.name, path: droppedPath(file) })),
+      );
+      if (notice) setError(notice);
+      if (entries.length === 0) return;
+
+      // `entries` is a same-order subsequence of `files` filtered by the identical
+      // (isMediaFile && path) condition partitionDropped applies, so re-filtering here
+      // and zipping by position re-pairs each entry with its File without dragging the
+      // DOM into the pure classification function above.
+      const accepted = files.filter((file) => isMediaFile(file.name) && droppedPath(file) !== null);
+      void runImports(entries.map((entry, i) => ({ ...entry, file: accepted[i] })));
     };
 
     window.addEventListener("dragover", onDragOver);
