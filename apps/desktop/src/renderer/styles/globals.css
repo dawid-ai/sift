@@ -1,3 +1,7 @@
+/* Webfonts are bundled, not fetched (offline-first): main.tsx imports
+   @fontsource-variable/inter + /jetbrains-mono, which emit local .woff2 assets and declare
+   the families 'Inter Variable' / 'JetBrains Mono Variable'. tailwind.config.js keeps the
+   old preference stack behind them so the app still degrades sanely if a face is missing. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,44 +14,171 @@
     --background: 0 0% 100%;
     --surface: 0 0% 98%;
     --surface-2: 0 0% 95%;
+    --rail: 0 0% 96%;
     --foreground: 222 47% 11%;
-    --muted-foreground: 215 15% 45%;
-    --primary: 178 70% 40%;
+    --fg-secondary: 220 12% 30%;
+    --muted-foreground: 215 15% 42%;
+    --fg-subtle: 218 12% 52%;
+    --fg-disabled: 218 10% 68%;
+    --placeholder: 218 12% 55%;
+    --primary: 14 100% 62%;
     --primary-foreground: 0 0% 100%;
+    --accent-muted: 20 61% 42%;
     --border: 214 32% 91%;
     --border-strong: 214 25% 82%;
-    --ring: 178 70% 40%;
+    --ring: 14 100% 62%;
     --ai: 247 70% 55%;
     --success: 152 60% 40%;
     --warning: 38 92% 50%;
-    --danger: 0 72% 50%;
+    --danger: 348 68% 46%;
   }
-  /* "Dark studio" palette. Hex source of truth (see dark-studio-prototype.jsx) converted
-     to HSL triples so the existing hsl(var(--x)) / opacity-modifier usage keeps working:
-       bg0 #0B0B0E  bg1 #141419  bg2 #1B1B22  text #FAFAFA  text2 #A0A0AB  text3 #6B6B76
-       coral #FF6A3D (media)  violet #8B7CFF (AI only)  ok #34D399  warn #F0B84A  err #F87171
-     Hairlines are white-alpha in the spec (.07 / .14); flattened over bg0 here so they can
-     stay opaque HSL vars. Rule: chrome stays monochrome — coral = media, violet = AI. */
+
+  /* "Ember" palette.
+     ------------------------------------------------------------------------------------
+     TWO ladders, and both had gone wrong in the same way — too many rungs, too close
+     together — so both are rebuilt here with real, measurable gaps. Values below are quoted
+     with *perceived* brightness (0.299R + 0.587G + 0.114B, 0–255), which is the number the
+     review passes were actually measuring.
+
+     SURFACES. The rule the last pass failed: **a card must be brighter than the page
+     underneath it, everywhere on the page.** It wasn't — the ambient wash ramped the canvas
+     to ~26 at the top gutter while every card sat flat at ~23, so in the top third of the
+     window cards read as outlines rather than surfaces. The canvas is now darker, the card
+     fill lighter, and the wash is capped (see .app-canvas) so the page never climbs past
+     ~17. That leaves a ≥12-point step under every card at every scroll position.
+
+       background  hsl(24 12% 4%)    #0B0A09  lum 10   app canvas
+       rail        hsl(24  9% 8%)    #161413  lum 20   the 52px icon rail — opaque, flat
+       surface     hsl(24  8% 11.5%) #201D1B  lum 30   panels, cards            (Δ20 off bg)
+       surface-2   hsl(24  7% 17%)   #2E2B28  lum 44   nested panels, headers, inputs
+       border      hsl(28  8% 22%)   #3D3834  default hairline
+       border-str  hsl(28  9% 33%)   #5B534D  emphasised hairline / divider
+
+     TEXT. Four rungs, assigned strictly by role. There used to be seven values inside a
+     35-point band, four of which were perceptually identical, so the tokens were doing no
+     work and hierarchy was carried by size and caps alone. Each rung below is ≥9 points off
+     its neighbour, and every rung except --fg-disabled clears 4.5:1 on --surface.
+
+       foreground      hsl(30 8% 96%)  #F5F4F3  primary text                    14.9:1
+       fg-secondary    hsl(28 4% 76%)  #C4C1BE  emphasised inline, rail values   8.9:1
+       muted-fg        hsl(28 5% 61%)  #A19B97  ALL body copy and captions       6.1:1
+       fg-subtle       hsl(26 6% 56%)  #968E88  eyebrows, ordinals, micro-labels 5.2:1
+       fg-disabled     hsl(24 6% 33%)  #59534F  dead controls only               2.1:1
+       placeholder     hsl(28 5% 61%)  #A19B97  input placeholders               6.1:1
+
+     --fg-subtle moved 52% → 56%, and the reason is the word "on". It was #8C847D, quoted
+     here as "4.6:1" with no ground named — a ratio that only holds against the darkest
+     surfaces, and this token does not live there. The library TILES put it on the card body,
+     rgb(40,37,34), where #8C847D measures **4.15:1**, and inside the recessed "No local file"
+     field, where it measures 4.32:1. That tier-3 line is the only place a tile states its
+     language, its downloaded quality and its summary count — the one line on the card carrying
+     facts nothing else carries was the one line under AA. With ~40 call sites across the
+     renderer the same miss was latent anywhere the token landed on surface-1 or above.
+     #968E88 clears the floor on every ground it actually touches, with headroom:
+
+       5.2:1  on --surface, rgb(32,29,27)          panels, inset fields
+       4.7:1  on the tile card body, rgb(40,37,34) the measured failure above
+       5.3:1  on the table row ground, rgb(31,28,26)
+       5.9:1  on the lit page ground
+
+     It sits ~13 perceived points under --muted-foreground (#A19B97), so the head rung and the
+     label rung are still told apart by brightness — see THE MICRO-LABEL RUNGS below.
+
+     --fg-disabled exists so a live control and a dead one stop looking alike: "Last »" on
+     page 1 of 2 is a live control and must not render in the same grey as a disabled one.
+
+     --placeholder sits ON the muted rung rather than half a rung under it, because the
+     surface it is measured against is not --surface. It was hsl(26 7% 55%) / #948B84, which
+     is 5.0:1 on a card but only **4.31:1** on the recessed field fill a placeholder actually
+     lives on (`bg-surface-2/80` composites to rgb(45,41,39)) — under the floor. Worse, it put
+     the Library search field's resting label DIMMER than the filter labels 9px to its right,
+     which are `muted-foreground` and measure 5.25:1 on the same band: two labels of the same
+     class, one legible and one not, side by side. Same value for both now — 5.25:1 on the
+     field fill — so the token still exists (a placeholder is instructional text and deserves
+     to be tunable on its own) but it no longer resolves to a rung that fails where it is used.
+
+     ACCENT. One saturated hue, and it is spent on exactly TWO things: the active nav item
+     and the primary CTA — i.e. on STATE and on ACTION, never on identity. Everything that
+     used to borrow it — eyebrow labels, section ordinals, count badges, decorative icons,
+     set-filter chips, the tag palette — is neutral or --accent-muted now. By the time a
+     screen has spent coral on six decorations, the one button that matters has no signal left.
+
+     The brand mark was the last decoration on that list and the most expensive one, because
+     of where it sits: full-strength #FF6A3D glyph at the top of a 52px rail, 130px above a
+     full-strength #FF6A3D glyph in the active nav tile, on a rail with four unlabelled
+     destinations. A static logo was carrying the exact ink that everywhere else means "you
+     are here", which halves the signal the active state exists to send. It renders at
+     --accent-muted now (see app-shell.tsx): still the brand's warmth, 5.6:1 on --rail, and
+     unmistakably not the selected tile.
+
+       primary       hsl(14 100% 62%) #FF6A3D  primary CTA · active nav — and nothing else
+       accent-muted  hsl(20  58% 55%) #CF764A  brand mark, eyebrow/card glyphs, and the card
+                                               eyebrow LABELS that take it as text — 5.1:1 on
+                                               --surface, 5.6:1 on --rail
+
+                                               It was 48% / #C4622F, documented right here as
+                                               "4.1:1, clears the 3:1 non-text floor" — which
+                                               is true, and was the wrong floor: the same line
+                                               assigns the token to eyebrow labels, and
+                                               'NEW BATCH' (queue) and 'TRACK A CHANNEL'
+                                               (channels) are TEXT — small uppercase at wide
+                                               tracking (the .eyebrow rung, pushed to 10px /
+                                               0.16em at both call sites), which is the worst
+                                               case there is for stroke thinning. They were the
+                                               last two sub-4.5:1 text objects on either route.
+                                               55% clears the text floor and is
+                                               still 7 points of lightness and 42 points of
+                                               saturation below --primary, so the brand mark and
+                                               the eyebrows stay unmistakably not-the-CTA.
+       ai            hsl(247 100% 74%) #8A7AFF violet: AI/summarize/whisper ONLY
+       success       hsl(158 64% 52%) #36D399
+       warning       hsl(40  85% 62%) #F0B84A
+       danger        hsl(348 72% 62%) #E45874  the destructive hue, and the number that
+                                               matters is the ANGLE: at 356 it sat 18° off
+                                               the 14° coral, which at a 13px label size is
+                                               not a difference — "Open sign-in browser"
+                                               (encouraged) and "Remove" (irreversible) both
+                                               read as "warm accent" on one screen. 348 is
+                                               26° off, rose rather than orange-red, and
+                                               still clears 4.5:1 on --surface (4.8:1).
+                                               The other half of that separation is temporal,
+                                               not chromatic — see `danger-ghost` in
+                                               ui/button.tsx: an inline destructive control is
+                                               neutral at rest and only commits to red when
+                                               you reach for it, so coral is the only warm
+                                               accent on a resting screen.
+
+     Token NAMES are load-bearing (the whole app consumes them); only values move here, and
+     the new names are additive. */
   .dark {
     color-scheme: dark; /* native <select> popups, date pickers, scrollbars render dark */
-    --background: 240 12% 5%;
-    --surface: 240 11% 9%;
-    --surface-2: 240 11% 12%;
-    --foreground: 0 0% 98%;
-    --muted-foreground: 240 6% 65%;
+    --background: 24 12% 4%;
+    --surface: 24 8% 11.5%;
+    --surface-2: 24 7% 17%;
+    --rail: 24 9% 8%;
+    --foreground: 30 8% 96%;
+    --fg-secondary: 28 4% 76%;
+    --muted-foreground: 28 5% 61%;
+    --fg-subtle: 26 6% 56%;
+    --fg-disabled: 24 6% 33%;
+    /* The muted rung — measured on the field fill, not on the card. See the note above. */
+    --placeholder: 28 5% 61%;
     --primary: 14 100% 62%;
-    --primary-foreground: 240 12% 5%;
-    --border: 240 5% 12%;
-    --border-strong: 240 3% 18%;
+    --primary-foreground: 20 40% 7%;
+    --accent-muted: 20 58% 55%;
+    --border: 28 8% 22%;
+    --border-strong: 28 9% 33%;
     --ring: 14 100% 62%;
     --ai: 247 100% 74%;
     --success: 158 64% 52%;
     --warning: 40 85% 62%;
-    --danger: 0 91% 71%;
+    --danger: 348 72% 62%;
   }
+
   body {
     @apply bg-background font-sans text-foreground antialiased;
   }
+
   /* Tracking is scoped to headings, not inherited from body: a non-zero letter-spacing on
      every text node drops Chromium off its fast text-shaping path, which is measurable on
      long transcript lists. Headings are where the tight tracking actually reads. */
@@ -55,43 +186,513 @@
   h2,
   h3,
   h4 {
-    letter-spacing: -0.01em;
+    letter-spacing: -0.018em;
   }
 
-  /* Background depth: three low-alpha radial washes over bg0 so large empty areas aren't
-     flat black. Plain gradients — no filter: blur() and no background-attachment: fixed,
-     both of which cost a full-surface repaint on every scroll. */
-  .app-canvas {
-    background-color: hsl(var(--background));
-    background-image:
-      /* warm coral wash, top-left */
-      radial-gradient(115% 75% at -5% -20%, hsl(var(--primary) / 0.20) 0%, transparent 58%),
-      /* violet wash, top-right */
-      radial-gradient(95% 65% at 105% -8%, hsl(var(--ai) / 0.17) 0%, transparent 55%),
-      /* cool lift along the bottom so the lower half isn't dead flat */
-      radial-gradient(120% 75% at 45% 118%, hsl(225 60% 48% / 0.18) 0%, transparent 62%),
-      /* faint violet bloom, lower-right, to break the symmetry */
-      radial-gradient(70% 55% at 92% 82%, hsl(var(--ai) / 0.09) 0%, transparent 60%);
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+    color: hsl(var(--foreground));
   }
-  /* Thin monochrome scrollbars — also applies to the horizontal slide filmstrip. */
+
+  /* Global focus fallback. Anything that hasn't been given an explicit
+     `focus-visible:ring-*` still gets a visible amber ring — nothing may drop a focus
+     indicator without replacing it. Components that do style their own focus simply
+     override this with `focus-visible:outline-none`. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* ------------------------------------------------------------------------------------
+     Native controls. Everything below is here rather than on a component because the
+     offending element is painted by Chromium, not by us: a component class can restyle the
+     box but not the UA glyph inside it, and the moment one route forgets the incantation the
+     browser default shows through. These are the four that kept surfacing in review — the
+     scrollbar, the checkbox, the textarea resize grip, and the <select> popup.
+     ------------------------------------------------------------------------------------ */
+
+  /* Thin monochrome scrollbars — a default Chromium scrollbar is an instant tell. This is the
+     PAGE bar: it runs against the window frame, where there is no card hairline to collide
+     with. A scroller that lives inside a card takes `.scrollbar-thin` (@layer components).
+     Also applies to the horizontal slide filmstrip.
+     Keeping a *classic* (non-overlay) scrollbar is also what makes `scrollbar-gutter:
+     stable` on the main scroller do its job: the gutter is reserved whether or not the
+     content currently overflows, so the content column stops jogging 4–5px sideways the
+     moment a card is added to the page. */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--foreground) / 0.12);
-    border-radius: 99px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--foreground) / 0.2);
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--foreground) / 0.16);
+    border: 3px solid transparent;
+    border-radius: 99px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--foreground) / 0.28);
+  }
+  ::-webkit-scrollbar-thumb:active {
+    background-color: hsl(var(--primary) / 0.55);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Any checkbox, radio or range that hasn't opted into `appearance-none` still gets the
+     app's coral rather than Chromium's system blue. `color-scheme: dark` on .dark already
+     darkens the unchecked box; this is the half the UA won't infer. */
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"] {
+    accent-color: hsl(var(--primary));
+  }
+
+  /* Placeholder floor. A placeholder is instructional text — it says what the control is
+     for — so it gets its own token rather than reusing the dimmest muted value. Fields that
+     set their own `placeholder:` utility still win on specificity; this is the default for
+     every field (notably route-local <textarea>s) that doesn't. */
+  ::placeholder {
+    color: hsl(var(--placeholder));
+    opacity: 1;
+  }
+
+  /* The textarea resize grip is a light diagonal glyph the UA draws itself; on a dark surface
+     it is the brightest thing in the field. Replaced with a single faint tick, and resizing
+     is constrained to the vertical axis so dragging can never widen a field out of its
+     column. Fields that opt out entirely already set `resize: none`. */
+  textarea {
+    resize: vertical;
+  }
+  textarea::-webkit-resizer {
+    background-color: transparent;
+    background-image: linear-gradient(
+      135deg,
+      transparent 0 44%,
+      hsl(var(--foreground) / 0.22) 44% 56%,
+      transparent 56% 100%
+    );
+  }
+
   /* Native <select> dropdown lists: Windows/Chromium paints the popup white even under
      color-scheme: dark, so color the <option> rows explicitly (dark bg, legible text). */
   option {
     background-color: hsl(var(--surface));
     color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  /* ------------------------------------------------------------------------------------
+     .app-canvas — the atmosphere, and the budget it has to live inside.
+
+     ONE light source, warm, sitting behind the *content column* rather than behind the nav
+     rail. Two things were wrong before and both are fixed by the same constraint:
+
+       1. The key light peaked at 3% 0% — directly behind the rail's coral active item, so
+          the accent fought its own backdrop, and a second ember at 16% 100% lit the bottom
+          left, so two identical cards sat on visibly different grounds depending on where
+          they were on the row.
+       2. Peak alpha was 0.30, which lifted the page to ~26 perceived brightness at the top
+          gutter — brighter than the card fill sitting on it. Cards stopped reading as
+          surfaces.
+
+     So: origins move to ~36–52% horizontally (behind the content, not the chrome), and the
+     TOTAL alpha budget is capped so the composited canvas never exceeds ~17 perceived
+     brightness anywhere. The card fill is 30. That gap is the surface hierarchy, and it is
+     now a property of the tokens rather than of where you happen to be looking.
+
+     Saturation is also pulled down: the accent should be the only genuinely chromatic thing
+     on a screen, so the wash is a warm tint of the canvas rather than a second orange.
+
+     HARD CONSTRAINTS, learned the expensive way: no filter: blur(), no
+     background-attachment: fixed, no animation. All three force a full-surface repaint on
+     every scroll and were removed once already for measurable jank on long transcript
+     lists. Layered radial-gradients are rasterised once and cost nothing to scroll over.
+     ------------------------------------------------------------------------------------ */
+  .app-canvas {
+    background-color: hsl(var(--background));
+    background-repeat: no-repeat;
+    background-image:
+      /* 1. key light, off-frame above the content column. Peak 0.042 — the cap that keeps
+            the page under the card fill. */
+      radial-gradient(
+        72% 60% at 36% -12%,
+        hsl(24 74% 52% / 0.042) 0%,
+        hsl(22 64% 48% / 0.02) 40%,
+        transparent 76%
+      ),
+      /* 2. wide, low-saturation haze so the key light's falloff isn't a hard disc */
+        radial-gradient(
+          132% 100% at 42% 0%,
+          hsl(26 52% 50% / 0.018) 0%,
+          hsl(26 42% 46% / 0.008) 44%,
+          transparent 86%
+        ),
+      /* 3. second ember, centred low — same lamp, lower and dimmer. Centred rather than
+            left-hung so it can't tilt one end of a row of cards. */
+        radial-gradient(
+          70% 50% at 52% 106%,
+          hsl(18 58% 50% / 0.032) 0%,
+          hsl(18 48% 46% / 0.012) 44%,
+          transparent 80%
+        ),
+      /* 4. neutral counterweight, right flank — warm-grey, not a second hue. */
+        radial-gradient(
+          60% 76% at 104% 52%,
+          hsl(28 10% 62% / 0.028) 0%,
+          transparent 74%
+        ),
+      /* 5. vignette — painted first (last layer), so the blooms above override it where
+            they land and the empty corners fall away to black */
+        radial-gradient(
+          126% 104% at 46% 38%,
+          transparent 40%,
+          hsl(20 30% 2% / 0.32) 78%,
+          hsl(20 30% 1% / 0.6) 100%
+        );
+  }
+
+  /* ------------------------------------------------------------------------------------
+     `.scrollbar-thin` (alias: `.scroll-thin`) — the scrollbar for a scroller INSIDE a card.
+
+     The page bar (see @layer base) is tuned for the window edge: a 10px track with a 3px
+     gutter, so a 4px thumb runs down the frame. Inside a card that bar has a different job
+     and a different failure mode, and the recipe kept being re-rolled per route instead of
+     being written down — `THIN_SCROLLBAR` existed **verbatim** in `library/media-detail.tsx`
+     and `library/transcript-panel.tsx`, with a third, drifted variant in `settings-page.tsx`
+     that reset `border-0` + `background-clip: border-box`. That variant is the bug: with no
+     gutter the thumb sits flush against the card's own right hairline at roughly twice the
+     surface luminance, so it reads as a bright second border running the panel's full height
+     and curling into the bottom-right radius. It was reported on two separate surfaces, which
+     is what three copies of a five-line class string buys you.
+
+     One class, one definition:
+
+       track   12px  — the whole box, gutter included
+       gutter  3px   transparent border, clipped to the PADDING box so it stays a gutter and
+                     is never painted as a frame; the 6px thumb ends 3px clear of the card edge
+       rest    fg/8%  — deliberately BELOW the page bar's 16%. An in-card bar is a secondary
+                        affordance sitting on a lit surface; at the page bar's weight it
+                        competes with the content it is scrolling.
+       hover   fg/16% — the page bar's resting weight, i.e. one clear step up
+       active  primary/50 — same grab feedback as the page bar, so the two are one family
+
+     Use it for any scroller with a border/radius of its own (cards, panes, popovers). The
+     page bar stays the default for anything that scrolls against the window.
+
+     `.scroll-thin` is the historical name and stays forever — same alias arrangement as
+     `Button`'s `outline`/`secondary` and `ChipTone`'s `sand`/`neutral`. It is ONE definition
+     under two selectors, which is the whole point of the class: the thing this replaces was
+     three *definitions*, and tuning the thumb meant finding all of them.
+     ------------------------------------------------------------------------------------ */
+  .scroll-thin::-webkit-scrollbar,
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  .scroll-thin::-webkit-scrollbar-track,
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb,
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--foreground) / 0.08);
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb:hover,
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--foreground) / 0.16);
+  }
+  .scroll-thin::-webkit-scrollbar-thumb:active,
+  .scrollbar-thin::-webkit-scrollbar-thumb:active {
+    background-color: hsl(var(--primary) / 0.5);
+  }
+  .scroll-thin::-webkit-scrollbar-corner,
+  .scrollbar-thin::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* ------------------------------------------------------------------------------------
+     THE CARD LADDER — two rungs, ONE construction.
+
+     The failure this replaces: three sibling cards in one column were lit by three different
+     physical models. The URL card drew a FLAT coral hairline (a 180° linear gradient has no
+     horizontal falloff, so it is a drawn line, not a bevel) peaking at rgb(209,144,94); the
+     preview card drew a centre-peaked NEUTRAL rim maxing at rgb(85,83,82); the transcript
+     card drew a centre-peaked CORAL rim maxing at rgb(147,72,49). One of them was 2.4x
+     brighter than either of the others and was lit from a different direction. A reader
+     cannot infer a hierarchy from that — it reads as a rendering artifact.
+
+     So both rungs below are the *same object*: a 1px ring drawn by ::before, masked to the
+     border track, from a radial gradient centred on the top edge so it falls off toward both
+     top corners the way a bevel catches an off-frame light. The rungs differ in exactly two
+     things, and both of them mean something:
+
+       .panel      neutral rim, peak ≈ lum 74   — a surface
+       .panel-lit  warm rim,    peak ≈ lum 86, plus a warm outer glow — the ONE hero
+                                                 panel in the current view
+
+     Each ring ends on a hairline of the same luminance as `--border` (≈57), so a card's
+     silhouette is unchanged at its sides and floor; only the top 40% carries the light.
+     Nothing here is a drop shadow: surfaces are separated by a lightness step, and the rim
+     is the refinement on top of it.
+
+     A route that wants a card uses <Card>/<CardLit> (or `.panel`/`.panel-lit`). It does NOT
+     hand-roll a `before:h-px` top line and a `bg-[#1C1817]` fill — that literal was 4 RGB
+     points off `--surface` at the same nesting level, which is the drift this docblock has
+     warned about since the token ladder was written.
+
+     **Opaque fill.** It used to be `--surface / 0.93`, and the 7% of canvas showing through
+     was enough for the ambient gradient to read as irregular lighter blotches inside a large
+     panel — compression noise inside a UI surface. A card is a surface; it does not sample
+     the wall behind it. The lightness step (30 against a ≤17 canvas) is what separates it.
+     `background-color` is set as its own property (not a `background:` shorthand and not a
+     padding-box layer), so a call site that needs a different plane — `panel-lit bg-surface-2`
+     on the modal, `bg-surface/[0.94]` on the library shell — still wins.
+     ------------------------------------------------------------------------------------ */
+  .panel {
+    position: relative;
+    border-radius: 1rem;
+    border: 1px solid transparent;
+    background-color: hsl(var(--surface));
+  }
+
+  /* .panel + a warm rim and a warm outer glow. The glow is deliberately modest: it is a
+     bevel highlight, not another place to spend the accent. Exactly one of these should be
+     on screen per view — if the panel it marks is spent (its input answered, its step
+     complete), the route swaps it down to `.panel` and lights the panel that is now active. */
+  .panel-lit {
+    position: relative;
+    border-radius: 1rem;
+    border: 1px solid transparent;
+    background-color: hsl(var(--surface));
+    box-shadow:
+      0 0 40px -8px hsl(20 90% 54% / 0.13),
+      0 28px 66px -34px hsl(0 0% 0% / 0.92);
+  }
+
+  .panel::before,
+  .panel-lit::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    /* Ring = (border box) minus (content box). autoprefixer emits the -webkit-mask /
+       -webkit-mask-composite: xor pair for Chromium; don't hand-write them too or the
+       shorthand resets composite back to `add` between the two declarations. */
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* The neutral rung. 140% wide / 100% tall from the top-centre: the peak sits mid-top and
+     has decayed to ~0.6 of it by the top corners, so the light has a direction. */
+  .panel::before {
+    background: radial-gradient(
+      140% 100% at 50% 0%,
+      hsl(32 6% 88% / 0.3) 0%,
+      hsl(30 6% 84% / 0.24) 42%,
+      hsl(var(--border)) 100%
+    );
+  }
+
+  /* The warm rung. Same geometry, same falloff, one hue over — and one step brighter at the
+     peak, which is the entire difference between "a surface" and "the surface". */
+  .panel-lit::before {
+    background: radial-gradient(
+      140% 100% at 50% 0%,
+      hsl(26 100% 72% / 0.42) 0%,
+      hsl(24 92% 66% / 0.34) 42%,
+      hsl(20 22% 23%) 100%
+    );
+  }
+
+  /* ------------------------------------------------------------------------------------
+     The type ramp. Below the page title everything used to be 15px or smaller, so the
+     subject of a screen (a media title) was set identically to a format-picker label — a
+     30 → 15 → 12 cliff with no mid-tier. These are the missing steps; use them instead of
+     re-rolling a size per route.
+
+       .eyebrow      11px  route / card section label   (neutral — see below)
+       .section-head 11px  group head inside a panel    (.eyebrow + a trailing rule)
+       .field-label  11px  control label                (one rung brighter — see below)
+       .title-md     21px  the subject of a card or panel — media titles
+       .stat-num-md  24px  stat values inside a tile
+       .stat-num     44px  the hero numeral
+
+     giving a 32 / 24 / 21 / 15 / 13 / 11 ramp with real jumps in it.
+     ------------------------------------------------------------------------------------ */
+
+  /* ------------------------------------------------------------------------------------
+     THE MICRO-LABEL RUNGS — two of them, and there is no third.
+
+     Every 11px uppercase label in this app does one of exactly two jobs: it *heads a group*
+     (DOCUMENTS, TRANSCRIPTS, SUMMARIES, TAGS, CAPTURE) or it *labels a control* (FORMAT,
+     QUALITY, PROVIDER, MODEL). Those had collapsed into one indistinguishable token —
+     11px/600 uppercase subtle grey for both — so nothing told the reader which labels open a
+     section and which name the box underneath them. And a third rung had been re-rolled at
+     call sites (`text-[10px] tracking-[0.14em]`) for the two most-seen instances, at the size
+     this file had already deleted for being unreadable at the contrast it was given.
+
+     The two rungs are separated by BRIGHTNESS, which is the cue the eye reads first at 11px:
+
+       head rung   fg-subtle  #968E88  5.2:1  — announces; recedes once you've placed it
+       label rung  muted-fg   #A19B97  6.1:1  — attached to something you are about to
+                                                operate, so it reads at body-copy strength
+
+     Both ratios are measured on --surface, rgb(32,29,27). That qualifier is the whole reason
+     the head rung moved (see --fg-subtle above): quoted without a ground, "4.6:1" hid the fact
+     that the same ink measured 4.15:1 on a library tile's card body. The head rung is still a
+     rung DOWN from the label rung — ~13 perceived points — it is just no longer a rung under
+     AA on the surfaces it is used on.
+
+     `.section-head` is the head rung plus a trailing hairline that runs to the end of the
+     group — a structural difference, not a 0.02em tracking nudge, so the two are told apart
+     at a glance rather than by measurement.
+
+     Use `.section-head` for a group inside a panel, `.eyebrow` for the label that announces a
+     route or a whole card, `.field-label` for anything sitting on top of a control. Do not
+     add a size at a call site; if a label needs a rung that isn't here, it needs one of these.
+     ------------------------------------------------------------------------------------ */
+
+  /* The section label. It is *not* amber any more, and that is the point: it sat at nearly
+     the accent's saturation, 40px from the primary CTA, six or seven times per screen —
+     so the eye landed on "CAPTURE" and "SUMMARIZE" before it found the button. Neutral at
+     5.2:1 it still announces the section and no longer competes with the one thing on the
+     page that is meant to be clicked.
+
+     `.field-label-wide` is the same rung under the name a call site reaches for when it wants
+     "the wide micro-label" — an alias, deliberately, so wanting wider tracking lands on the
+     existing rung instead of minting a fourth one. */
+  .eyebrow,
+  .section-head,
+  .field-label-wide {
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: hsl(var(--fg-subtle));
+  }
+
+  /* Group head inside a panel: the eyebrow rung, plus a rule that runs from the label to the
+     end of the group it opens. That rule is what makes a head a head — it encloses what
+     follows instead of just floating above it. Works on a bare <p>GROUP</p> (the rule takes
+     the remaining width) and on a head that carries a trailing count pill. */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+  .section-head::after {
+    content: "";
+    flex: 1 1 0%;
+    height: 1px;
+    min-width: 0.75rem;
+    background-color: hsl(var(--border) / 0.9);
+  }
+
+  /* Micro-labels above a control (FORMAT / QUALITY / ADD TAGS / PROVIDER). Tighter tracking,
+     because these sit directly on top of the thing they name, and a full rung brighter than
+     the head labels, because a live control's name is not decoration. 11px, not 10px: at 10px
+     this rung was unreadable at the contrast it was being given. */
+  .field-label {
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* The subject of a panel — a media title, a channel name. The missing mid-tier. */
+  .title-md {
+    font-size: 21px;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: hsl(var(--foreground));
+  }
+
+  /* Stat value inside a tile. Tabular so a column of them doesn't jitter. */
+  .stat-num-md {
+    font-size: 24px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--foreground));
+  }
+
+  /* Numerals are the hero: big, heavy, tabular so columns of them don't jitter. */
+  .stat-num {
+    font-size: 44px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--foreground));
+  }
+
+  /* Table rows. Adjacent rows collapse to a single hairline instead of doubling up. */
+  .hairline-y {
+    border-top: 1px solid hsl(var(--border) / 0.75);
+    border-bottom: 1px solid hsl(var(--border) / 0.75);
+  }
+  .hairline-y + .hairline-y {
+    border-top-color: transparent;
+  }
+
+  /* The ⌐ bracket motif: two corner brackets clipping whatever they wrap.
+     Tune per-use with --mark-size / --mark-inset / --mark-thickness / --mark-color.
+
+     `--mark-color` defaults to the accent because the motif's loudest use — the drop overlay
+     — is a transient, deliberately coral moment. It is a variable rather than a constant
+     because of the rail: the app mark wears this ornament permanently, 130px above the active
+     nav tile, and both were painting the same #FF6A3D. See app-shell.tsx.
+
+     `--mark-inset` is a NEGATIVE offset — the brackets deliberately sit outside the box they
+     decorate — so anything wearing this class needs at least `|inset| + thickness` of clear
+     space on its top and left, or the ornament is clipped by whatever bounds it.
+
+     Second rule, learned on the rail's app mark: size the wrapped box to the glyph's OPTICAL
+     bounds, not to a nominal square. Wrapping a wide glyph in a square leaves one bracket
+     floating clear of the artwork while the opposite one touches it, and the pair stops
+     reading as two brackets clipping one mark. See app-shell.tsx for the tuned case. */
+  .corner-mark {
+    position: relative;
+    --mark-size: 7px;
+    --mark-inset: -4px;
+    --mark-thickness: 1.5px;
+    --mark-color: hsl(var(--primary));
+  }
+  .corner-mark::before,
+  .corner-mark::after {
+    content: "";
+    position: absolute;
+    width: var(--mark-size);
+    height: var(--mark-size);
+    border-style: solid;
+    border-color: var(--mark-color);
+    pointer-events: none;
+  }
+  .corner-mark::before {
+    top: var(--mark-inset);
+    left: var(--mark-inset);
+    border-width: var(--mark-thickness) 0 0 var(--mark-thickness);
+  }
+  .corner-mark::after {
+    right: var(--mark-inset);
+    bottom: var(--mark-inset);
+    border-width: 0 var(--mark-thickness) var(--mark-thickness) 0;
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
+import { SettingRow, SettingsError } from "./settings-page";
 
 /** Toggle: auto-fetch a transcript right after a video finishes downloading. Loads on mount,
  * persists on change. When on, a caption-less video already has its file on disk for Whisper. */
@@ -26,14 +27,10 @@ export function AutoTranscriptSection() {
 
   return (
     <div className="flex flex-col gap-3" data-testid="auto-transcript-section">
-      <label className="flex items-center justify-between gap-4">
-        <span>
-          <span className="text-sm font-medium">Get transcript after download</span>
-          <span className="block text-xs text-foreground/50">
-            When on, transcribing runs automatically once a video downloads — so a caption-less
-            video already has its file ready for Whisper.
-          </span>
-        </span>
+      <SettingRow
+        label="Get transcript after download"
+        hint="When on, transcribing runs automatically once a video downloads — so a caption-less video already has its file ready for Whisper."
+      >
         <Switch
           data-testid="auto-transcript-toggle"
           aria-label="Get transcript after download"
@@ -41,8 +38,8 @@ export function AutoTranscriptSection() {
           disabled={enabled === null}
           onChange={(next) => void persist(next)}
         />
-      </label>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      </SettingRow>
+      {error && <SettingsError>{error}</SettingsError>}
     </div>
   );
 }

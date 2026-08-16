@@ -1,5 +1,19 @@
 import { useEffect, useState } from "react";
+import { ArrowDown, ArrowUp, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import {
+  CountTag,
+  DESTRUCTIVE_ACTION,
+  FIELD,
+  GroupLabel,
+  NESTED_SURFACE,
+  ROW_LIST,
+  SettingsError,
+  SettingsHint,
+} from "./settings-page";
 
 const LANG_NAMES: Record<string, string> = {
   en: "English", pl: "Polish", es: "Spanish", de: "German", fr: "French",
@@ -52,51 +66,84 @@ export function TranscriptLanguageSection() {
 
   return (
     <div className="flex flex-col gap-3" data-testid="transcript-language-section">
-      <p className="text-sm text-foreground/60">
-        Preferred transcript languages. The first is the default; a transcript is fetched
-        in the video&apos;s own language when available, otherwise the first of these that exists.
-      </p>
-      <ul className="flex flex-col gap-2">
-        {langs.map((code, i) => (
-          <li
-            key={code}
-            data-testid="transcript-language-row"
-            className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
-          >
-            <span className="font-medium">{langName(code)}</span>
-            <span className="text-foreground/50">{code}</span>
-            {i === 0 && <span className="text-xs text-foreground/50">· default</span>}
-            <div className="ml-auto flex gap-1">
-              <Button size="sm" variant="outline" disabled={i === 0} onClick={() => move(i, -1)}>↑</Button>
-              <Button size="sm" variant="outline" disabled={i === langs.length - 1} onClick={() => move(i, 1)}>↓</Button>
-              <Button
-                size="sm"
-                variant="outline"
-                data-testid="transcript-language-remove"
-                disabled={langs.length === 1}
-                onClick={() => remove(code)}
-              >
-                Remove
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {/* Ranked list: the numeral carries the order, so the arrows don't have to explain it.
+          One nested block, label inside it, rows carrying nothing but a hairline. */}
+      <div className={cn(NESTED_SURFACE, "px-4 py-1")}>
+        <div className="flex items-center py-3">
+          <GroupLabel>Preference order</GroupLabel>
+          <CountTag>{langs.length}</CountTag>
+        </div>
+        <ul className={cn("border-t border-white/[0.05]", ROW_LIST)}>
+          {langs.map((code, i) => (
+            <li
+              key={code}
+              data-testid="transcript-language-row"
+              className="flex items-center gap-3 py-2.5 text-sm"
+            >
+              {/* The numeral IS the ranking — it is content, not decoration, so it clears
+                  4.5:1 like the nav index ordinals do. At /35 it measured 3.0:1 on this
+                  nested fill; /50 lands at 4.8:1 and is the same grey `fg-subtle` reads as
+                  one surface step up, so the two ordinal lists still look identical. */}
+              <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-foreground/50">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span className="truncate font-medium text-foreground">{langName(code)}</span>
+              <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+                {code}
+              </span>
+              {i === 0 && <Badge>Default</Badge>}
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label={`Move ${langName(code)} up`}
+                  disabled={i === 0}
+                  onClick={() => move(i, -1)}
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label={`Move ${langName(code)} down`}
+                  disabled={i === langs.length - 1}
+                  onClick={() => move(i, 1)}
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={DESTRUCTIVE_ACTION}
+                  data-testid="transcript-language-remove"
+                  disabled={langs.length === 1}
+                  onClick={() => remove(code)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="flex items-center gap-2">
-        <input
+        <Input
           data-testid="transcript-language-input"
           value={input}
           aria-label="Language code"
           placeholder="Language code, e.g. pl"
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") add(); }}
-          className="flex h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className={cn(FIELD, "flex-1")}
         />
-        <Button data-testid="transcript-language-add" variant="outline" onClick={add}>
+        <Button data-testid="transcript-language-add" variant="outline" size="lg" onClick={add}>
+          <Plus className="h-4 w-4" />
           Add
         </Button>
       </div>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <SettingsHint>Two-letter ISO codes — a region suffix like “pt-BR” is trimmed to “pt”.</SettingsHint>
+      {error && <SettingsError>{error}</SettingsError>}
     </div>
   );
 }
