@@ -8,6 +8,7 @@ export type { PlatformTier, PlatformInfo } from "./platforms/registry";
 export { sanitizeFilename, buildOutputBaseName } from "./filename/sanitize";
 
 export * from "./media/extensions";
+export { LOCAL_FORMAT_ID, LOCAL_PLATFORM_ID, LOCAL_TAG } from "./media/local";
 
 export * from "./transcript/types";
 export { TranscriptRegistry } from "./transcript/registry";

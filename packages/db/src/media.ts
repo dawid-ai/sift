@@ -225,6 +225,25 @@ export function listMediaPlatforms(db: SiftDatabase): string[] {
     .map((r) => r.platform_id);
 }
 
+/** Points a media row at a locally-stored poster/thumbnail image. */
+export function setMediaThumbnail(db: SiftDatabase, id: number, path: string | null): void {
+  db.prepare("UPDATE media SET thumbnail_path = ?, updated_at = ? WHERE id = ?").run(
+    path,
+    Date.now(),
+    id,
+  );
+}
+
+/** Whether any media row references this exact thumbnail path — the allowlist gate for the
+ * sift-poster:// protocol handler, mirroring `downloadExistsByFilePath` for sift-media://. */
+export function mediaExistsByThumbnailPath(db: SiftDatabase, path: string): boolean {
+  return (
+    db
+      .prepare<{ id: number }>("SELECT id FROM media WHERE thumbnail_path = @path LIMIT 1")
+      .get({ path }) !== undefined
+  );
+}
+
 export function getMediaBySourceUrl(db: SiftDatabase, sourceUrl: string): MediaRow | undefined {
   return db
     .prepare<MediaRow>("SELECT * FROM media WHERE source_url = @sourceUrl ORDER BY id DESC LIMIT 1")

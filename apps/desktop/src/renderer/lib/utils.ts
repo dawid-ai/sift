@@ -32,6 +32,10 @@ const CACHEABLE_THUMB_HOST = /(^|\.)(googleusercontent\.com|ggpht\.com|ytimg\.co
 export function videoThumbUrl(url: string | null | undefined): string | undefined {
   const https = httpsUrl(url);
   if (!https) return undefined;
+  // `media.thumbnail_path` holds a remote URL for downloaded videos but an absolute local
+  // path for imported files (see the poster grab in main/ipc/import.ts) — route those
+  // through sift-poster://, which gates on that column before touching disk.
+  if (!/^https?:/i.test(https)) return `sift-poster://file/${encodeURIComponent(https)}`;
   try {
     return CACHEABLE_THUMB_HOST.test(new URL(https).hostname)
       ? `sift-thumb://img/${encodeURIComponent(https)}`

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LOCAL_PLATFORM_ID } from "@sift/core";
 import type { MediaListItem, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,10 @@ import { cn, videoThumbUrl } from "@/lib/utils";
 import { highlightSegments } from "@/lib/search-snippet";
 import { platformLabel } from "@/lib/platform-label";
 import { formatDuration } from "@/routes/home/preview-card";
+
+/** Shown next to Confirm remove for an imported file — the one thing users are nervous
+ * about, and until now documented only in DEVELOPMENT.md. */
+export const LOCAL_REMOVE_NOTE = "Removes the library entry; your file stays where it is.";
 
 export interface LibraryTableProps {
   items: MediaListItem[];
@@ -68,9 +73,19 @@ interface LibraryRowProps {
 function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, query }: LibraryRowProps) {
   const [confirming, setConfirming] = useState(false);
   const { media, transcriptCount, transcriptLanguage, formats, summaryCount, tags } = item;
+  // Left accent + faint tint rather than a strong background: rows already carry a hover
+  // tint and heavier fill would fight the tag badges below.
+  const local = media.platformId === LOCAL_PLATFORM_ID;
 
   return (
-    <tr data-testid="library-row" className="border-b border-border hover:bg-primary/5">
+    <tr
+      data-testid="library-row"
+      data-local={local ? "true" : undefined}
+      className={cn(
+        "border-b border-border hover:bg-primary/5",
+        local && "border-l-2 border-l-amber-500 bg-amber-500/[0.04]",
+      )}
+    >
       <td className="px-2 py-2">
         <div className="flex items-center gap-2">
           {media.thumbnailUrl && (
@@ -177,12 +192,14 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, que
                 size="sm"
                 data-testid="media-remove-confirm"
                 onClick={() => onRemove(media.id)}
+                title={local ? LOCAL_REMOVE_NOTE : undefined}
               >
                 Confirm remove
               </Button>
               <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
                 Cancel
               </Button>
+              {local && <span className="self-center text-xs text-foreground/55">{LOCAL_REMOVE_NOTE}</span>}
             </>
           ) : (
             <Button

@@ -1,3 +1,4 @@
+import { LOCAL_FORMAT_ID } from "@sift/core";
 import type { DownloadProgress, DownloadRecord, MediaDetail } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 
@@ -6,6 +7,12 @@ const STATUS_LABEL: Record<DownloadRecord["status"], string> = {
   downloading: "Downloading…",
   error: "Failed",
 };
+
+/** "Downloaded" is wrong for a file that was never downloaded and won't be deleted. */
+function statusLabel(d: DownloadRecord): string {
+  if (d.formatId === LOCAL_FORMAT_ID && d.status === "done") return "Imported";
+  return STATUS_LABEL[d.status];
+}
 
 export interface DownloadsPanelProps {
   downloads: MediaDetail["downloads"];
@@ -45,9 +52,14 @@ export function DownloadsPanel({
                     : "border-border text-foreground/60"
                 }`}
               >
-                {STATUS_LABEL[d.status]}
+                {statusLabel(d)}
               </span>
             </div>
+            {d.formatId === LOCAL_FORMAT_ID && (
+              <p className="mt-0.5 text-xs text-foreground/50">
+                Removes the library entry — your file stays where it is.
+              </p>
+            )}
             {d.status === "error" && d.error && (
               <p className="mt-0.5 truncate text-xs text-red-600 dark:text-red-400" title={d.error}>
                 {d.error}

@@ -3,7 +3,7 @@ import { openTestDatabase } from "./testing";
 import type { SiftDatabase } from "./database";
 import { runMigrations } from "./migrations";
 import { insertMedia } from "./media";
-import { addTag, removeTag, tagsForMedia, tagsForMediaIds, listAllTags } from "./tag";
+import { addTag, backfillPlatformTag, removeTag, tagsForMedia, tagsForMediaIds, listAllTags } from "./tag";
 
 // NewMedia literal copied from media.test.ts's sample() helper, with source_url
 // swapped for the passed url.
@@ -29,6 +29,23 @@ describe("media_tag CRUD", () => {
     addTag(db, m, "Music"); // idempotent
     addTag(db, m, "  News  "); // trims
     expect(tagsForMedia(db, m)).toEqual(["Music", "News"]);
+  });
+
+  it("backfills a platform tag, touching only that platform, and stays a no-op on re-run", () => {
+    const local = insertMedia(db, {
+      source_url: "file:///c/a.mp4", platform_id: "local", external_id: null,
+      title: "A", uploader: null, uploader_url: null, duration_s: 60,
+      thumbnail_path: null, view_count: null, like_count: null,
+      published_at: null, metadata_json: "{}", download_status: "done",
+    }).id;
+    const remote = newMedia(db, "https://y/watch?v=1");
+    addTag(db, local, "keepme");
+
+    backfillPlatformTag(db, "local", "local file");
+    backfillPlatformTag(db, "local", "local file"); // safe on every launch
+
+    expect(tagsForMedia(db, local)).toEqual(["keepme", "local file"]);
+    expect(tagsForMedia(db, remote)).toEqual([]);
   });
 
   it("ignores empty/whitespace names", () => {

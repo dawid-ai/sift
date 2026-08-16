@@ -1,5 +1,6 @@
 import { basename, extname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { LOCAL_PLATFORM_ID } from "@sift/core";
 import type { MediaMetadata } from "@sift/ipc-contract";
 
 // Note: deliberately NOT in `@sift/core` — this needs `node:url` for correct Windows
@@ -11,10 +12,9 @@ import type { MediaMetadata } from "@sift/ipc-contract";
 // `download-service.ts` and `metadata-service.ts` — this must stay loadable under plain
 // Node for its Vitest suite.
 
-/** `download.format_id` for an imported local file. A value, not a schema column: no
- * migration needed, and `downloadDisplayLabel` already returns `label` verbatim for any
- * format_id other than "legacy". Also the discriminator for the delete guard. */
-export const LOCAL_FORMAT_ID = "local";
+// Re-exported so main-process code keeps reading it from here; it lives in `@sift/core`
+// because the renderer needs it too (format label + "your file stays put" copy).
+export { LOCAL_FORMAT_ID } from "@sift/core";
 
 /** True when `url` is a local-file source URL — the identity key for imported media. */
 export function isLocalFileUrl(url: string): boolean {
@@ -24,6 +24,20 @@ export function isLocalFileUrl(url: string): boolean {
 /** The absolute path back out of a local-file source URL. */
 export function filePathFromUrl(url: string): string {
   return fileURLToPath(url);
+}
+
+/**
+ * Where to grab an imported file's poster frame: 10% in, clamped to [5s, 120s].
+ *
+ * Proportional covers a 90-second clip and a 3-hour lecture with one rule; the 5s floor
+ * skips black frames and fade-ins; the 120s ceiling stops a long video's poster being
+ * buried in the middle. Deterministic on purpose — a random point would silently change
+ * the thumbnail on re-import, which hurts recognition. Unknown duration falls back to
+ * the floor.
+ */
+export function posterSeekSeconds(durationSec: number | null | undefined): number {
+  if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0) return 5;
+  return Math.min(120, Math.max(5, durationSec * 0.1));
 }
 
 /**
@@ -44,7 +58,7 @@ export function localFileMetadata(
 ): MediaMetadata {
   return {
     sourceUrl: pathToFileURL(absPath).href,
-    platform: { id: "local", label: "Local file", tier: "tested" },
+    platform: { id: LOCAL_PLATFORM_ID, label: "Local file", tier: "tested" },
     externalId: null,
     title: basename(absPath, extname(absPath)),
     uploader: null,

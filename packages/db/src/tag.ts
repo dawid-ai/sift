@@ -9,6 +9,19 @@ export function addTag(db: SiftDatabase, mediaId: number, name: string): void {
   ).run({ mediaId, name: n });
 }
 
+/**
+ * One-time, idempotent hygiene: attaches `tag` to every media row on `platformId`. NOT a
+ * schema migration — safe to run on every launch (INSERT OR IGNORE, and it only ever adds).
+ * Exists so local files imported before auto-tagging shipped still appear under the filter.
+ * Constants come from the caller: `@sift/db` deliberately doesn't depend on `@sift/core`.
+ */
+export function backfillPlatformTag(db: SiftDatabase, platformId: string, tag: string): void {
+  db.prepare(
+    `INSERT OR IGNORE INTO media_tag (media_id, name)
+     SELECT id, @tag FROM media WHERE platform_id = @platformId`,
+  ).run({ tag, platformId });
+}
+
 /** Removes a tag from a media row (case-insensitive via column collation). */
 export function removeTag(db: SiftDatabase, mediaId: number, name: string): void {
   db.prepare(

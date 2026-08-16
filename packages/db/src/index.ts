@@ -12,6 +12,8 @@ export {
   listMedia,
   deleteMedia,
   getMediaBySourceUrl,
+  setMediaThumbnail,
+  mediaExistsByThumbnailPath,
   backfillMediaChannelIds,
   listMediaByChannelId,
   listMediaPage,
@@ -80,7 +82,14 @@ export {
   resetRunningToQueued,
 } from "./queue";
 export type { QueueItemRow, NewQueueItem } from "./queue";
-export { addTag, removeTag, tagsForMedia, tagsForMediaIds, listAllTags } from "./tag";
+export {
+  addTag,
+  removeTag,
+  tagsForMedia,
+  tagsForMediaIds,
+  listAllTags,
+  backfillPlatformTag,
+} from "./tag";
 export {
   insertChannel,
   getChannelById,

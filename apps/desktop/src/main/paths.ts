@@ -79,6 +79,13 @@ export function thumbnailsDir(): string {
   return join(app.getPath("userData"), "thumbnails");
 }
 
+/** Poster frames extracted from imported local files (served via sift-poster://). Separate
+ * from thumbnailsDir(), which is a remote-URL cache with a host allowlist and can't serve a
+ * local file, and from framesDir(), which belongs to the Slides flow. */
+export function postersDir(): string {
+  return join(app.getPath("userData"), "posters");
+}
+
 /** Root of all extracted slide frames. Used to serve them via the sift-frame:// protocol. */
 export function framesRootDir(): string {
   return join(app.getPath("userData"), "frames");

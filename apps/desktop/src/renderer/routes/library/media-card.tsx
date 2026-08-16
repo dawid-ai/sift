@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LOCAL_PLATFORM_ID } from "@sift/core";
 import type { MediaListItem, MediaRecord, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn, videoThumbUrl } from "@/lib/utils";
 import { highlightSegments } from "@/lib/search-snippet";
 import { platformLabel } from "@/lib/platform-label";
+import { LOCAL_REMOVE_NOTE } from "@/routes/library/library-table";
 
 const STATUS_LABELS: Record<MediaRecord["downloadStatus"], string> = {
   none: "Not downloaded",
@@ -30,9 +32,16 @@ export interface MediaCardProps {
 export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, query }: MediaCardProps) {
   const [confirming, setConfirming] = useState(false);
   const { media, transcriptCount, transcriptLanguage, formats, summaryCount, tags } = item;
+  // Mirrors LibraryRow's marker — the Library has two views and styling one and missing
+  // the other is the easy mistake here.
+  const local = media.platformId === LOCAL_PLATFORM_ID;
 
   return (
-    <Card data-testid="media-card">
+    <Card
+      data-testid="media-card"
+      data-local={local ? "true" : undefined}
+      className={cn(local && "border-l-2 border-l-amber-500 bg-amber-500/[0.04]")}
+    >
       <CardHeader className="flex-row items-center justify-between gap-2">
         <CardTitle data-testid="media-title" className="line-clamp-2">
           {media.title}
@@ -149,12 +158,14 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
                 size="sm"
                 data-testid="media-remove-confirm"
                 onClick={() => onRemove(media.id)}
+                title={local ? LOCAL_REMOVE_NOTE : undefined}
               >
                 Confirm remove
               </Button>
               <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
                 Cancel
               </Button>
+              {local && <span className="self-center text-xs text-foreground/55">{LOCAL_REMOVE_NOTE}</span>}
             </>
           ) : (
             <Button

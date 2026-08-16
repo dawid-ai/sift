@@ -235,10 +235,17 @@ A media file the user already has on disk can be dropped onto the window (or cho
 via a picker) to become library media and go straight to transcription — no yt-dlp
 call, no download stage:
 
-- **Helpers** (`apps/desktop/src/main/local-file.ts`): `LOCAL_FORMAT_ID` (`"local"`,
-  the `download.format_id` for an imported file — see "Design decisions" below),
+- **Shared constants** (`packages/core/src/media/local.ts`): `LOCAL_PLATFORM_ID`
+  (`"local"`, the `media.platform_id`), `LOCAL_FORMAT_ID` (`"local"`, the
+  `download.format_id` — see "Design decisions" below) and `LOCAL_TAG`
+  (`"local file"`, auto-applied on import). They live in core because **both**
+  processes need them: main stamps them onto rows, the renderer styles, sorts and
+  labels by them. `main/local-file.ts` re-exports `LOCAL_FORMAT_ID`, so
+  main-process code keeps importing it from there.
+- **Helpers** (`apps/desktop/src/main/local-file.ts`):
   `isLocalFileUrl(url)` (true for `file:` URLs — the identity key for imported
-  media), `filePathFromUrl(url)` (`fileURLToPath`, the inverse), and
+  media), `filePathFromUrl(url)` (`fileURLToPath`, the inverse),
+  `posterSeekSeconds(durationSec)` (see the poster bullet below), and
   `localFileMetadata(absPath, durationSec?)`, which synthesizes a full
   `MediaMetadata` with no yt-dlp involved: `sourceUrl` is
   `pathToFileURL(absPath).href`, `platform: { id: "local", label: "Local file",
@@ -264,7 +271,14 @@ call, no download stage:
   Whisper's `canHandle` requires, and `sift-media://` gates on download-table
   membership rather than a path prefix, so the file plays in-app from wherever it
   lives. Re-importing the same path is idempotent — same media row, same download
-  row upserted.
+  row upserted. Two things are set for presentation: the row's **label** is the
+  probed video `height` as `"1080p"` when the renderer could read one, else the
+  container (`"MP3"`, `"M4A"`), so the Library's Formats column shows a *format*
+  and an imported row reads exactly like a downloaded one; and `LOCAL_TAG` is
+  added here rather than in the renderer, so both entry points (drop and picker)
+  get it for free (`addTag` is `INSERT OR IGNORE` over a `NOCASE` column, so
+  re-import stays idempotent). The **`format_id` never moves** — it is the delete
+  guard's discriminator; only the label changes.
 - **Delete guard** (`remove()` / `removeDownload()`, same file): both skip the
   on-disk unlink when `d.format_id === LOCAL_FORMAT_ID`, before deleting the DB row
   either way. See "Design decisions" below for why this isn't cleanup work.
@@ -289,13 +303,38 @@ call, no download stage:
   filter is advisory only — Windows lets a user type any path into the filename
   box past it — so the two entry points staying in sync is enforced on the
   renderer side (`pick()`, below), not by the filter alone. `registerImportIpc`
-  takes a window getter (`() => BrowserWindow.getAllWindows()`, wired in
-  `main/index.ts` next to `registerDownloadIpc`) and parents the dialog to the
+  takes a `deps` object (`{ getWindows, db, ffmpeg, postersDir }`, wired in
+  `main/index.ts` next to `registerDownloadIpc`); the dialog is parented to the
   first window so it's app-modal, matching `frames.ts`/`summarize.ts`. Returns
   `[]` on cancel.
+- **Poster frame** (`attachPoster`, same file): after `importLocal` returns, one
+  `ffmpeg.extractFrameAt` writes `userData/posters/<mediaId>.jpg` and
+  `setMediaThumbnail` points the media row at it, so imported rows aren't stuck on
+  the empty-poster state. The seek point is `posterSeekSeconds(durationSec)` —
+  **10% of duration, clamped to `[5s, 120s]`**: proportional handles a 90-second
+  clip and a 3-hour lecture with one rule, the floor skips black frames and
+  fade-ins, the ceiling stops a long video's poster being buried mid-video, and
+  it's deterministic so a re-import doesn't silently change the thumbnail.
+  Duration comes from the renderer's pre-import probe, so nothing extra is read.
+  **It never throws**: ffmpeg is an on-demand managed binary (absent on first run)
+  and audio files have no video stream — a missing thumbnail must never fail an
+  import, so a failure just leaves `thumbnail_path` null. It re-extracts on every
+  import rather than reusing an existing `<mediaId>.jpg`, because SQLite reuses
+  the last rowid after a delete and a cached file could otherwise be served as a
+  *different* import's poster.
+- **`sift-poster://` protocol** (`main/index.ts`, registered privileged before
+  app-ready alongside `sift-thumb`/`sift-media`/`sift-frame`): serves
+  `sift-poster://file/<encodeURIComponent(abs path)>`, gated on
+  `mediaExistsByThumbnailPath` + `existsSync` — the same allowlist posture as
+  `sift-frame`. It needs its own scheme: `sift-thumb` is a remote-URL cache with a
+  host allowlist and can't serve a local path, and `sift-frame` gates on the
+  `frame` table, which belongs to the Slides flow. The renderer's
+  `videoThumbUrl()` (`renderer/lib/utils.ts`) routes any non-`http(s)`
+  `thumbnail_path` through it; `index.html`'s CSP `img-src` lists `sift-poster:`.
 - **Renderer — hook** (`apps/desktop/src/renderer/lib/use-file-import.ts`,
-  `useFileImport(onDone)`): wires `dragover`/`dragleave`/`drop` on `window`, both
-  gated on `e.dataTransfer.types.includes("Files")` so a dropped link or plain
+  `useFileImport(onDone)`): wires `dragover`/`dragleave`/`drop` on `window`.
+  `dragover` and `drop` are gated on `e.dataTransfer.types.includes("Files")`
+  (`dragleave` is not — it only ever clears the overlay) so a dropped link or plain
   text falls through to the browser's own default handling (e.g. filling the
   Home URL input) instead of being blocked — `main/index.ts`'s `will-navigate`
   handler on the window's `webContents` is the backstop that keeps that
@@ -328,18 +367,43 @@ call, no download stage:
   combined notice string covering everything skipped so a mixed batch never
   silently loses part of itself. `onDrop` re-pairs `partitionDropped`'s accepted
   entries back to their `File` objects (same filter, same order) to run
-  `probeDuration` — a throwaway `<video>` element that resolves a file's duration
-  for display, failing safe to `null` on decode error or a 5s timeout, no ffprobe
-  involved.
+  `probeMedia` — a throwaway `<video>` element that reads a file's duration **and
+  `videoHeight`** off one `onloadedmetadata`, failing safe to nulls on decode error
+  or a 5s timeout, no ffprobe involved. Duration drives the poster seek point,
+  height the format label. The hook's `busy` is an `ImportProgress`
+  (`{ name, index, total, stage, ratio }`), not a bare filename: it carries the
+  1-based batch position and, via a `window.sift.transcript.onProgress`
+  subscription, the live stage + ratio of the transcribe now running.
 - **Renderer — overlay** (`apps/desktop/src/renderer/components/drop-overlay.tsx`,
   rendered by `App()` so a drop works from any view): a full-window affordance
-  while dragging (`data-testid="drop-overlay"`, "Drop to transcribe"), a busy line
-  for the whole import-and-transcribe span, which can run several minutes under a
-  real Whisper model (`data-testid="import-busy"`, "Importing and transcribing
-  `<name>`…"), and an error line (`data-testid="import-error"`). `HomeView`
-  additionally shows a `data-testid="home-drop-hint"` line with a
-  `data-testid="home-pick-file"` button for the native picker, for anyone who
-  doesn't know they can drag onto the window.
+  while dragging (`data-testid="drop-overlay"`, "Drop to transcribe"), a busy
+  **card** for the whole import-and-transcribe span (`data-testid="import-busy"`),
+  and an error line (`data-testid="import-error"`). The card is fixed
+  bottom-right, solid, with the filename, "File 2 of 5" for multi-file drops, a
+  progress bar (`data-testid="import-progress"`) and the stage text from
+  `transcriptStageLabel()`. That shape is deliberate: this span can run several
+  minutes under a real Whisper model, and the previous faint inline `<p>` at
+  default opacity — static for the whole run — read as a frozen app. The moving
+  percentage is the part that says "not frozen"; with no ratio yet (extracting
+  audio, or a provider that doesn't report one) the bar is a pulsing sliver rather
+  than a 0% bar. `HomeView` additionally shows a `data-testid="home-drop-hint"`
+  line with a `data-testid="home-pick-file"` button for the native picker, for
+  anyone who doesn't know they can drag onto the window.
+- **Renderer — Library markers**: imported rows carry a left amber accent plus a
+  faint tint in **both** views — `library-table.tsx`'s `LibraryRow` and
+  `media-card.tsx` (`data-local="true"` on each) — branching on
+  `media.platformId === LOCAL_PLATFORM_ID`. A light tint rather than a strong
+  background, because rows already have a hover tint and heavier fill fights the
+  tag badges. `LOCAL_TAG` gets an explicit loud-amber override in
+  `lib/tag-color.ts` (checked ahead of the name hash) and sorts first in the
+  Library's tag filter bar (`library-page.tsx`'s `filterTags` — a stable sort in
+  the renderer, so `listAllTags`'s SQL ordering stays generically alphabetical).
+  `downloads-panel.tsx` shows an imported row as **"Imported"**, not "Downloaded",
+  and carries the line "Removes the library entry — your file stays where it is";
+  the same reassurance appears next to Confirm remove in both Library views
+  (`LOCAL_REMOVE_NOTE`). Files imported before auto-tagging shipped are covered by
+  `backfillPlatformTag(db, LOCAL_PLATFORM_ID, LOCAL_TAG)` in `initDb()` — an
+  `INSERT OR IGNORE … SELECT`, safe on every launch, not a schema migration.
 
 ### Offline import e2e
 
@@ -379,6 +443,13 @@ outside Playwright's reach. A human pass must verify:
    the fix is a dragenter/dragleave depth counter.
 9. **Drag a link from a browser into the window — the app must not navigate
    away**, and the Home URL input should still accept a dropped URL normally.
+10. **The import card shows a moving percentage** during a real Whisper run (it is
+    driven by `transcript:progress`, which the offline fixture resolves
+    synchronously — so only a real run exercises it), and multi-file drops count
+    "File N of M".
+11. **An imported video gets a poster thumbnail** in the Library once ffmpeg is
+    installed, and importing with ffmpeg *not* installed still succeeds with no
+    thumbnail rather than failing.
 
 ### Design decisions
 
@@ -395,7 +466,21 @@ outside Playwright's reach. A human pass must verify:
   migration was needed to add it, and it slots into `downloadDisplayLabel`'s
   existing non-`"legacy"` path (`d.format_id !== "legacy"` returns `d.label`
   verbatim) with no extra branch needed. It doubles as the discriminator the
-  delete guard above checks.
+  delete guard above checks. Its downgrade hazard is worth stating once: an older
+  Sift build has no delete guard, so a user who imports files and then rolls back
+  to a pre-import version would have their originals deleted by "Remove from
+  library". Inherent to marker-in-a-value; note it in the release entry.
+- **The poster gets its own protocol scheme rather than reusing an existing one.**
+  `sift-thumb://` is a remote-URL cache with a host allowlist and rejects both
+  arbitrary hosts and non-https (`services/thumbnail-cache.test.ts`), so it cannot
+  serve a local path at all. `sift-frame://` would work mechanically but requires
+  registering the poster in the `frame` table, polluting the Slides flow with rows
+  that aren't slides. `sift-poster://` mirrors the three existing schemes exactly
+  and gates on `media.thumbnail_path` membership — ~20 lines, no new concepts.
+- **Poster extraction lives in the IPC layer, not `DownloadService`.** The service
+  is deliberately loadable under plain Node for its Vitest suite and has no ffmpeg
+  dependency; putting the grab in `main/ipc/import.ts` keeps it that way, and both
+  entry points still get it because both go through `import:local`.
 
 ## Transcript flow (registry → `ytdlp-subs` provider → VTT parsing → transcript row)
 

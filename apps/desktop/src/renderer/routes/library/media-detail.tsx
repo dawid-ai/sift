@@ -702,7 +702,8 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
 
 const TABS: { key: DetailTab; label: string }[] = [
   { key: "transcript", label: "Transcript" },
-  { key: "summary", label: "Summary" },
+  // Label only — the key stays "summary" so `media-detail-tab-summary` keeps resolving.
+  { key: "summary", label: "Tools" },
   { key: "slides", label: "Slides" },
   { key: "files", label: "Files" },
 ];

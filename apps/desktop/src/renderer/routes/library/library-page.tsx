@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { LOCAL_TAG } from "@sift/core";
 import type {
   LibraryFacets,
   MediaFilter,
@@ -71,6 +72,14 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
     activeTags.length || excludedTags.length || channel || platform || from || to || searchHits
   );
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+  // The local-file tag sorts first: it marks a whole class of media, not one topic among
+  // many. Done here rather than in SQL so `listAllTags` stays generically alphabetical —
+  // and `sort` is stable, so everything else keeps that order.
+  const isLocalTag = (name: string) => name.toLowerCase() === LOCAL_TAG;
+  const filterTags = [...facets.tags].sort(
+    (a, b) => Number(isLocalTag(b.name)) - Number(isLocalTag(a.name)),
+  );
 
   const has = (list: string[], name: string) => list.some((t) => t.toLowerCase() === name.toLowerCase());
   const without = (list: string[], name: string) =>
@@ -338,7 +347,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
           data-testid="tag-filter-bar"
           className="flex flex-wrap items-center gap-1.5 pb-2"
         >
-          {facets.tags.map((t) => {
+          {filterTags.map((t) => {
             const excluded = has(excludedTags, t.name);
             const active = has(activeTags, t.name);
             return (

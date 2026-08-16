@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { LOCAL_TAG } from "@sift/core";
 import { openTestDatabase } from "@sift/db/testing";
 import {
   addTag,
@@ -965,11 +966,40 @@ describe("DownloadService", () => {
     const downloads = listDownloadsByMediaId(db, record.id);
     expect(downloads).toHaveLength(1);
     expect(downloads[0]!.format_id).toBe(LOCAL_FORMAT_ID);
-    expect(downloads[0]!.label).toBe("Local file");
+    // Formats column shows a format, not "Local file": the probed height when the renderer
+    // could read one, else the container.
+    expect(downloads[0]!.label).toBe("MP4");
     expect(downloads[0]!.ext).toBe("mp4");
     expect(downloads[0]!.status).toBe("done");
     expect(downloads[0]!.file_size).toBe(4);
     expect(existsSync(mediaPath)).toBe(true);
+
+    db.close();
+  });
+
+  it("importLocal() labels the download row by video height when the renderer probed one", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const videoPath = join(dir, "Lecture.mkv");
+    const audioPath = join(dir, "Podcast.mp3");
+    writeFileSync(videoPath, "fake");
+    writeFileSync(audioPath, "fake");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    const { service } = makeService({ db, runner, downloadsDir });
+
+    const video = await service.importLocal({ path: videoPath, height: 1080 });
+    expect(listDownloadsByMediaId(db, video.id)[0]!.label).toBe("1080p");
+    expect(listDownloadsByMediaId(db, video.id)[0]!.height).toBe(1080);
+
+    // Audio reports videoHeight 0 — fall back to the container rather than "0p".
+    const audio = await service.importLocal({ path: audioPath, height: 0 });
+    expect(listDownloadsByMediaId(db, audio.id)[0]!.label).toBe("MP3");
+    expect(listDownloadsByMediaId(db, audio.id)[0]!.height).toBeNull();
+
+    // The delete guard's discriminator must not move with the label.
+    expect(listDownloadsByMediaId(db, video.id)[0]!.format_id).toBe(LOCAL_FORMAT_ID);
 
     db.close();
   });
@@ -1011,8 +1041,9 @@ describe("DownloadService", () => {
       binariesDir: "/test/binaries",
     });
 
+    // LOCAL_TAG is applied by the service, so both entry points (drop + picker) get it.
     const record = await service.importLocal({ path: mediaPath, tags: ["talks"] });
-    expect(tagsForMedia(db, record.id)).toEqual(["talks"]);
+    expect(tagsForMedia(db, record.id)).toEqual([LOCAL_TAG, "talks"]);
 
     await expect(service.importLocal({ path: join(dir, "nope.mp4") })).rejects.toThrow(
       /no longer exists/,

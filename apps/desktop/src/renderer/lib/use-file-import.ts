@@ -18,17 +18,26 @@ function droppedPath(file: File): string | null {
   return typeof path === "string" && path.length > 0 ? path : null;
 }
 
+/** What a throwaway `<video>` can tell us about a file before it is imported. `height` is
+ * 0 for audio (no video track), which the main process reads as "label it by container". */
+interface ProbedMedia {
+  durationSec: number | null;
+  height: number | null;
+}
+
+const UNPROBED: ProbedMedia = { durationSec: null, height: null };
+
 /**
- * Reads a media file's duration with a throwaway `<video>` — no ffprobe, no new managed
- * binary. Resolves null when the browser can't decode it or takes too long: duration is
- * display-only and never worth blocking or failing an import over.
+ * Reads a media file's duration and video height with a throwaway `<video>` — no ffprobe,
+ * no new managed binary. Resolves nulls when the browser can't decode it or takes too long:
+ * both are display-only and never worth blocking or failing an import over.
  */
-function probeDuration(file: File): Promise<number | null> {
+function probeMedia(file: File): Promise<ProbedMedia> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const el = document.createElement("video");
     let settled = false;
-    const finish = (value: number | null) => {
+    const finish = (value: ProbedMedia) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -36,10 +45,14 @@ function probeDuration(file: File): Promise<number | null> {
       el.removeAttribute("src");
       resolve(value);
     };
-    const timer = setTimeout(() => finish(null), PROBE_TIMEOUT_MS);
+    const timer = setTimeout(() => finish(UNPROBED), PROBE_TIMEOUT_MS);
     el.preload = "metadata";
-    el.onloadedmetadata = () => finish(Number.isFinite(el.duration) ? el.duration : null);
-    el.onerror = () => finish(null);
+    el.onloadedmetadata = () =>
+      finish({
+        durationSec: Number.isFinite(el.duration) ? el.duration : null,
+        height: el.videoHeight || null,
+      });
+    el.onerror = () => finish(UNPROBED);
     el.src = url;
   });
 }
@@ -83,11 +96,24 @@ export function partitionDropped(
   return { entries, notice: notices.length > 0 ? notices.join(" ") : null };
 }
 
+/** What the import card shows while a batch runs. A long Whisper pass is minutes of the
+ * same screen, so this carries a moving stage + ratio, not just a filename. */
+export interface ImportProgress {
+  name: string;
+  /** 1-based position in the batch, so a multi-file drop can say "File 2 of 5". */
+  index: number;
+  total: number;
+  /** Latest `transcript:progress` stage, or null before the first event lands. */
+  stage: string | null;
+  /** 0..1 within the current stage, or null when the provider doesn't report one. */
+  ratio: number | null;
+}
+
 export interface FileImportState {
   /** True while a drag carrying files is over the window. */
   dragging: boolean;
-  /** Filename currently being imported/transcribed, else null. */
-  busy: string | null;
+  /** The file currently being imported/transcribed and its progress, else null. */
+  busy: ImportProgress | null;
   error: string | null;
   /** Opens the native picker and imports whatever is chosen. */
   pick: () => Promise<void>;
@@ -100,7 +126,7 @@ export interface FileImportState {
  */
 export function useFileImport(onDone: () => void): FileImportState {
   const [dragging, setDragging] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<ImportProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Ref, not state: a second drop/pick while a batch is in flight must be rejected
   // synchronously, and keeping this out of state means the drag-listener effect below
@@ -117,11 +143,13 @@ export function useFileImport(onDone: () => void): FileImportState {
       // the common first-run path, not an edge case.
       let landed = 0;
       try {
-        for (const entry of entries) {
-          setBusy(entry.name);
+        for (const [i, entry] of entries.entries()) {
+          // Stage/ratio reset per file — they arrive from the shared transcript:progress
+          // subscription below and would otherwise carry over from the previous file.
+          setBusy({ name: entry.name, index: i + 1, total: entries.length, stage: null, ratio: null });
           try {
-            const durationSec = entry.file ? await probeDuration(entry.file) : null;
-            const record = await window.sift.import.local({ path: entry.path, durationSec });
+            const probed = entry.file ? await probeMedia(entry.file) : UNPROBED;
+            const record = await window.sift.import.local({ path: entry.path, ...probed });
             landed += 1;
             // Short-circuits to synthesized metadata for file: URLs — no yt-dlp round trip.
             const metadata = await window.sift.metadata.fetch(record.sourceUrl);
@@ -187,6 +215,17 @@ export function useFileImport(onDone: () => void): FileImportState {
     }
     await runImports(entries, notice);
   }, [runImports]);
+
+  // Real progress for the file in flight. TranscriptService broadcasts stage + ratio to
+  // every window, so the same stream that drives Home's transcribe button drives the import
+  // card. Staying subscribed is free — the update is dropped unless a batch is running.
+  useEffect(
+    () =>
+      window.sift.transcript.onProgress((p) =>
+        setBusy((prev) => (prev ? { ...prev, stage: p.stage, ratio: p.ratio } : prev)),
+      ),
+    [],
+  );
 
   useEffect(() => {
     // preventDefault on dragover AND drop, gated to "Files" drags only, is what stops

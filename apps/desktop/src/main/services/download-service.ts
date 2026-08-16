@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
-import { buildOutputBaseName, sanitizeFilename } from "@sift/core";
+import { LOCAL_TAG, buildOutputBaseName, sanitizeFilename } from "@sift/core";
 import type { DownloadRow, MediaRow, NewMedia, SiftDatabase } from "@sift/db";
 import {
   addTag,
@@ -272,6 +272,7 @@ export class DownloadService {
   async importLocal(input: {
     path: string;
     durationSec?: number | null;
+    height?: number | null;
     tags?: string[];
   }): Promise<MediaRecord> {
     const { db } = this.opts;
@@ -283,14 +284,22 @@ export class DownloadService {
     const metadata = localFileMetadata(input.path, input.durationSec ?? null);
     const existing = getMediaBySourceUrl(db, metadata.sourceUrl);
     const media = existing ?? insertMedia(db, fromMetadata(metadata));
-    for (const name of input.tags ?? []) addTag(db, media.id, name);
+    // LOCAL_TAG here, not in the renderer, so both entry points (drop + picker) get it.
+    // `addTag` is INSERT OR IGNORE over a NOCASE column, so re-import stays idempotent.
+    for (const name of [LOCAL_TAG, ...(input.tags ?? [])]) addTag(db, media.id, name);
 
+    // The Formats column shows a format, so give it one: the video's real height when the
+    // renderer could read it, else the container ("MP3"/"M4A" for audio, where videoHeight
+    // is 0). An imported row then reads exactly like a downloaded one. `format_id` must
+    // stay LOCAL_FORMAT_ID — it is the discriminator for all three delete guards.
+    const ext = extname(input.path).replace(/^\./, "").toLowerCase() || null;
+    const height = input.height && input.height > 0 ? input.height : null;
     upsertDownload(db, {
       media_id: media.id,
       format_id: LOCAL_FORMAT_ID,
-      label: "Local file",
-      ext: extname(input.path).replace(/^\./, "").toLowerCase() || null,
-      height: null,
+      label: height ? `${height}p` : (ext?.toUpperCase() ?? "Local file"),
+      ext,
+      height,
       file_path: input.path,
       file_size: statSync(input.path).size,
       status: "done",

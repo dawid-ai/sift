@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { dirname, join } from "node:path";
 import { app, BrowserWindow, Menu, protocol, safeStorage, session } from "electron";
 import { autoUpdater } from "electron-updater";
-import { AiRegistry, branding, TranscriptRegistry } from "@sift/core";
+import { AiRegistry, branding, LOCAL_PLATFORM_ID, LOCAL_TAG, TranscriptRegistry } from "@sift/core";
 import type { AiProvider, TranscriptProvider } from "@sift/core";
 import { openDatabase, runMigrations, type SiftDatabase } from "@sift/db";
 import {
@@ -15,7 +15,7 @@ import {
   type BinarySource,
 } from "@sift/binaries";
 import { IPC, type BinaryKind } from "@sift/ipc-contract";
-import { backfillMediaChannelIds, downloadExistsByFilePath, frameExistsByImagePath, getAsset, upsertAsset, type AssetKind } from "@sift/db";
+import { backfillMediaChannelIds, backfillPlatformTag, downloadExistsByFilePath, frameExistsByImagePath, getAsset, mediaExistsByThumbnailPath, upsertAsset, type AssetKind } from "@sift/db";
 import { normalizeAssetPaths, resolveAssetPath } from "./asset-path";
 import { parseRange, mediaContentType } from "./media-range";
 import { registerAppIpc } from "./ipc/app";
@@ -83,6 +83,7 @@ import {
   framesDir,
   tessdataDir,
   tesseractCacheDir,
+  postersDir,
   secretsFile,
   thumbnailsDir,
   transcriptConfigFile,
@@ -113,6 +114,10 @@ protocol.registerSchemesAsPrivileged([
   { scheme: "sift-media", privileges: { standard: true, secure: true, stream: true } },
   // Serves extracted slide frames to the renderer's <img>. Static JPEGs, no Range needed.
   { scheme: "sift-frame", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // Serves poster frames grabbed from imported local files. Its own scheme because
+  // sift-thumb is a remote-URL cache with a host allowlist (it can't serve a local path)
+  // and sift-frame gates on the `frame` table, which belongs to the Slides flow.
+  { scheme: "sift-poster", privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
 // Offline e2e hook (see docs/DEVELOPMENT.md "e2e fixture hook"): when set, the app
@@ -493,10 +498,24 @@ function initDb(): void {
     runMigrations(db);
     normalizeAssetPaths(db, binariesDir());
     backfillMediaChannelIds(db);
+    // Files imported before auto-tagging shipped predate LOCAL_TAG; INSERT OR IGNORE, so
+    // this is a no-op on every launch after the first.
+    backfillPlatformTag(db, LOCAL_PLATFORM_ID, LOCAL_TAG);
     dbReady = one?.n === 1;
   } catch (err) {
     console.error("Failed to initialize database:", err);
     dbReady = false;
+  }
+}
+
+/** A URL's origin, or null if it's absent or unparseable (`file://` paths included). */
+function safeOrigin(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const { origin } = new URL(url);
+    return origin === "null" ? null : origin;
+  } catch {
+    return null;
   }
 }
 
@@ -519,8 +538,18 @@ function createWindow(): void {
   // Standard Electron hardening, independent of the renderer's own drop-handling: without
   // this, a link or file dragged into the window (or any other in-app navigation attempt)
   // would navigate the renderer away from the app and destroy the session. Doesn't fire for
-  // the initial loadURL/loadFile below, so it can't block startup or dev-server HMR.
-  win.webContents.on("will-navigate", (e) => e.preventDefault());
+  // the initial loadURL/loadFile below, so it can't block startup.
+  //
+  // The one exception is dev-only: Vite's full-reload fallback (the renderer-initiated
+  // `location.reload()` it uses when a module can't be hot-replaced) IS a will-navigate,
+  // and cancelling it wedges the dev loop. Same-origin-as-the-dev-server navigations are
+  // therefore allowed. In a packaged build ELECTRON_RENDERER_URL is unset, so devOrigin is
+  // null and every navigation is cancelled, unchanged.
+  const devOrigin = safeOrigin(process.env.ELECTRON_RENDERER_URL);
+  win.webContents.on("will-navigate", (e, url) => {
+    if (devOrigin && safeOrigin(url) === devOrigin) return;
+    e.preventDefault();
+  });
 
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
@@ -592,6 +621,18 @@ app.whenReady().then(() => {
   protocol.handle("sift-frame", (req) => {
     const filePath = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
     if (!db || !dbReady || !frameExistsByImagePath(getDb(), filePath) || !existsSync(filePath)) {
+      return new Response(null, { status: 404 });
+    }
+    return new Response(new Uint8Array(readFileSync(filePath)), {
+      headers: { "content-type": "image/jpeg", "cache-control": "no-cache" },
+    });
+  });
+
+  // Serve poster frames for imported local files. sift-poster://file/<encodeURIComponent(abs path)>.
+  // Same allowlist posture as sift-frame: only paths a media row actually points at.
+  protocol.handle("sift-poster", (req) => {
+    const filePath = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
+    if (!db || !dbReady || !mediaExistsByThumbnailPath(getDb(), filePath) || !existsSync(filePath)) {
       return new Response(null, { status: 404 });
     }
     return new Response(new Uint8Array(readFileSync(filePath)), {
@@ -735,7 +776,14 @@ app.whenReady().then(() => {
       reportAuthFailure: authManager.reportAuthFailure,
     });
     registerDownloadIpc(downloadService, () => BrowserWindow.getAllWindows());
-    registerImportIpc(downloadService, () => BrowserWindow.getAllWindows());
+    registerImportIpc(downloadService, {
+      getWindows: () => BrowserWindow.getAllWindows(),
+      db: getDb(),
+      // Its own runner instance (like FrameService's) — `getBinaryPath` is resolved per
+      // call, so this works whether or not ffmpeg is installed yet.
+      ffmpeg: createFfmpegRunner({ getBinaryPath: () => assetPath("ffmpeg") }),
+      postersDir,
+    });
     registerLibraryIpc(downloadService);
     registerTagsIpc(getDb());
 

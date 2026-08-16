@@ -628,6 +628,9 @@ export interface SiftApi {
     local(input: {
       path: string;
       durationSec?: number | null;
+      /** Video height in pixels, read off the same `onloadedmetadata` as `durationSec`.
+       * 0/null for audio — the row then falls back to its container for a format label. */
+      height?: number | null;
       tags?: string[];
     }): Promise<MediaRecord>;
     /** Opens the native file picker filtered to supported media extensions. Returns the
