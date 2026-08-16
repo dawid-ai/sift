@@ -2,6 +2,12 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // shots.spec.ts is a visual-QA capture tool, not a regression spec — it drives every surface
+  // and writes PNGs, asserting almost nothing. Left in the default run it padded the suite with
+  // ~15s of disk I/O and a test that passes by construction. Opt in to run it:
+  //   SIFT_SHOTS=1 pnpm exec playwright test e2e/shots.spec.ts
+  // (testIgnore wins over an explicit path argument, hence the env gate rather than a bare glob.)
+  testIgnore: process.env.SIFT_SHOTS ? [] : ["**/shots.spec.ts"],
   // Specs share app state (one library db per fixture run), and each launches a real
   // Electron instance. `fullyParallel: false` only serializes *within* a file — without
   // workers:1 Playwright still runs files concurrently and every spec red-fails.
