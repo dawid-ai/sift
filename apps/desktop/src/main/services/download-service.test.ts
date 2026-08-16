@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openTestDatabase } from "@sift/db/testing";
@@ -9,6 +9,7 @@ import {
   getMediaById,
   getSummariesByMediaId,
   getTranscriptsByMediaId,
+  insertDownload,
   insertMedia,
   insertSummary,
   insertTranscript,
@@ -20,6 +21,7 @@ import {
 } from "@sift/db";
 import type { DownloadOption, DownloadProgress, MediaMetadata } from "@sift/ipc-contract";
 import type { DownloadOpts, RawDownloadProgress, YtDlpRunner } from "../sidecars/ytdlp";
+import { LOCAL_FORMAT_ID } from "../local-file";
 import { DownloadService, downloadDisplayLabel } from "./download-service";
 
 describe("downloadDisplayLabel", () => {
@@ -859,6 +861,162 @@ describe("DownloadService", () => {
 
     expect(getSummariesByMediaId(db, m.id)).toHaveLength(0);
     expect(getMediaById(db, m.id)).toBeDefined();
+
+    db.close();
+  });
+
+  it("remove() deletes the rows but never unlinks an imported local file", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner({ filePaths: ["/dl/Chan__Vid.mp4"] });
+    const { service, unlinked } = makeService({ db, runner, downloadsDir });
+
+    // A normal download (its file IS ours to delete) …
+    await service.start({ metadata, option: OPTION });
+    const mediaId = listMedia(db)[0]!.id;
+    // … plus an imported local file on the same media row (referenced in place, NOT ours).
+    insertDownload(db, {
+      media_id: mediaId,
+      format_id: LOCAL_FORMAT_ID,
+      label: "Local file",
+      ext: "mp4",
+      height: null,
+      file_path: "D:\\my-videos\\precious.mp4",
+      file_size: 123,
+      status: "done",
+      error: null,
+    });
+
+    await service.remove(mediaId);
+
+    expect(unlinked).toEqual(["/dl/Chan__Vid.mp4"]);
+    expect(unlinked).not.toContain("D:\\my-videos\\precious.mp4");
+    expect(getMediaById(db, mediaId)).toBeUndefined();
+    expect(listDownloadsByMediaId(db, mediaId)).toHaveLength(0);
+
+    db.close();
+  });
+
+  it("removeDownload() deletes an imported row without unlinking the user's file", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    const { service, unlinked } = makeService({ db, runner, downloadsDir });
+
+    const media = insertMedia(db, {
+      source_url: "file:///D:/my-videos/precious.mp4",
+      platform_id: "local",
+      external_id: null,
+      title: "precious",
+      uploader: null,
+      uploader_url: null,
+      duration_s: null,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      channel_id: null,
+      download_status: "none",
+    });
+    const row = insertDownload(db, {
+      media_id: media.id,
+      format_id: LOCAL_FORMAT_ID,
+      label: "Local file",
+      ext: "mp4",
+      height: null,
+      file_path: "D:\\my-videos\\precious.mp4",
+      file_size: 123,
+      status: "done",
+      error: null,
+    });
+
+    await service.removeDownload(row.id);
+
+    expect(unlinked).toEqual([]);
+    expect(listDownloadsByMediaId(db, media.id)).toHaveLength(0);
+
+    db.close();
+  });
+
+  it("importLocal() creates a media row plus a done 'local' download row pointing at the file in place", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const mediaPath = join(dir, "Team Standup.mp4");
+    writeFileSync(mediaPath, "fake");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    const { service } = makeService({ db, runner, downloadsDir });
+
+    const record = await service.importLocal({ path: mediaPath, durationSec: 61.5 });
+
+    expect(record.title).toBe("Team Standup");
+    expect(record.platformId).toBe("local");
+    expect(record.durationSec).toBe(61.5);
+    expect(record.downloadStatus).toBe("done");
+    // The file stays where the user put it — no copy into the downloads dir.
+    expect(record.downloadPath).toBe(mediaPath);
+
+    const downloads = listDownloadsByMediaId(db, record.id);
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0]!.format_id).toBe(LOCAL_FORMAT_ID);
+    expect(downloads[0]!.label).toBe("Local file");
+    expect(downloads[0]!.ext).toBe("mp4");
+    expect(downloads[0]!.status).toBe("done");
+    expect(downloads[0]!.file_size).toBe(4);
+    expect(existsSync(mediaPath)).toBe(true);
+
+    db.close();
+  });
+
+  it("importLocal() re-importing the same file attaches to the existing media row", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const mediaPath = join(dir, "Talk.mp4");
+    writeFileSync(mediaPath, "fake");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    const { service } = makeService({ db, runner, downloadsDir });
+
+    const first = await service.importLocal({ path: mediaPath });
+    const second = await service.importLocal({ path: mediaPath });
+
+    expect(second.id).toBe(first.id);
+    expect(listMedia(db)).toHaveLength(1);
+    expect(listDownloadsByMediaId(db, first.id)).toHaveLength(1);
+
+    db.close();
+  });
+
+  it("importLocal() applies tags and rejects when the file is gone", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const mediaPath = join(dir, "Tagged.mp4");
+    writeFileSync(mediaPath, "fake");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    // Real existsSync here — makeService's stub returns true for everything, which would
+    // make the missing-file assertion below pass for the wrong reason.
+    const service = new DownloadService({
+      db,
+      runner,
+      downloadsDir: () => downloadsDir,
+      binariesDir: "/test/binaries",
+    });
+
+    const record = await service.importLocal({ path: mediaPath, tags: ["talks"] });
+    expect(tagsForMedia(db, record.id)).toEqual(["talks"]);
+
+    await expect(service.importLocal({ path: join(dir, "nope.mp4") })).rejects.toThrow(
+      /no longer exists/,
+    );
 
     db.close();
   });

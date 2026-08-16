@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { extname, join } from "node:path";
 import { buildOutputBaseName, sanitizeFilename } from "@sift/core";
 import type { DownloadRow, MediaRow, NewMedia, SiftDatabase } from "@sift/db";
 import {
@@ -49,6 +49,7 @@ import { isAuthError } from "../auth/status";
 import { buildM3U } from "./m3u";
 import type { YtDlpRunner } from "../sidecars/ytdlp";
 import { resolveAssetPath } from "../asset-path";
+import { LOCAL_FORMAT_ID, localFileMetadata } from "../local-file";
 
 // Note: deliberately does NOT import `../paths` (which imports `electron`) — this
 // service must stay loadable under plain Node for its Vitest suite. `mkdirSync` is
@@ -227,7 +228,16 @@ export class DownloadService {
       }
       // Re-downloading the same format collapses to one row: drop the prior file on disk
       // once the new one has landed at a different path (last download wins).
-      if (prior?.file_path && prior.file_path !== filePath && fileExists(prior.file_path)) {
+      // The LOCAL_FORMAT_ID check is unreachable today — computeDownloadOptions is the
+      // only producer of DownloadOption and only ever emits "${h}p"/"best"/"audio" ids,
+      // never "local" — guarded anyway because the failure mode is deleting a file we
+      // never copied.
+      if (
+        prior?.file_path &&
+        prior.file_path !== filePath &&
+        prior.format_id !== LOCAL_FORMAT_ID &&
+        fileExists(prior.file_path)
+      ) {
         unlink(prior.file_path);
       }
       setDownloadStatus(db, dl.id, "done", filePath, null, null);
@@ -244,6 +254,50 @@ export class DownloadService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Registers an existing local media file as library media, skipping the download stage:
+   * finds-or-creates the identity `media` row by its `file://` source URL, then upserts a
+   * "done" `download` row whose `file_path` is **the user's own path** — imports are
+   * referenced in place, never copied (see the guard in `remove`/`removeDownload`).
+   *
+   * That done download row is the whole trick: `TranscriptService` reads it as `audioPath`,
+   * which is exactly what Whisper's `canHandle` requires, and `sift-media://` gates on
+   * download-table membership rather than a path prefix, so the file plays in-app from
+   * wherever it lives.
+   *
+   * Re-importing the same path is idempotent — same media row, same download row upserted.
+   */
+  async importLocal(input: {
+    path: string;
+    durationSec?: number | null;
+    tags?: string[];
+  }): Promise<MediaRecord> {
+    const { db } = this.opts;
+    const fileExists = this.opts.fileExists ?? existsSync;
+    if (!fileExists(input.path)) {
+      throw new Error(`That file no longer exists (${input.path}).`);
+    }
+
+    const metadata = localFileMetadata(input.path, input.durationSec ?? null);
+    const existing = getMediaBySourceUrl(db, metadata.sourceUrl);
+    const media = existing ?? insertMedia(db, fromMetadata(metadata));
+    for (const name of input.tags ?? []) addTag(db, media.id, name);
+
+    upsertDownload(db, {
+      media_id: media.id,
+      format_id: LOCAL_FORMAT_ID,
+      label: "Local file",
+      ext: extname(input.path).replace(/^\./, "").toLowerCase() || null,
+      height: null,
+      file_path: input.path,
+      file_size: statSync(input.path).size,
+      status: "done",
+      error: null,
+    });
+
+    return toMediaRecord(media, listDownloadsByMediaId(db, media.id));
   }
 
   /** Lists persisted media, newest first, each with a per-video capture summary
@@ -304,6 +358,9 @@ export class DownloadService {
     const unlink = this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
 
     for (const d of listDownloadsByMediaId(db, id)) {
+      // Imported local files are referenced where the user keeps them, never copied —
+      // so removing the library row must never delete their file. The row still goes.
+      if (d.format_id === LOCAL_FORMAT_ID) continue;
       if (d.file_path && fileExists(d.file_path)) unlink(d.file_path);
     }
     deleteMedia(db, id);
@@ -356,7 +413,10 @@ export class DownloadService {
     const unlink = this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
 
     const row = getDownloadById(db, id);
-    if (row?.file_path && fileExists(row.file_path)) unlink(row.file_path);
+    // Same guard as remove(): an imported local file is the user's, not ours to delete.
+    if (row && row.format_id !== LOCAL_FORMAT_ID && row.file_path && fileExists(row.file_path)) {
+      unlink(row.file_path);
+    }
     deleteDownload(db, id);
   }
 

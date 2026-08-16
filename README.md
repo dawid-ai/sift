@@ -32,6 +32,8 @@ The app updates itself after that. Both points are explained in the [FAQ](./docs
 - **Transcribe** from captions, or fully offline with local
   [whisper.cpp](https://github.com/ggerganov/whisper.cpp) when a video has none. Export any
   timed transcript as `.srt` subtitles.
+- **Import local audio/video** — drop a file onto the window, or use the file picker, and
+  it's transcribed directly, no download step.
 - **Slides** — pull the data-bearing frames (slides, charts, on-screen text) out of a video,
   dedupe them automatically, and OCR-gate them so only frames actually carrying text survive.
   Crop, curate, then export a document that interleaves the transcript and slides by timestamp

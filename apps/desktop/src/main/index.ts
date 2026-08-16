@@ -25,6 +25,7 @@ import { registerDbIpc } from "./ipc/db";
 import { registerBinariesIpc, registerBinaryUpdatesIpc } from "./ipc/binaries";
 import { registerMetadataIpc } from "./ipc/metadata";
 import { registerDownloadIpc } from "./ipc/download";
+import { registerImportIpc } from "./ipc/import";
 import { registerLibraryIpc } from "./ipc/library";
 import { registerTagsIpc } from "./ipc/tags";
 import { registerTranscriptIpc } from "./ipc/transcript";
@@ -515,6 +516,12 @@ function createWindow(): void {
 
   win.once("ready-to-show", () => win.show());
 
+  // Standard Electron hardening, independent of the renderer's own drop-handling: without
+  // this, a link or file dragged into the window (or any other in-app navigation attempt)
+  // would navigate the renderer away from the app and destroy the session. Doesn't fire for
+  // the initial loadURL/loadFile below, so it can't block startup or dev-server HMR.
+  win.webContents.on("will-navigate", (e) => e.preventDefault());
+
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
@@ -533,10 +540,11 @@ app.whenReady().then(() => {
     });
   });
 
-  // Serve downloaded video files to the in-app player. sift-media://file/<encodeURIComponent(abs path)>.
-  // security gate is download-table membership + existsSync — a downloaded-file
-  // allowlist, not a path sandbox. Upgrade path: canonicalize + prefix-check downloadsDir()
-  // if we ever serve files not tracked in the download table.
+  // Serve downloaded (and imported) video files to the in-app player. sift-media://file/<encodeURIComponent(abs path)>.
+  // security gate is download-table membership + existsSync — deliberately path-unbounded,
+  // not a path-prefix sandbox: imported local files are referenced wherever the user keeps
+  // them on disk, not copied into downloadsDir(), so a prefix check would break them.
+  // Membership in the download table is the whole gate.
   protocol.handle("sift-media", async (req) => {
     const filePath = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
     if (!db || !dbReady || !downloadExistsByFilePath(getDb(), filePath) || !existsSync(filePath)) {
@@ -727,6 +735,7 @@ app.whenReady().then(() => {
       reportAuthFailure: authManager.reportAuthFailure,
     });
     registerDownloadIpc(downloadService, () => BrowserWindow.getAllWindows());
+    registerImportIpc(downloadService, () => BrowserWindow.getAllWindows());
     registerLibraryIpc(downloadService);
     registerTagsIpc(getDb());
 

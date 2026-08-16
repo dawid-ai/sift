@@ -28,8 +28,10 @@ import { useBinaryUpdates } from "@/routes/updates/use-binary-updates";
 import { BinaryUpdateToast } from "@/routes/updates/binary-update-toast";
 import { KNOWN_PROVIDERS } from "@/lib/ai-provider-catalog";
 import { transcriptStageLabel } from "@/lib/transcript-stage-label";
+import { DropOverlay } from "@/components/drop-overlay";
+import { useFileImport } from "@/lib/use-file-import";
 
-function HomeView() {
+function HomeView({ onPickFiles, busy }: { onPickFiles: () => void; busy: string | null }) {
   const [version, setVersion] = useState("…");
   const [dbReady, setDbReady] = useState(false);
   const [metadata, setMetadata] = useState<MediaMetadata | null>(null);
@@ -289,6 +291,19 @@ function HomeView() {
 
       <UrlInput onUrl={handleUrl} />
 
+      <p data-testid="home-drop-hint" className="text-sm text-foreground/55">
+        …or drop an audio/video file anywhere to transcribe it —{" "}
+        <button
+          type="button"
+          data-testid="home-pick-file"
+          onClick={onPickFiles}
+          disabled={busy !== null}
+          className="underline underline-offset-2 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          choose a file
+        </button>
+      </p>
+
       {loading && (
         <p role="status" className="text-sm text-foreground/60">
           Loading…
@@ -382,6 +397,9 @@ export function App() {
     if (v === "library") setLibraryHome((n) => n + 1);
     setView(v);
   }, []);
+  // A finished import lands the user on the library list, which is also how the list
+  // refreshes — same path the Library nav click takes.
+  const fileImport = useFileImport(useCallback(() => handleNavigate("library"), [handleNavigate]));
   const { state: updateState, dismiss: dismissUpdate } = useUpdates();
   const { state: binaryUpdateState, dismiss: dismissBinaryUpdate } = useBinaryUpdates();
 
@@ -408,12 +426,15 @@ export function App() {
     <div className="app-canvas flex h-screen overflow-hidden">
       <Sidebar view={view} onNavigate={handleNavigate} />
       <div className="flex flex-1 flex-col overflow-auto">
+        <DropOverlay dragging={fileImport.dragging} busy={fileImport.busy} error={fileImport.error} />
         {openChannelError && (
           <p data-testid="open-channel-error" className="px-4 pt-2 text-sm text-danger">
             {openChannelError}
           </p>
         )}
-        {view === "home" && <HomeView />}
+        {view === "home" && (
+          <HomeView onPickFiles={() => void fileImport.pick()} busy={fileImport.busy} />
+        )}
         {view === "library" && (
           <LibraryPage
             onOpenChannel={handleOpenChannel}

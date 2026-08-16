@@ -77,6 +77,10 @@ const api: SiftApi = {
       return () => ipcRenderer.removeListener(IPC.downloadProgress, listener);
     },
   },
+  import: {
+    local: (input) => ipcRenderer.invoke(IPC.importLocal, input),
+    pick: () => ipcRenderer.invoke(IPC.importPick),
+  },
   ollama: {
     health: () => ipcRenderer.invoke(IPC.ollamaHealth),
     start: () => ipcRenderer.invoke(IPC.ollamaStart),
