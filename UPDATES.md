@@ -1,5 +1,32 @@
 # Updates
 
+## v0.4.0 — 2026-08-16
+
+- **Import files you already have.** Drop an audio or video file anywhere on the window
+  (or use "choose a file" on Home) and Sift adds it to the library and transcribes it —
+  no download step. **Your file is never copied or moved:** Sift points at it where you
+  keep it, and removing the library entry leaves the original on disk.
+- Imported videos get a **thumbnail pulled from the video itself**, and a progress card
+  shows the stage and percentage while a long transcription runs.
+- **Prompt packs** — export your prompts as a JSON file, or import someone else's. Sift
+  now ships with a creator pack: chapters, title ideas, show notes, a blog draft, and
+  clip picks.
+- **Timestamped prompts.** Put `{{TIMESTAMPS}}` in a prompt to hand the model a transcript
+  with times, so it can cite the moment it's talking about. Summaries can run longer, too.
+- **Export any transcript as .srt** subtitles.
+- **Outlier badge** on the videos of a channel that beat its median view count.
+- **The library table shows more at a glance** — channel and length are now their own
+  columns, and the channel name opens its page (inside Sift for YouTube, in your browser
+  for everything else). Remove is a trash icon.
+- **Slide text recognition works fully offline** — the language data ships with the app
+  instead of being downloaded on first use.
+- A link Sift can't handle now **says so in plain English** instead of showing a yt-dlp error.
+- The video detail page's "Summary" tab is now **"Tools"**.
+
+**Heads-up if you roll back:** builds before v0.4.0 know nothing about imported files, so
+removing an imported video from the library on an older build would delete your original.
+Don't downgrade while imported files are in your library.
+
 ## v0.3.0 — 2026-08-10
 
 - **New look** — a darker, quieter interface: deeper background, coral accents for media
