@@ -99,6 +99,35 @@ describe("createYtDlpRunner", () => {
       expect(calls[0]).toEqual(["--cookies", "/tmp/c.txt", "--js-runtimes", "node", "-J", "--no-warnings", "--", "https://x/1"]);
     });
 
+    it("reports an unsupported site as a plain sentence, not a yt-dlp stack", async () => {
+      const url = "https://dribbble.com/shots/27595845-Motion-Graphics-Promo";
+      const exec: ExecFn = async () => {
+        throw Object.assign(new Error("Command failed: yt-dlp --cookies C:\\Users\\me\\auth.txt …"), {
+          stderr: `ERROR: Unsupported URL: ${url}\n`,
+        });
+      };
+      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, exec });
+
+      await expect(runner.dumpJson(url)).rejects.toThrow(
+        /yt-dlp has no extractor for dribbble\.com/,
+      );
+      // The command line (which carries the user's local cookie path) must not reach the UI.
+      await expect(runner.dumpJson(url)).rejects.not.toThrow(/auth\.txt|Command failed/);
+    });
+
+    it("keeps raw stderr for every other failure, so auth detection still matches", async () => {
+      const exec: ExecFn = async () => {
+        throw Object.assign(new Error("Command failed"), {
+          stderr: "ERROR: Sign in to confirm you're not a bot\n",
+        });
+      };
+      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, exec });
+
+      await expect(runner.dumpJson("https://youtu.be/x")).rejects.toThrow(
+        /Sign in to confirm you're not a bot/,
+      );
+    });
+
     it("dumpJson omits --cookies when no cookiesFile is given", async () => {
       const calls: string[][] = [];
       const runner = createYtDlpRunner({

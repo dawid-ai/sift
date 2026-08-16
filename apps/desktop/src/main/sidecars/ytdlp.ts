@@ -67,6 +67,46 @@ const defaultExec: ExecFn = async (file, args) => {
 
 const defaultSpawn: SpawnFn = (file, args) => nodeSpawn(file, args);
 
+/** Host of `url` without a `www.` prefix, or the raw url if it doesn't parse. */
+function hostLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "");
+  } catch {
+    return url;
+  }
+}
+
+/** yt-dlp's reply when no extractor matches the URL at all. */
+const UNSUPPORTED_URL_RE = /^ERROR:\s*Unsupported URL:/im;
+
+/**
+ * Turns a failed yt-dlp invocation into a message meant for a person.
+ *
+ * "Unsupported URL" is a **normal** outcome, not a fault — someone pastes a link from a
+ * site yt-dlp has no extractor for (a Dribbble shot, a news article). The default shape,
+ * `yt-dlp failed while dumping JSON for <url>: ERROR: Unsupported URL: <url>`, repeats the
+ * URL twice and reads like a stack trace, so that one case gets a plain sentence pointing
+ * at the page that lists what *is* supported.
+ *
+ * Every other failure keeps its raw stderr: auth walls, geo-blocks, rate limits and
+ * network errors all carry detail the user needs, and `isAuthError` pattern-matches
+ * against this very message downstream (see `MetadataService`/`DownloadService`).
+ */
+export function ytdlpFailureMessage(action: string, url: string, stderr: string): string {
+  const trimmed = stderr.trim();
+  if (UNSUPPORTED_URL_RE.test(trimmed)) {
+    return `yt-dlp has no extractor for ${hostLabel(url)}, so this link can't be fetched. Settings → Platforms lists every site it supports.`;
+  }
+  return `yt-dlp failed ${action} ${url}${trimmed ? `: ${trimmed}` : ""}`;
+}
+
+/** stderr off a rejected `execFile`, or "" when the error carries none. */
+function stderrOf(err: unknown): string {
+  return err && typeof err === "object" && "stderr" in err
+    ? String((err as { stderr?: unknown }).stderr ?? "").trim()
+    : "";
+}
+
 const PROGRESS_LINE_RE = /^SIFTPROG (\S+) (\S+) (\S+) (\S+)$/;
 
 function num(s: string): number | null {
@@ -134,13 +174,8 @@ export function createYtDlpRunner(deps: {
       try {
         ({ stdout, stderr } = await exec(path, [...cookieArgs(cookiesFile), ...jsRuntimeArgs(), "-J", "--no-warnings", "--", url]));
       } catch (err) {
-        const trimmedStderr =
-          err && typeof err === "object" && "stderr" in err
-            ? String((err as { stderr?: unknown }).stderr ?? "").trim()
-            : "";
-        const suffix = trimmedStderr ? `: ${trimmedStderr}` : "";
         throw new Error(
-          `yt-dlp failed while dumping JSON for ${url}${suffix}`,
+          ytdlpFailureMessage("while dumping JSON for", url, stderrOf(err)),
           { cause: err },
         );
       }
@@ -165,9 +200,7 @@ export function createYtDlpRunner(deps: {
       try {
         ({ stdout } = await exec(path, args));
       } catch (err) {
-        const stderr = err && typeof err === "object" && "stderr" in err
-          ? String((err as { stderr?: unknown }).stderr ?? "").trim() : "";
-        throw new Error(`yt-dlp failed listing ${url}${stderr ? `: ${stderr}` : ""}`, { cause: err });
+        throw new Error(ytdlpFailureMessage("listing", url, stderrOf(err)), { cause: err });
       }
       try { return JSON.parse(stdout); }
       catch (err) { throw new Error(`yt-dlp returned invalid JSON for ${url}`, { cause: err }); }

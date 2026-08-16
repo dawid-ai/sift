@@ -54,7 +54,7 @@ import { serveThumb } from "./services/thumbnail-cache";
 import { WhisperSetupService } from "./services/whisper-setup-service";
 import { createYtdlpSubsProvider } from "./transcript/ytdlp-subs-provider";
 import { createWhisperProvider } from "./transcript/whisper-provider";
-import { createYtDlpRunner, type YtDlpRunner } from "./sidecars/ytdlp";
+import { createYtDlpRunner, ytdlpFailureMessage, type YtDlpRunner } from "./sidecars/ytdlp";
 import { createFfmpegRunner, type FfmpegRunner } from "./sidecars/ffmpeg";
 import { createOcrRunner, type OcrRunner } from "./sidecars/ocr";
 import { createWhisperRunner } from "./sidecars/whisper";
@@ -298,7 +298,16 @@ const FIXTURE_VIDEO_MP4_BASE64 =
  */
 function fixtureYtDlpRunner(): YtDlpRunner {
   return {
-    async dumpJson(): Promise<unknown> {
+    async dumpJson(url: string): Promise<unknown> {
+      // Drives the "yt-dlp has no extractor for this site" path — what a user hits by
+      // pasting a link from an unsupported site — through the same message builder the
+      // real runner uses, so metadata.spec.ts can assert the app surfaces it and stays
+      // usable rather than dying on the rejected invoke.
+      if (url.includes("unsupported.example")) {
+        throw new Error(
+          ytdlpFailureMessage("while dumping JSON for", url, `ERROR: Unsupported URL: ${url}`),
+        );
+      }
       return FIXTURE_METADATA_JSON;
     },
     async flatPlaylist(url: string): Promise<unknown> {

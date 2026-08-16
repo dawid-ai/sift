@@ -81,7 +81,20 @@ installed `yt-dlp` binary and normalizes its output:
   runs `yt-dlp --list-extractors` and splits stdout into lines. Throws
   `YtDlpNotInstalledError` if no binary is registered yet (`getAsset(db,
   "ytdlp")` returns nothing) — surfaced to the renderer as the "Install yt-dlp
-  in Settings → Binaries" hint.
+  in Settings → Binaries" hint. Failure messages go through
+  `ytdlpFailureMessage(action, url, stderr)`: yt-dlp's `ERROR: Unsupported URL`
+  is a **normal** outcome (a link from a site with no extractor), so it becomes
+  a plain sentence pointing at Settings → Platforms instead of a repeated URL
+  plus a stack; every other failure keeps its raw stderr, because auth walls,
+  geo-blocks and network errors carry detail the user needs and `isAuthError`
+  pattern-matches that very message downstream. Note the raw `execFile` error
+  (whose `cmd` contains the user's local cookie path) is kept only as `cause`,
+  never in the message — `ipcMain.handle` sends `message` to the renderer.
+  **A rejected handler is not a crash:** Electron logs `Error occurred in
+  handler for 'metadata:fetch'` to the main console for every rejected
+  `ipcMain.handle`, which is exactly how this codebase reports IPC errors;
+  `HomeView`'s `.catch` renders it as `home-error` and the app stays usable.
+  `metadata.spec.ts`'s second test pins that.
 - **Normalization** (`apps/desktop/src/main/services/metadata-service.ts`,
   `normalizeMetadata`): maps the loosely-typed raw `-J` object into the
   strongly-typed `MediaMetadata` (`packages/ipc-contract`) — every field is
