@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
+import { Download, Plus, Upload } from "lucide-react";
 import type { PromptInfo } from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-const TEXTAREA_CLASS =
-  "flex min-h-[80px] w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
+import { cn } from "@/lib/utils";
+import {
+  CountTag,
+  DESTRUCTIVE_ACTION,
+  FIELD,
+  FULL_BLEED_SM,
+  GroupLabel,
+  MicroLabel,
+  NESTED_SURFACE,
+  SECTION_RULE,
+  SettingsError,
+  SettingsHint,
+  SettingsTextarea,
+} from "./settings-page";
 
 // Shown under every prompt-body textarea so a user editing a seeded prompt (several of
 // which carry the marker) knows what it does before deleting it.
@@ -133,147 +144,177 @@ export function PromptsSection() {
   }
 
   return (
-    <div data-testid="prompts-section" className="flex flex-col gap-4">
-      {error && (
-        <p data-testid="prompt-error" className="text-sm text-red-600 dark:text-red-400">
-          {error}
+    <div data-testid="prompts-section" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center">
+          <GroupLabel>Prompts</GroupLabel>
+          <CountTag>{prompts.length}</CountTag>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid="prompts-import"
+            disabled={adding || busyId !== null}
+            onClick={() => void handleImport()}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Import pack
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid="prompts-export"
+            disabled={adding || busyId !== null}
+            onClick={() => void handleExport()}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export pack
+          </Button>
+        </div>
+      </div>
+
+      {error && <SettingsError data-testid="prompt-error">{error}</SettingsError>}
+      {notice && (
+        <p
+          data-testid="prompts-notice"
+          className="rounded-xl border border-success/25 bg-success/12 px-3 py-2 text-xs leading-relaxed text-success"
+        >
+          {notice}
         </p>
       )}
 
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          data-testid="prompts-import"
-          disabled={adding || busyId !== null}
-          onClick={() => void handleImport()}
-        >
-          Import pack
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          data-testid="prompts-export"
-          disabled={adding || busyId !== null}
-          onClick={() => void handleExport()}
-        >
-          Export pack
-        </Button>
-        {notice && (
-          <span data-testid="prompts-notice" className="self-center text-sm text-foreground/60">
-            {notice}
-          </span>
-        )}
-      </div>
-
       <div className="flex flex-col gap-2">
-        {prompts.map((p) => (
-          <Card key={p.id} data-testid={`prompt-item-${p.id}`}>
-            <CardHeader className="flex-row items-center justify-between gap-2">
-              <CardTitle className="text-base">{p.name}</CardTitle>
-              {p.isBuiltin && (
-                <Badge data-testid={`prompt-builtin-${p.id}`} variant="outline">
-                  Built-in
-                </Badge>
-              )}
-            </CardHeader>
-            {!p.isBuiltin && (
-              <CardContent className="flex flex-col gap-3">
-                {editingId === p.id ? (
-                  <>
-                    <Input
-                      data-testid={`prompt-edit-name-${p.id}`}
-                      value={editName}
-                      disabled={busyId === p.id}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
-                    <textarea
-                      data-testid={`prompt-edit-body-${p.id}`}
-                      className={TEXTAREA_CLASS}
-                      placeholder="Enter the full replacement prompt body"
-                      value={editBody}
-                      disabled={busyId === p.id}
-                      onChange={(e) => setEditBody(e.target.value)}
-                    />
-                    <p className="text-xs text-foreground/50">{TIMESTAMPS_HINT}</p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        data-testid={`prompt-edit-save-${p.id}`}
-                        disabled={busyId === p.id || !editName || !editBody}
-                        onClick={() => void handleUpdate(p.id)}
-                      >
-                        {busyId === p.id ? "Saving…" : "Save"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        data-testid={`prompt-edit-cancel-${p.id}`}
-                        disabled={busyId === p.id}
-                        onClick={cancelEdit}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </>
-                ) : (
+        {prompts.map((p) => {
+          const editing = editingId === p.id;
+          return (
+            <div
+              key={p.id}
+              data-testid={`prompt-item-${p.id}`}
+              className={cn(NESTED_SURFACE, "px-4 py-3.5")}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
+                  {!editing && (
+                    <p className="mt-1.5 line-clamp-2 max-w-[62ch] text-[12px] leading-relaxed text-foreground/60">
+                      {p.body}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {p.isBuiltin ? (
+                    <Badge data-testid={`prompt-builtin-${p.id}`} variant="neutral">
+                      Built-in
+                    </Badge>
+                  ) : (
+                    !editing && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid={`prompt-edit-${p.id}`}
+                          disabled={busyId !== null}
+                          onClick={() => startEdit(p)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={DESTRUCTIVE_ACTION}
+                          data-testid={`prompt-delete-${p.id}`}
+                          disabled={busyId !== null}
+                          onClick={() => void handleDelete(p.id)}
+                        >
+                          {busyId === p.id ? "Deleting…" : "Delete"}
+                        </Button>
+                      </>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {!p.isBuiltin && editing && (
+                <div className={cn("mt-3 flex flex-col gap-2 border-t pt-3", SECTION_RULE, FULL_BLEED_SM)}>
+                  <MicroLabel>Editing</MicroLabel>
+                  <Input
+                    data-testid={`prompt-edit-name-${p.id}`}
+                    className={FIELD}
+                    value={editName}
+                    disabled={busyId === p.id}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                  <SettingsTextarea
+                    data-testid={`prompt-edit-body-${p.id}`}
+                    className="min-h-[90px] font-mono text-[13px]"
+                    placeholder="Enter the full replacement prompt body"
+                    value={editBody}
+                    disabled={busyId === p.id}
+                    onChange={(e) => setEditBody(e.target.value)}
+                  />
+                  <SettingsHint>{TIMESTAMPS_HINT}</SettingsHint>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      variant="outline"
-                      data-testid={`prompt-edit-${p.id}`}
-                      disabled={busyId !== null}
-                      onClick={() => startEdit(p)}
+                      data-testid={`prompt-edit-save-${p.id}`}
+                      disabled={busyId === p.id || !editName || !editBody}
+                      onClick={() => void handleUpdate(p.id)}
                     >
-                      Edit
+                      {busyId === p.id ? "Saving…" : "Save"}
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      data-testid={`prompt-delete-${p.id}`}
-                      disabled={busyId !== null}
-                      onClick={() => void handleDelete(p.id)}
+                      data-testid={`prompt-edit-cancel-${p.id}`}
+                      disabled={busyId === p.id}
+                      onClick={cancelEdit}
                     >
-                      {busyId === p.id ? "Deleting…" : "Delete"}
+                      Cancel
                     </Button>
                   </div>
-                )}
-              </CardContent>
-            )}
-          </Card>
-        ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add prompt</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <Input
-            data-testid="prompt-name-input"
-            placeholder="Prompt name"
-            value={name}
-            disabled={adding}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <textarea
-            data-testid="prompt-body-input"
-            className={TEXTAREA_CLASS}
-            placeholder="Prompt body"
-            value={body}
-            disabled={adding}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          <p className="text-xs text-foreground/50">{TIMESTAMPS_HINT}</p>
+      {/* Dashed = an empty slot waiting to be filled, the reference's language for "add one".
+          Its label heads a BLOCK, so it is a GroupLabel — the same tier as "Prompts" 20px
+          above it. MicroLabel is for a strip that opens inside a row ("Editing"), which is
+          what the edit form above uses it for. */}
+      <div className="flex flex-col gap-2 rounded-xl border border-dashed border-white/[0.10] p-4">
+        <GroupLabel>Add prompt</GroupLabel>
+        <Input
+          data-testid="prompt-name-input"
+          className={FIELD}
+          placeholder="Prompt name"
+          value={name}
+          disabled={adding}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <SettingsTextarea
+          data-testid="prompt-body-input"
+          className="min-h-[90px] font-mono text-[13px]"
+          placeholder="Prompt body"
+          value={body}
+          disabled={adding}
+          onChange={(e) => setBody(e.target.value)}
+        />
+        <SettingsHint>{TIMESTAMPS_HINT}</SettingsHint>
+        <div>
           <Button
             data-testid="prompt-add"
+            size="lg"
             disabled={adding || !name || !body}
             onClick={() => void handleAdd()}
           >
+            <Plus className="h-4 w-4" />
             {adding ? "Adding…" : "Add prompt"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

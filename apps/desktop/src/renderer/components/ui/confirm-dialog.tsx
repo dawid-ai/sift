@@ -34,23 +34,31 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      // Scrim is a flat alpha wash — no backdrop-filter, which would repaint the whole
+      // window behind it every frame the dialog is open.
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(20_30%_2%/0.72)] p-4"
       role="dialog"
       aria-modal="true"
       data-testid={testId}
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-sm rounded-lg border border-border bg-background p-5 shadow-xl"
+        // bg-surface-2 (opaque) overrides .panel-lit's translucent fill — a modal must not
+        // let the page read through it, and it sits at the top of the surface ladder because
+        // it is the frontmost thing on screen.
+        className="panel-lit w-full max-w-sm bg-surface-2 p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold">{title}</h3>
-        {description && <div className="mt-2 text-sm text-foreground/70">{description}</div>}
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="outline" data-testid="confirm-cancel" onClick={onCancel}>
+        <p className="eyebrow">CONFIRM</p>
+        <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+        {description && (
+          <div className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</div>
+        )}
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="outline" size="sm" data-testid="confirm-cancel" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button data-testid="confirm-ok" onClick={onConfirm} autoFocus>
+          <Button size="sm" data-testid="confirm-ok" onClick={onConfirm} autoFocus>
             {confirmLabel}
           </Button>
         </div>

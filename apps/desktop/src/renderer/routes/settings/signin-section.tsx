@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
+import { LogIn } from "lucide-react";
 import type { SignedInSite } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  CountTag,
+  DESTRUCTIVE_ACTION,
+  GroupLabel,
+  NESTED_SURFACE,
+  ROW_LIST,
+  SettingsEmpty,
+  SettingsError,
+  StatusDot,
+} from "./settings-page";
 
 /** Opens the app-owned sign-in browser and lists sites with a saved session. */
 export function SigninSection() {
@@ -45,44 +57,81 @@ export function SigninSection() {
   }
 
   return (
-    <div className="flex flex-col gap-3" data-testid="signin-section">
-      <p className="text-sm text-foreground/60">
-        Open a browser the app controls, sign into any site (YouTube, Vimeo, &hellip;), and its
-        session is used for downloads and transcripts &mdash; fixing &ldquo;confirm you&apos;re
-        not a bot&rdquo;. Your credentials go straight to the site.
-      </p>
-      <div className="flex gap-2">
-        <Button data-testid="signin-open-browser" disabled={busy} onClick={() => void openBrowser()}>
+    <div className="flex flex-col gap-4" data-testid="signin-section">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          data-testid="signin-open-browser"
+          size="lg"
+          disabled={busy}
+          onClick={() => void openBrowser()}
+        >
+          <LogIn aria-hidden className="h-4 w-4" />
           {busy ? "Browser open…" : "Open sign-in browser"}
         </Button>
-        <Button data-testid="signin-refresh" variant="outline" onClick={() => void refresh()}>
+        <Button
+          data-testid="signin-refresh"
+          variant="outline"
+          size="lg"
+          onClick={() => void refresh()}
+        >
           Refresh
         </Button>
       </div>
-      <ul className="flex flex-col gap-2">
-        {sites.map((s) => (
-          <li
-            key={s.domain}
-            data-testid="signin-site-row"
-            className="flex items-center gap-3 rounded-md border border-border px-3 py-2 text-sm"
-          >
-            <span className={`h-2.5 w-2.5 flex-none rounded-full ${s.expired ? "bg-amber-500" : "bg-green-500"}`} />
-            <span className="font-medium">{s.domain}</span>
-            {s.expired && <span className="text-foreground/50">may be signed out — reopen to sign in</span>}
-            <Button
-              size="sm"
-              variant="outline"
-              className="ml-auto"
-              data-testid="signin-site-remove"
-              onClick={() => void remove(s.domain)}
-            >
-              Remove
-            </Button>
-          </li>
-        ))}
-      </ul>
-      {sites.length === 0 && <p className="text-sm text-foreground/60">No signed-in sites yet.</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {sites.length === 0 ? (
+        <div>
+          <GroupLabel className="mb-3">Saved sessions</GroupLabel>
+          <SettingsEmpty
+            icon={LogIn}
+            title="No signed-in sites yet."
+            hint="Open the sign-in browser and log in — the session is stored for downloads and transcripts."
+          />
+        </div>
+      ) : (
+        // One nested block; the label lives inside the container it describes and the rows
+        // carry no surface of their own — just a hairline between them.
+        <div className={cn(NESTED_SURFACE, "px-4 py-1")}>
+          <div className="flex items-center py-3">
+            <GroupLabel>Saved sessions</GroupLabel>
+            <CountTag>{sites.length}</CountTag>
+          </div>
+          <ul className={cn("border-t border-white/[0.05]", ROW_LIST)}>
+            {sites.map((s) => (
+              <li
+                key={s.domain}
+                data-testid="signin-site-row"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-sm"
+              >
+                <span className="min-w-0 truncate font-medium text-foreground">{s.domain}</span>
+                {/* One status vocabulary: a haloed dot AND a word — never a bare coloured
+                    pixel with no legend. */}
+                <StatusDot
+                  tone={s.expired ? "warn" : "ok"}
+                  label={s.expired ? "Expired" : "Active"}
+                />
+                {s.expired && (
+                  <span className="truncate text-[12px] text-warning/85">
+                    may be signed out — reopen to sign in
+                  </span>
+                )}
+                {/* Destructive, so it must not look like Refresh: red ghost, and a lighter
+                    border than the safe action beside it. */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={cn("ml-auto", DESTRUCTIVE_ACTION)}
+                  data-testid="signin-site-remove"
+                  onClick={() => void remove(s.domain)}
+                >
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {error && <SettingsError>{error}</SettingsError>}
     </div>
   );
 }
