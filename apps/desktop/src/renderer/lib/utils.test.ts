@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { mediaFileUrl, videoThumbUrl } from "./utils";
+import { externalLinkUrl, mediaFileUrl, videoThumbUrl } from "./utils";
+
+describe("externalLinkUrl", () => {
+  it("passes http(s) through", () => {
+    expect(externalLinkUrl("https://x.com/someone")).toBe("https://x.com/someone");
+    expect(externalLinkUrl("HTTP://vimeo.com/user")).toBe("HTTP://vimeo.com/user");
+  });
+
+  it("rejects anything shell.openExternal shouldn't be handed", () => {
+    // uploader_url comes from a scraped page via yt-dlp — untrusted input.
+    expect(externalLinkUrl("file:///C:/Windows/System32/calc.exe")).toBeNull();
+    expect(externalLinkUrl("javascript:alert(1)")).toBeNull();
+    expect(externalLinkUrl("ms-msdt:/id")).toBeNull();
+    expect(externalLinkUrl("//x.com/someone")).toBeNull();
+    expect(externalLinkUrl(null)).toBeNull();
+    expect(externalLinkUrl(undefined)).toBeNull();
+    expect(externalLinkUrl("")).toBeNull();
+  });
+});
 
 describe("mediaFileUrl", () => {
   it("encodes the path into the sift-media protocol", () => {

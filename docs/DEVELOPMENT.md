@@ -189,8 +189,17 @@ Downloading is a straight pipeline from the Home preview card to a persisted
   **Channel** (`data-testid="library-row-channel"`) is a button calling
   `onOpenChannel(media.id)` when the source is YouTube (same gate
   `media-detail.tsx` uses — `channels.openForMedia` resolves a channel URL from
-  the stored yt-dlp dump and the Channels page is YouTube-only), otherwise plain
-  text, and **Length** (`data-testid="library-row-duration"`) is its own column;
+  the stored yt-dlp dump and the in-app Channels page is YouTube-shaped);
+  otherwise it opens the uploader's page on the source platform (an X profile, a
+  Vimeo user) in the default browser via `library:openExternal`, marked
+  `data-external="true"` and suffixed `↗`. That URL is `MediaRecord.uploaderUrl`
+  (yt-dlp's `uploader_url`, stored on `media` since day one and surfaced to the
+  renderer for this), filtered through `externalLinkUrl()` in
+  `renderer/lib/utils.ts` — **an http(s)-only gate, not tidiness**: the value
+  comes off a scraped page, and `shell.openExternal` would otherwise happily
+  launch a `file:` path or a registered custom-protocol handler. Extractors that
+  report no uploader URL fall back to plain text. **Length**
+  (`data-testid="library-row-duration"`) is its own column;
   neither is stacked under the title any more. **Formats** always shows the
   *quality* you have on disk (`1080p`, `audio`), falling back to the container
   (`MP3`) only when there is genuinely no video — see the poster/height note in

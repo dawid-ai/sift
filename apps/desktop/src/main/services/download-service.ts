@@ -100,6 +100,7 @@ function toMediaRecord(row: MediaRow, downloads: DownloadRow[]): MediaRecord {
     externalId: row.external_id,
     title: row.title,
     uploader: row.uploader,
+    uploaderUrl: row.uploader_url,
     durationSec: row.duration_s,
     thumbnailUrl: row.thumbnail_path,
     downloadPath: d.path,

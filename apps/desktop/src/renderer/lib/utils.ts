@@ -45,6 +45,18 @@ export function videoThumbUrl(url: string | null | undefined): string | undefine
   }
 }
 
+/**
+ * A URL that's safe to hand to `library.openExternal` (→ `shell.openExternal`), else null.
+ *
+ * The scheme check is the point, not tidiness: URLs like `media.uploaderUrl` come out of a
+ * scraped page via yt-dlp, so they are untrusted input, and `openExternal` will happily
+ * launch a `file:` path or whatever a registered custom-protocol handler does with it.
+ * Callers render anything that isn't http(s) as plain text instead of a link.
+ */
+export function externalLinkUrl(url: string | null | undefined): string | null {
+  return url && /^https?:\/\//i.test(url) ? url : null;
+}
+
 /** Builds a sift-media:// URL for a downloaded file, served by the main-process protocol
  * handler (which validates the path against the download table before reading disk). */
 export function mediaFileUrl(filePath: string): string {

@@ -5,7 +5,7 @@ import type { MediaListItem, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn, videoThumbUrl } from "@/lib/utils";
+import { cn, externalLinkUrl, videoThumbUrl } from "@/lib/utils";
 import { highlightSegments } from "@/lib/search-snippet";
 import { platformLabel } from "@/lib/platform-label";
 import { formatDuration } from "@/routes/home/preview-card";
@@ -14,9 +14,9 @@ import { formatDuration } from "@/routes/home/preview-card";
  * about, and until now documented only in DEVELOPMENT.md. */
 export const LOCAL_REMOVE_NOTE = "Removes the library entry; your file stays where it is.";
 
-/** Whether the Channel cell can link anywhere. `channels.openForMedia` resolves a channel
- * URL out of the stored yt-dlp dump, and the Channels page is YouTube-only — same gate
- * `media-detail.tsx` uses for its "Open channel" button. */
+/** Whether the Channel cell can open Sift's own channel page. `channels.openForMedia`
+ * resolves a channel URL out of the stored yt-dlp dump, and that page is YouTube-shaped
+ * (subscriptions, outlier scores) — the same gate `media-detail.tsx` uses. */
 function canOpenChannel(sourceUrl: string): boolean {
   return /(?:youtube\.com|youtu\.be)/i.test(sourceUrl);
 }
@@ -90,7 +90,11 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenCh
   // Left accent + faint tint rather than a strong background: rows already carry a hover
   // tint and heavier fill would fight the tag badges below.
   const local = media.platformId === LOCAL_PLATFORM_ID;
-  const channelLink = onOpenChannel && media.uploader && canOpenChannel(media.sourceUrl);
+  // YouTube opens Sift's own channel page; everything else goes to the uploader's page on
+  // the source platform (an X profile, a Vimeo user) in the default browser, since the
+  // in-app Channels view has nothing to show for them.
+  const inAppChannel = !!onOpenChannel && !!media.uploader && canOpenChannel(media.sourceUrl);
+  const sourceChannelUrl = media.uploader ? externalLinkUrl(media.uploaderUrl) : null;
 
   return (
     <tr
@@ -155,15 +159,26 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenCh
         </div>
       </td>
       <td className="px-2 py-2">
-        {channelLink ? (
+        {inAppChannel ? (
           <button
             type="button"
             data-testid="library-row-channel"
-            onClick={() => onOpenChannel(media.id)}
-            title={`Open ${media.uploader}`}
-            className="max-w-[14rem] truncate text-left underline-offset-2 hover:underline"
+            onClick={() => onOpenChannel!(media.id)}
+            title={`Open ${media.uploader} in Sift`}
+            className="block max-w-[14rem] truncate text-left underline-offset-2 hover:underline"
           >
             {media.uploader}
+          </button>
+        ) : sourceChannelUrl ? (
+          <button
+            type="button"
+            data-testid="library-row-channel"
+            data-external="true"
+            onClick={() => void window.sift.library.openExternal(sourceChannelUrl)}
+            title={`Open ${sourceChannelUrl} in your browser`}
+            className="block max-w-[14rem] truncate text-left underline-offset-2 hover:underline"
+          >
+            {media.uploader} ↗
           </button>
         ) : (
           <span data-testid="library-row-channel" className="block max-w-[14rem] truncate text-foreground/70">

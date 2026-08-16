@@ -215,6 +215,9 @@ export interface MediaRecord {
   externalId: string | null;
   title: string;
   uploader: string | null;
+  /** The uploader's page on the source platform (yt-dlp's `uploader_url`) — an X profile,
+   * a Vimeo user, a YouTube channel. Null for extractors that don't report one. */
+  uploaderUrl: string | null;
   durationSec: number | null;
   thumbnailUrl: string | null; // remote thumb URL (from media.thumbnail_path)
   downloadPath: string | null;
