@@ -5,6 +5,7 @@ import {
   LOCAL_FORMAT_ID,
   filePathFromUrl,
   isLocalFileUrl,
+  jpegSize,
   localFileMetadata,
   posterSeekSeconds,
 } from "./local-file";
@@ -45,6 +46,54 @@ describe("localFileMetadata", () => {
 
   it("pins the provenance marker", () => {
     expect(LOCAL_FORMAT_ID).toBe("local");
+  });
+});
+
+/** Minimal but structurally real JPEG: SOI, an APP0 segment to skip past, an optional
+ * DHT (shares SOF's marker range but is NOT a frame header), then SOF0, then EOI. */
+function fakeJpeg(width: number, height: number, opts: { withDht?: boolean } = {}): Buffer {
+  const parts: Buffer[] = [Buffer.from([0xff, 0xd8])];
+  const app0 = Buffer.alloc(4 + 12);
+  app0.writeUInt16BE(0xffe0, 0);
+  app0.writeUInt16BE(14, 2); // segment length covers itself + payload
+  parts.push(app0);
+  if (opts.withDht) {
+    const dht = Buffer.alloc(4 + 6);
+    dht.writeUInt16BE(0xffc4, 0);
+    dht.writeUInt16BE(8, 2);
+    parts.push(dht);
+  }
+  const sof = Buffer.alloc(4 + 6);
+  sof.writeUInt16BE(0xffc0, 0);
+  sof.writeUInt16BE(8, 2);
+  sof.writeUInt8(8, 4); // sample precision
+  sof.writeUInt16BE(height, 5);
+  sof.writeUInt16BE(width, 7);
+  parts.push(sof, Buffer.from([0xff, 0xd9]));
+  return Buffer.concat(parts);
+}
+
+describe("jpegSize", () => {
+  it("reads the frame size out of SOF0, skipping earlier segments", () => {
+    expect(jpegSize(fakeJpeg(1920, 1080))).toEqual({ width: 1920, height: 1080 });
+    expect(jpegSize(fakeJpeg(3840, 2160))).toEqual({ width: 3840, height: 2160 });
+  });
+
+  it("does not mistake a huffman table for a frame header", () => {
+    // 0xC4 sits inside the SOF marker range but is DHT — reading it as SOF yields garbage.
+    expect(jpegSize(fakeJpeg(1280, 720, { withDht: true }))).toEqual({ width: 1280, height: 720 });
+  });
+
+  it("returns null rather than throwing on anything that isn't a parseable JPEG", () => {
+    expect(jpegSize(Buffer.alloc(0))).toBeNull();
+    expect(jpegSize(Buffer.from("not an image"))).toBeNull();
+    expect(jpegSize(Buffer.from([0xff, 0xd8, 0xff, 0xd9]))).toBeNull(); // no SOF
+    expect(jpegSize(fakeJpeg(640, 480).subarray(0, 8))).toBeNull(); // truncated
+  });
+
+  it("terminates on a malformed segment length instead of looping", () => {
+    // A zero-length segment would leave the cursor stuck without the `segment < 2` guard.
+    expect(jpegSize(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x00, 0, 0, 0, 0, 0, 0]))).toBeNull();
   });
 });
 

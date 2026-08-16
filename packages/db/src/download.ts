@@ -107,6 +107,23 @@ export function setDownloadStatus(
   ).run(status, filePath, fileSize, error, Date.now(), id);
 }
 
+/** Re-labels a download row (and records the height behind the label). Used when the
+ * resolution is only discovered after the row exists — see the poster grab in
+ * `main/ipc/import.ts`. */
+export function setDownloadFormat(
+  db: SiftDatabase,
+  id: number,
+  label: string,
+  height: number | null,
+): void {
+  db.prepare("UPDATE download SET label = ?, height = ?, updated_at = ? WHERE id = ?").run(
+    label,
+    height,
+    Date.now(),
+    id,
+  );
+}
+
 export function deleteDownload(db: SiftDatabase, id: number): void {
   db.prepare("DELETE FROM download WHERE id = ?").run(id);
 }

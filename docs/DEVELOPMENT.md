@@ -171,7 +171,20 @@ Downloading is a straight pipeline from the Home preview card to a persisted
   same `MediaListItem[]` from `library:list` (title, transcript
   count/language, per-format download badges, summary count) and share the
   same `media-open`/`media-remove`/`media-remove-confirm` actions — see
-  "Library depth" below for what Details opens into. Fetched fresh via
+  "Library depth" below for what Details opens into. Table columns are Video,
+  Channel, Length, Platform, Transcript, Formats, Summaries, Added, actions;
+  **Channel** (`data-testid="library-row-channel"`) is a button calling
+  `onOpenChannel(media.id)` when the source is YouTube (same gate
+  `media-detail.tsx` uses — `channels.openForMedia` resolves a channel URL from
+  the stored yt-dlp dump and the Channels page is YouTube-only), otherwise plain
+  text, and **Length** (`data-testid="library-row-duration"`) is its own column;
+  neither is stacked under the title any more. **Formats** always shows the
+  *quality* you have on disk (`1080p`, `audio`), falling back to the container
+  (`MP3`) only when there is genuinely no video — see the poster/height note in
+  "Local file import" for how an imported row gets its resolution. Remove is an
+  icon-only trash button in both views (`aria-label`/`title` carry the label);
+  the confirm step keeps its text, because a destructive confirmation shouldn't
+  be a second unlabelled glyph. Fetched fresh via
   `library:list` every time the view mounts (i.e. every time the user clicks
   "Library" in the header nav). Empty state renders
   `data-testid="library-empty"`.
@@ -322,6 +335,18 @@ call, no download stage:
   import rather than reusing an existing `<mediaId>.jpg`, because SQLite reuses
   the last rowid after a delete and a cached file could otherwise be served as a
   *different* import's poster.
+- **Resolution backfill** (`backfillHeightFromPoster`, same file): the poster is
+  encoded at the source frame size, so `jpegSize()` (a SOFn-marker read in
+  `local-file.ts`) recovers the video's height from it and relabels the download
+  row `"<h>p"` when the renderer's probe couldn't supply one. That gap is not an
+  edge case: the **picker path has no `File` object to probe at all**, and
+  Chromium refuses to decode plenty of containers (MKV, some HEVC). Without it
+  the Formats column reads `MP4` for an imported video next to `2160p` for a
+  downloaded one — a container and a resolution in the same column. It only fills
+  a gap; a height the renderer already reported wins. **Both this and the poster
+  run at import time only** — rows imported before this shipped keep their old
+  label and empty poster until the file is dropped in again (re-import is
+  idempotent: same media row, same download row, now relabelled).
 - **`sift-poster://` protocol** (`main/index.ts`, registered privileged before
   app-ready alongside `sift-thumb`/`sift-media`/`sift-frame`): serves
   `sift-poster://file/<encodeURIComponent(abs path)>`, gated on

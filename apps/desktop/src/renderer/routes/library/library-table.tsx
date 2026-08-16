@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { LOCAL_PLATFORM_ID } from "@sift/core";
 import type { MediaListItem, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
@@ -13,6 +14,13 @@ import { formatDuration } from "@/routes/home/preview-card";
  * about, and until now documented only in DEVELOPMENT.md. */
 export const LOCAL_REMOVE_NOTE = "Removes the library entry; your file stays where it is.";
 
+/** Whether the Channel cell can link anywhere. `channels.openForMedia` resolves a channel
+ * URL out of the stored yt-dlp dump, and the Channels page is YouTube-only — same gate
+ * `media-detail.tsx` uses for its "Open channel" button. */
+function canOpenChannel(sourceUrl: string): boolean {
+  return /(?:youtube\.com|youtu\.be)/i.test(sourceUrl);
+}
+
 export interface LibraryTableProps {
   items: MediaListItem[];
   onOpen: (id: number) => void;
@@ -20,18 +28,22 @@ export interface LibraryTableProps {
   onTagClick: (name: string) => void;
   /** Right-click a tag: toggles it as a negative filter (hide everything carrying it). */
   onTagExclude?: (name: string) => void;
+  /** Jump to a video's source channel. Omitted → the Channel cell is plain text. */
+  onOpenChannel?: (mediaId: number) => void;
   hits?: Map<number, SearchHit> | null;
   query?: string;
 }
 
 /** Table-first library view: one row per media item, with format/transcript/summary counts
  * at a glance instead of requiring a detail-page visit. */
-export function LibraryTable({ items, onOpen, onRemove, onTagClick, onTagExclude, hits, query }: LibraryTableProps) {
+export function LibraryTable({ items, onOpen, onRemove, onTagClick, onTagExclude, onOpenChannel, hits, query }: LibraryTableProps) {
   return (
     <table data-testid="library-table" className="w-full text-sm">
       <thead>
         <tr className="border-b border-border text-left text-foreground/60">
           <th className="px-2 py-2 font-medium">Video</th>
+          <th className="px-2 py-2 font-medium">Channel</th>
+          <th className="px-2 py-2 font-medium">Length</th>
           <th className="px-2 py-2 font-medium">Platform</th>
           <th className="px-2 py-2 font-medium">Transcript</th>
           <th className="px-2 py-2 font-medium">Formats</th>
@@ -49,6 +61,7 @@ export function LibraryTable({ items, onOpen, onRemove, onTagClick, onTagExclude
             onRemove={onRemove}
             onTagClick={onTagClick}
             onTagExclude={onTagExclude}
+            onOpenChannel={onOpenChannel}
             hit={hits?.get(item.media.id)}
             query={query}
           />
@@ -65,17 +78,19 @@ interface LibraryRowProps {
   onTagClick: (name: string) => void;
   /** Right-click a tag: toggles it as a negative filter (hide everything carrying it). */
   onTagExclude?: (name: string) => void;
+  onOpenChannel?: (mediaId: number) => void;
   hit?: SearchHit | undefined;
   query?: string | undefined;
 }
 
 /** A single row, with its own inline-confirm state for Remove (mirrors MediaCard). */
-function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, query }: LibraryRowProps) {
+function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenChannel, hit, query }: LibraryRowProps) {
   const [confirming, setConfirming] = useState(false);
   const { media, transcriptCount, transcriptLanguage, formats, summaryCount, tags } = item;
   // Left accent + faint tint rather than a strong background: rows already carry a hover
   // tint and heavier fill would fight the tag badges below.
   const local = media.platformId === LOCAL_PLATFORM_ID;
+  const channelLink = onOpenChannel && media.uploader && canOpenChannel(media.sourceUrl);
 
   return (
     <tr
@@ -102,9 +117,6 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, que
           )}
           <div className="min-w-0">
             <p className="line-clamp-1 font-medium">{media.title}</p>
-            <p className="text-xs text-foreground/60">
-              {[media.uploader, formatDuration(media.durationSec)].filter(Boolean).join(" · ")}
-            </p>
             {hit && (hit.field === "transcript" || hit.field === "summary") && hit.snippet && (
               <div data-testid="search-snippet" className="mt-0.5 text-xs text-foreground/60">
                 <span className="mr-1 text-[10px] uppercase tracking-wide text-foreground/40">
@@ -141,6 +153,26 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, que
             )}
           </div>
         </div>
+      </td>
+      <td className="px-2 py-2">
+        {channelLink ? (
+          <button
+            type="button"
+            data-testid="library-row-channel"
+            onClick={() => onOpenChannel(media.id)}
+            title={`Open ${media.uploader}`}
+            className="max-w-[14rem] truncate text-left underline-offset-2 hover:underline"
+          >
+            {media.uploader}
+          </button>
+        ) : (
+          <span data-testid="library-row-channel" className="block max-w-[14rem] truncate text-foreground/70">
+            {media.uploader ?? "—"}
+          </span>
+        )}
+      </td>
+      <td data-testid="library-row-duration" className="px-2 py-2 tabular-nums text-foreground/70">
+        {formatDuration(media.durationSec)}
       </td>
       <td className="px-2 py-2">
         <Badge data-testid="library-row-platform" variant="outline">{platformLabel(media.platformId)}</Badge>
@@ -202,13 +234,19 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, que
               {local && <span className="self-center text-xs text-foreground/55">{LOCAL_REMOVE_NOTE}</span>}
             </>
           ) : (
+            // Icon-only: the label is carried by aria-label/title, so screen readers and
+            // hover still say "Remove". The confirm step keeps its text — a destructive
+            // confirmation shouldn't be a second unlabelled glyph.
             <Button
               size="sm"
               variant="outline"
               data-testid="media-remove"
+              aria-label="Remove"
+              title="Remove"
+              className="px-2"
               onClick={() => setConfirming(true)}
             >
-              Remove
+              <Trash2 aria-hidden className="h-4 w-4" />
             </Button>
           )}
         </div>

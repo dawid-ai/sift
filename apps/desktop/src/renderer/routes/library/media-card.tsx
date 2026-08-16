@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { LOCAL_PLATFORM_ID } from "@sift/core";
 import type { MediaListItem, MediaRecord, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
@@ -168,13 +169,17 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
               {local && <span className="self-center text-xs text-foreground/55">{LOCAL_REMOVE_NOTE}</span>}
             </>
           ) : (
+            // Icon-only, matching LibraryRow — label carried by aria-label/title.
             <Button
               size="sm"
               variant="outline"
               data-testid="media-remove"
+              aria-label="Remove"
+              title="Remove"
+              className="px-2"
               onClick={() => setConfirming(true)}
             >
-              Remove
+              <Trash2 aria-hidden className="h-4 w-4" />
             </Button>
           )}
         </div>

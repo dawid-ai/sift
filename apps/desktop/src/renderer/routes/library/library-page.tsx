@@ -411,6 +411,7 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
             onRemove={handleRemove}
             onTagClick={toggleActive}
             onTagExclude={toggleExcluded}
+            onOpenChannel={onOpenChannel}
             hits={searchHits}
             query={search.trim()}
           />

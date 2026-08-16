@@ -1,12 +1,17 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { dialog, ipcMain, type BrowserWindow, type OpenDialogOptions } from "electron";
-import { MEDIA_EXTENSIONS } from "@sift/core";
-import { setMediaThumbnail, type SiftDatabase } from "@sift/db";
+import { LOCAL_FORMAT_ID, MEDIA_EXTENSIONS } from "@sift/core";
+import {
+  listDownloadsByMediaId,
+  setDownloadFormat,
+  setMediaThumbnail,
+  type SiftDatabase,
+} from "@sift/db";
 import { IPC, type MediaRecord } from "@sift/ipc-contract";
 import type { DownloadService } from "../services/download-service";
 import type { FfmpegRunner } from "../sidecars/ffmpeg";
-import { posterSeekSeconds } from "../local-file";
+import { jpegSize, posterSeekSeconds } from "../local-file";
 
 export interface ImportIpcDeps {
   getWindows: () => BrowserWindow[];
@@ -46,7 +51,29 @@ async function attachPoster(
   // the end of a short clip), so existence is checked rather than assumed.
   if (!existsSync(outputPath)) return record;
   setMediaThumbnail(deps.db, record.id, outputPath);
+  backfillHeightFromPoster(deps.db, record.id, outputPath);
   return { ...record, thumbnailUrl: outputPath };
+}
+
+/**
+ * Relabels the import's download row from the poster's dimensions when the renderer's
+ * `<video>` probe couldn't supply a height — which is every picker import (no `File` to
+ * probe) and any container Chromium won't decode. Without this the Formats column reads
+ * "MP4" for an imported video and "2160p" for a downloaded one: two different kinds of
+ * thing in the same column.
+ *
+ * Only fills a gap; a height the renderer already reported is left alone. Never throws
+ * for the same reason the poster grab doesn't — a label is not worth failing an import.
+ */
+function backfillHeightFromPoster(db: SiftDatabase, mediaId: number, posterPath: string): void {
+  const row = listDownloadsByMediaId(db, mediaId).find((d) => d.format_id === LOCAL_FORMAT_ID);
+  if (!row || row.height) return;
+  try {
+    const size = jpegSize(readFileSync(posterPath));
+    if (size?.height) setDownloadFormat(db, row.id, `${size.height}p`, size.height);
+  } catch {
+    /* unreadable poster — keep the container label */
+  }
 }
 
 /**

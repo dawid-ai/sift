@@ -60,6 +60,7 @@ export {
   resetDownloadingToError,
   listDownloadedSourceUrls,
   downloadExistsByFilePath,
+  setDownloadFormat,
 } from "./download";
 export type { DownloadRow, NewDownload } from "./download";
 export {

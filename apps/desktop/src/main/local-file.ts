@@ -41,6 +41,46 @@ export function posterSeekSeconds(durationSec: number | null | undefined): numbe
 }
 
 /**
+ * Pixel dimensions from a JPEG's SOFn (start-of-frame) marker, or null if `buf` isn't a
+ * JPEG we can parse.
+ *
+ * Used to recover an imported video's resolution from the poster frame ffmpeg just wrote
+ * — the poster is encoded at the source frame size, so its height *is* the video's. The
+ * renderer's `<video>` probe is the first source of that number, but it comes back empty
+ * whenever Chromium can't decode the container (MKV, some HEVC) and always on the picker
+ * path, which has no `File` object to probe. Without this fallback the Formats column
+ * shows a container ("MP4") next to a downloaded row's resolution ("2160p") — two
+ * different kinds of thing in one column.
+ *
+ * Anamorphic video (SAR ≠ 1) reports coded, not display, height. Accepted: it is a label.
+ */
+export function jpegSize(buf: Buffer): { width: number; height: number } | null {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) {
+      i += 1;
+      continue;
+    }
+    const marker = buf[i + 1]!;
+    // Standalone markers (padding, RSTn, SOI/EOI) carry no length field.
+    if (marker === 0xff || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd9)) {
+      i += 2;
+      continue;
+    }
+    // SOF0–SOF15 hold the frame size; DHT/JPGA/DAC share the range but aren't SOFs.
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      if (i + 9 > buf.length) return null;
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    }
+    const segment = buf.readUInt16BE(i + 2);
+    if (segment < 2) return null; // malformed: would loop forever
+    i += 2 + segment;
+  }
+  return null;
+}
+
+/**
  * Synthesizes the `MediaMetadata` for a local media file, with no yt-dlp involved.
  *
  * `hasCaptions: false` is load-bearing: it makes `ytdlp-subs`'s `canHandle` false, so
