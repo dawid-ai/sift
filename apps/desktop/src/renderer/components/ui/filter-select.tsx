@@ -33,7 +33,10 @@ export function FilterSelect({
   }, [open]);
 
   // The reset row is just another option, so filtering treats it uniformly.
-  const shown = filterOptions([{ value: "", label: allLabel }, ...options], query);
+  const shown = filterOptions(
+    [{ value: "", label: allLabel }, ...options],
+    query,
+  );
   const label = options.find((o) => o.value === value)?.label ?? allLabel;
 
   function pick(next: string) {
@@ -81,7 +84,10 @@ export function FilterSelect({
       >
         <span className="max-w-[12rem] truncate">{label}</span>
         <ChevronDown
-          className={cn("h-3.5 w-3.5 shrink-0 opacity-60 transition-transform duration-150", open && "rotate-180")}
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 opacity-60 transition-transform duration-150",
+            open && "rotate-180",
+          )}
           aria-hidden
         />
       </button>
@@ -142,14 +148,19 @@ export function FilterSelect({
                 >
                   <Check
                     aria-hidden
-                    className={cn("h-3.5 w-3.5 shrink-0", selected ? "opacity-100" : "opacity-0")}
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      selected ? "opacity-100" : "opacity-0",
+                    )}
                   />
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
                 </button>
               );
             })}
             {shown.length === 0 && (
-              <p className="px-2.5 py-2 text-[13px] text-muted-foreground">No matches</p>
+              <p className="px-2.5 py-2 text-[13px] text-muted-foreground">
+                No matches
+              </p>
             )}
           </div>
         </div>

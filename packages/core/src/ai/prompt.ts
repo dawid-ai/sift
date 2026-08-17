@@ -14,7 +14,7 @@ export const POLISH_SYSTEM_PROMPT = [
   "",
   "Keep ONLY substance: facts, data, numbers, definitions, methods, mechanisms, arguments, results,",
   "and conclusions. Remove everything else — greetings, audience questions, calls for participation,",
-  '"today we\'ll cover / let\'s discuss" meta and discovery, tangents, anecdotes that carry no',
+  "\"today we'll cover / let's discuss\" meta and discovery, tangents, anecdotes that carry no",
   "information, filler, hedging, and repetition. Do NOT preserve the speaker's wording or sentence",
   "order; reorganize the material by topic. This is not a transcript and not a short summary — it is",
   "the knowledge, restructured. Capture every distinct fact and figure, but nothing that isn't knowledge.",
@@ -97,6 +97,8 @@ export function assembleSummaryContent(
   const base = `${body}\n\n----- TRANSCRIPT -----\n${transcript}`;
   const slides = frames.filter((f) => f.text.trim());
   if (slides.length === 0) return base;
-  const lines = slides.map((f) => `[${formatTimestamp(f.tsMs)}] ${f.text.trim()}`).join("\n");
+  const lines = slides
+    .map((f) => `[${formatTimestamp(f.tsMs)}] ${f.text.trim()}`)
+    .join("\n");
   return `${base}\n\n----- ON-SCREEN TEXT (SLIDES) -----\n${lines}`;
 }

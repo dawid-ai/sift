@@ -7,7 +7,9 @@ import type { YtDlpRunner } from "../sidecars/ytdlp";
 
 export const YTDLP_SUBS_ID = "ytdlp-subs";
 
-export function createYtdlpSubsProvider(deps: { runner: YtDlpRunner }): TranscriptProvider {
+export function createYtdlpSubsProvider(deps: {
+  runner: YtDlpRunner;
+}): TranscriptProvider {
   const { runner } = deps;
 
   return {
@@ -32,10 +34,13 @@ export function createYtdlpSubsProvider(deps: { runner: YtDlpRunner }): Transcri
           cookiesFile: ctx.cookiesFile ?? undefined,
         });
         if (sub === null) {
-          throw new Error(`No ${ctx.language} captions available for this video`);
+          throw new Error(
+            `No ${ctx.language} captions available for this video`,
+          );
         }
         const raw = readFileSync(sub.subPath, "utf8");
-        const segments = sub.format === "json3" ? parseJson3(raw) : parseVtt(raw);
+        const segments =
+          sub.format === "json3" ? parseJson3(raw) : parseVtt(raw);
         return {
           providerId: YTDLP_SUBS_ID,
           language: ctx.language,

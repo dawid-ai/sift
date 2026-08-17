@@ -14,7 +14,9 @@ test("Channels → add → detail → get videos → add selected to queue", asy
     await window.getByRole("button", { name: "Channels" }).click();
     await expect(window.getByTestId("channels-page")).toBeVisible();
 
-    await window.getByTestId("channels-add-url").fill("https://www.youtube.com/@fixture");
+    await window
+      .getByTestId("channels-add-url")
+      .fill("https://www.youtube.com/@fixture");
     await window.getByTestId("channels-add").click();
     const row = window.getByTestId("channel-row").first();
     await expect(row).toBeVisible();
@@ -32,7 +34,10 @@ test("Channels → add → detail → get videos → add selected to queue", asy
     // the queue, so verify the end-state: the video landed in the Library.
     await window.getByRole("button", { name: "Library" }).click();
     await expect(window.getByTestId("library-table")).toBeVisible();
-    await expect(window.getByTestId("library-row").first()).toContainText("Fixture Video Title", { timeout: 15000 });
+    await expect(window.getByTestId("library-row").first()).toContainText(
+      "Fixture Video Title",
+      { timeout: 15000 },
+    );
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });

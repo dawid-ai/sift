@@ -3,7 +3,9 @@ import { promisify } from "node:util";
 import type { ExecFn, SpawnFn } from "./ytdlp";
 
 export class FfmpegNotInstalledError extends Error {
-  constructor(message = "ffmpeg is not installed — install it in Settings → Binaries") {
+  constructor(
+    message = "ffmpeg is not installed — install it in Settings → Binaries",
+  ) {
     super(message);
     this.name = "FfmpegNotInstalledError";
   }
@@ -12,8 +14,19 @@ export class FfmpegNotInstalledError extends Error {
 /** Args to transcode any media file to the 16 kHz mono PCM WAV whisper.cpp expects. */
 export function buildWavArgs(inputPath: string, outputPath: string): string[] {
   return [
-    "-i", inputPath, "-vn", "-ar", "16000", "-ac", "1",
-    "-c:a", "pcm_s16le", "-y", "-loglevel", "error", outputPath,
+    "-i",
+    inputPath,
+    "-vn",
+    "-ar",
+    "16000",
+    "-ac",
+    "1",
+    "-c:a",
+    "pcm_s16le",
+    "-y",
+    "-loglevel",
+    "error",
+    outputPath,
   ];
 }
 
@@ -37,12 +50,21 @@ export const DEFAULT_SCENE_THRESHOLD = 0.4;
  * the actual frames a beat later (see FrameService), because the scene-change frame itself is
  * the transition/outgoing shot (a talking head), not the settled slide.
  */
-export function buildSceneScanArgs(inputPath: string, sceneThreshold = DEFAULT_SCENE_THRESHOLD): string[] {
+export function buildSceneScanArgs(
+  inputPath: string,
+  sceneThreshold = DEFAULT_SCENE_THRESHOLD,
+): string[] {
   return [
-    "-i", inputPath,
+    "-i",
+    inputPath,
     // Downscale before scene-detect — cut detection is robust at low res and much faster.
-    "-vf", `scale=640:-2,select='gt(scene,${sceneThreshold})',showinfo`,
-    "-fps_mode", "vfr", "-f", "null", "-",
+    "-vf",
+    `scale=640:-2,select='gt(scene,${sceneThreshold})',showinfo`,
+    "-fps_mode",
+    "vfr",
+    "-f",
+    "null",
+    "-",
   ];
 }
 
@@ -78,9 +100,21 @@ export function buildFrameAtArgs(
   const pre = Math.max(0, seconds - SEEK_PREROLL_SEC);
   const post = seconds - pre;
   return [
-    "-ss", String(pre), "-i", inputPath, "-ss", String(post),
+    "-ss",
+    String(pre),
+    "-i",
+    inputPath,
+    "-ss",
+    String(post),
     ...(crop ? ["-vf", cropFilter(crop)] : []),
-    "-frames:v", "1", "-qscale:v", "3", "-y", "-loglevel", "error", outputPath,
+    "-frames:v",
+    "1",
+    "-qscale:v",
+    "3",
+    "-y",
+    "-loglevel",
+    "error",
+    outputPath,
   ];
 }
 
@@ -153,7 +187,11 @@ export function createFfmpegRunner(deps: {
     // Streamed (not buffered exec) so the caller gets scan progress on a long video —
     // ffmpeg prints its running `time=` position to stderr, and showinfo's `pts_time`
     // lines (one per scene change) are collected from the same stream.
-    detectSceneTimes({ inputPath, sceneThreshold = DEFAULT_SCENE_THRESHOLD, onProgress }) {
+    detectSceneTimes({
+      inputPath,
+      sceneThreshold = DEFAULT_SCENE_THRESHOLD,
+      onProgress,
+    }) {
       const args = buildSceneScanArgs(inputPath, sceneThreshold);
       return new Promise<number[]>((resolve, reject) => {
         const path = deps.getBinaryPath();
@@ -181,7 +219,9 @@ export function createFfmpegRunner(deps: {
         proc.on("error", reject);
         proc.on("close", (code) => {
           if (code !== 0) {
-            reject(new Error(`ffmpeg scene scan failed (exit code ${String(code)})`));
+            reject(
+              new Error(`ffmpeg scene scan failed (exit code ${String(code)})`),
+            );
             return;
           }
           resolve(parseShowinfoTimestamps(stderr));

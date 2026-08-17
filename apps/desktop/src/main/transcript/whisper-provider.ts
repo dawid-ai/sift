@@ -26,12 +26,16 @@ export function createWhisperProvider(deps: {
       return ctx.audioPath !== null && deps.isInstalled();
     },
     async transcribe(ctx, onProgress) {
-      if (!ctx.audioPath) throw new Error("whisper provider requires a downloaded audio file");
+      if (!ctx.audioPath)
+        throw new Error("whisper provider requires a downloaded audio file");
       const dir = mkdtempSync(join(tmpdir(), "sift-whisper-"));
       const wavPath = join(dir, "audio.wav");
       try {
         onProgress({ stage: "extracting-audio", ratio: null });
-        await deps.ffmpeg.extractWav({ inputPath: ctx.audioPath, outputPath: wavPath });
+        await deps.ffmpeg.extractWav({
+          inputPath: ctx.audioPath,
+          outputPath: wavPath,
+        });
 
         onProgress({ stage: "transcribing", ratio: 0 });
         const { segments } = await deps.whisper.transcribe(

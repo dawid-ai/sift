@@ -16,9 +16,19 @@ import {
 } from "./settings-page";
 
 const LANG_NAMES: Record<string, string> = {
-  en: "English", pl: "Polish", es: "Spanish", de: "German", fr: "French",
-  it: "Italian", pt: "Portuguese", nl: "Dutch", ru: "Russian", uk: "Ukrainian",
-  ja: "Japanese", ko: "Korean", zh: "Chinese",
+  en: "English",
+  pl: "Polish",
+  es: "Spanish",
+  de: "German",
+  fr: "French",
+  it: "Italian",
+  pt: "Portuguese",
+  nl: "Dutch",
+  ru: "Russian",
+  uk: "Ukrainian",
+  ja: "Japanese",
+  ko: "Korean",
+  zh: "Chinese",
 };
 
 const langName = (code: string) => LANG_NAMES[code] ?? code;
@@ -30,7 +40,10 @@ export function TranscriptLanguageSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.sift.settings.getTranscriptLanguages().then(setLangs).catch(() => setLangs(["en"]));
+    window.sift.settings
+      .getTranscriptLanguages()
+      .then(setLangs)
+      .catch(() => setLangs(["en"]));
   }, []);
 
   async function persist(next: string[]) {
@@ -47,7 +60,10 @@ export function TranscriptLanguageSection() {
 
   function add() {
     const code = input.trim().toLowerCase().split("-")[0] ?? "";
-    if (!code || langs.includes(code)) { setInput(""); return; }
+    if (!code || langs.includes(code)) {
+      setInput("");
+      return;
+    }
     void persist([...langs, code]);
     setInput("");
   }
@@ -65,7 +81,10 @@ export function TranscriptLanguageSection() {
   }
 
   return (
-    <div className="flex flex-col gap-3" data-testid="transcript-language-section">
+    <div
+      className="flex flex-col gap-3"
+      data-testid="transcript-language-section"
+    >
       {/* Ranked list: the numeral carries the order, so the arrows don't have to explain it.
           One nested block, label inside it, rows carrying nothing but a hairline. */}
       <div className={cn(NESTED_SURFACE, "px-4 py-1")}>
@@ -87,7 +106,9 @@ export function TranscriptLanguageSection() {
               <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-foreground/50">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <span className="truncate font-medium text-foreground">{langName(code)}</span>
+              <span className="truncate font-medium text-foreground">
+                {langName(code)}
+              </span>
               <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
                 {code}
               </span>
@@ -134,15 +155,24 @@ export function TranscriptLanguageSection() {
           aria-label="Language code"
           placeholder="Language code, e.g. pl"
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") add(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") add();
+          }}
           className={cn(FIELD, "flex-1")}
         />
-        <Button data-testid="transcript-language-add" variant="outline" size="lg" onClick={add}>
+        <Button
+          data-testid="transcript-language-add"
+          variant="outline"
+          size="lg"
+          onClick={add}
+        >
           <Plus className="h-4 w-4" />
           Add
         </Button>
       </div>
-      <SettingsHint>Two-letter ISO codes — a region suffix like “pt-BR” is trimmed to “pt”.</SettingsHint>
+      <SettingsHint>
+        Two-letter ISO codes — a region suffix like “pt-BR” is trimmed to “pt”.
+      </SettingsHint>
       {error && <SettingsError>{error}</SettingsError>}
     </div>
   );

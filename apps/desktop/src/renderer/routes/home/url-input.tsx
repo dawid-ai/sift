@@ -11,7 +11,11 @@ const DEBOUNCE_MS = 500;
  * pending timer on every re-run (change of `value`, `delay`, or `onUrl`) and
  * on unmount.
  */
-function useDebouncedUrl(value: string, delay: number, onUrl: (url: string) => void) {
+function useDebouncedUrl(
+  value: string,
+  delay: number,
+  onUrl: (url: string) => void,
+) {
   useEffect(() => {
     const trimmed = value.trim();
     if (!trimmed) {

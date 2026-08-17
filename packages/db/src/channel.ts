@@ -33,16 +33,30 @@ export function insertChannel(db: SiftDatabase, c: NewChannel): ChannelRow {
   return getChannelById(db, Number(r.lastInsertRowid))!;
 }
 
-export function getChannelById(db: SiftDatabase, id: number): ChannelRow | undefined {
-  return db.prepare<ChannelRow>("SELECT * FROM channel WHERE id = @id").get({ id });
+export function getChannelById(
+  db: SiftDatabase,
+  id: number,
+): ChannelRow | undefined {
+  return db
+    .prepare<ChannelRow>("SELECT * FROM channel WHERE id = @id")
+    .get({ id });
 }
 
-export function getChannelByChannelId(db: SiftDatabase, channelId: string): ChannelRow | undefined {
-  return db.prepare<ChannelRow>("SELECT * FROM channel WHERE channel_id = @channelId").get({ channelId });
+export function getChannelByChannelId(
+  db: SiftDatabase,
+  channelId: string,
+): ChannelRow | undefined {
+  return db
+    .prepare<ChannelRow>("SELECT * FROM channel WHERE channel_id = @channelId")
+    .get({ channelId });
 }
 
 export function listChannels(db: SiftDatabase): ChannelRow[] {
-  return db.prepare<ChannelRow>("SELECT * FROM channel ORDER BY created_at DESC, id DESC").all();
+  return db
+    .prepare<ChannelRow>(
+      "SELECT * FROM channel ORDER BY created_at DESC, id DESC",
+    )
+    .all();
 }
 
 export function upsertChannel(db: SiftDatabase, c: NewChannel): ChannelRow {
@@ -61,7 +75,11 @@ export function upsertChannel(db: SiftDatabase, c: NewChannel): ChannelRow {
 export function updateChannelRefresh(
   db: SiftDatabase,
   id: number,
-  patch: { last_seen_video_id: string | null; new_count: number; last_checked: number },
+  patch: {
+    last_seen_video_id: string | null;
+    new_count: number;
+    last_checked: number;
+  },
 ): void {
   db.prepare(
     "UPDATE channel SET last_seen_video_id=@last_seen_video_id, new_count=@new_count, last_checked=@last_checked WHERE id=@id",

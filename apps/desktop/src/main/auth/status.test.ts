@@ -3,14 +3,20 @@ import { isAuthError, registrableDomain } from "./status";
 
 describe("isAuthError", () => {
   it("matches yt-dlp bot-check phrasing (case-insensitive)", () => {
-    expect(isAuthError("ERROR: Sign in to confirm you’re not a bot")).toBe(true);
-    expect(isAuthError("Please use --cookies for the authentication")).toBe(true);
+    expect(isAuthError("ERROR: Sign in to confirm you’re not a bot")).toBe(
+      true,
+    );
+    expect(isAuthError("Please use --cookies for the authentication")).toBe(
+      true,
+    );
   });
   it("matches the curly-apostrophe (U+2019) bot-check variant", () => {
     expect(isAuthError("ERROR: Confirm you’re not a bot")).toBe(true);
   });
   it("does not match a generic network error", () => {
-    expect(isAuthError("ERROR: unable to download: HTTP Error 500")).toBe(false);
+    expect(isAuthError("ERROR: unable to download: HTTP Error 500")).toBe(
+      false,
+    );
   });
 });
 

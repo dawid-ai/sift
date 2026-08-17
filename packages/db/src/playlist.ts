@@ -13,7 +13,10 @@ export interface PlaylistEntry {
  * download (greatest download.id) with a non-null file_path. Media without such
  * a download are omitted. Order follows media.id (not display-authoritative).
  */
-export function listPlaylistEntries(db: SiftDatabase, mediaIds: number[]): PlaylistEntry[] {
+export function listPlaylistEntries(
+  db: SiftDatabase,
+  mediaIds: number[],
+): PlaylistEntry[] {
   if (mediaIds.length === 0) return [];
   // Named params (the repo's convention) — works on both better-sqlite3 and the
   // sql.js test driver. Build @id0,@id1,… placeholders + a matching params object.

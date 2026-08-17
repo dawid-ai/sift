@@ -1,6 +1,11 @@
 import { ipcMain } from "electron";
 import type { AiRegistry } from "@sift/core";
-import { IPC, type AiDefaultConfig, type AiProviderInfo, type CustomProviderConfig } from "@sift/ipc-contract";
+import {
+  IPC,
+  type AiDefaultConfig,
+  type AiProviderInfo,
+  type CustomProviderConfig,
+} from "@sift/ipc-contract";
 import type { createSecrets } from "../secrets";
 import type { createCustomConfigStore } from "../ai/custom-config";
 import type { createAiDefaultConfigStore } from "../settings/ai-default-config";
@@ -57,26 +62,38 @@ export function registerAiProvidersIpc(
 
   ipcMain.handle(IPC.aiCustomConfigGet, () => customConfigStore.get());
 
-  ipcMain.handle(
-    IPC.aiCustomConfigSet,
-    (_event, cfg: CustomProviderConfig) => {
-      customConfigStore.set(cfg);
-      const key = secretsFor("custom").getKey();
-      if (key) rebuild("custom", key);
-    },
-  );
+  ipcMain.handle(IPC.aiCustomConfigSet, (_event, cfg: CustomProviderConfig) => {
+    customConfigStore.set(cfg);
+    const key = secretsFor("custom").getKey();
+    if (key) rebuild("custom", key);
+  });
 
   ipcMain.handle(IPC.aiGetDefault, () => defaultStore.get());
-  ipcMain.handle(IPC.aiSetDefault, (_event, cfg: AiDefaultConfig | null) => defaultStore.set(cfg));
+  ipcMain.handle(IPC.aiSetDefault, (_event, cfg: AiDefaultConfig | null) =>
+    defaultStore.set(cfg),
+  );
   ipcMain.handle(IPC.aiCliStatus, () => isClaudeCliAvailable());
 
   ipcMain.handle(
     IPC.aiRunPrompt,
-    (_event, input: { providerId: string; model: string; systemPrompt: string; content: string }) => {
+    (
+      _event,
+      input: {
+        providerId: string;
+        model: string;
+        systemPrompt: string;
+        content: string;
+      },
+    ) => {
       const provider = registry.get(input.providerId);
       if (!provider) throw new Error("Unknown AI provider.");
       return provider.summarize(
-        { model: input.model, systemPrompt: input.systemPrompt, content: input.content, maxTokens: 8192 },
+        {
+          model: input.model,
+          systemPrompt: input.systemPrompt,
+          content: input.content,
+          maxTokens: 8192,
+        },
         () => {},
       );
     },

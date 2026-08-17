@@ -1,12 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { OPENAI_ID, OPENAI_MODELS, createOpenAiProvider } from "./openai-provider";
+import {
+  OPENAI_ID,
+  OPENAI_MODELS,
+  createOpenAiProvider,
+} from "./openai-provider";
 import type { OpenAiChunk, OpenAiClientLike } from "./openai-provider";
 
 function fakeClientFactory(): {
-  clientFactory: (opts: { apiKey: string; baseURL?: string }) => OpenAiClientLike;
+  clientFactory: (opts: {
+    apiKey: string;
+    baseURL?: string;
+  }) => OpenAiClientLike;
   calls: Array<{ apiKey: string; baseURL?: string; createArgs: unknown }>;
 } {
-  const calls: Array<{ apiKey: string; baseURL?: string; createArgs: unknown }> = [];
+  const calls: Array<{
+    apiKey: string;
+    baseURL?: string;
+    createArgs: unknown;
+  }> = [];
 
   const clientFactory = (opts: {
     apiKey: string;
@@ -15,7 +26,11 @@ function fakeClientFactory(): {
     chat: {
       completions: {
         create(args): AsyncIterable<OpenAiChunk> {
-          calls.push({ apiKey: opts.apiKey, baseURL: opts.baseURL, createArgs: args });
+          calls.push({
+            apiKey: opts.apiKey,
+            baseURL: opts.baseURL,
+            createArgs: args,
+          });
           return {
             [Symbol.asyncIterator]() {
               const chunks: OpenAiChunk[] = [

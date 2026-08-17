@@ -39,7 +39,10 @@ const metadata: MediaMetadata = {
 };
 
 /** A fake provider that emits two token deltas, resolves "FULL SUMMARY", and records the input it was called with. */
-function makeFakeProvider(): { provider: AiProvider; lastInput: () => SummarizeInput | null } {
+function makeFakeProvider(): {
+  provider: AiProvider;
+  lastInput: () => SummarizeInput | null;
+} {
   let lastInput: SummarizeInput | null = null;
   const provider: AiProvider = {
     id: "anthropic",
@@ -92,10 +95,19 @@ describe("SummarizeService", () => {
 
     const deltas: string[] = [];
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     const record = await service.start(
-      { metadata, providerId: "anthropic", model: "claude-opus-4-8", promptId: prompt.id },
+      {
+        metadata,
+        providerId: "anthropic",
+        model: "claude-opus-4-8",
+        promptId: prompt.id,
+      },
       (delta) => deltas.push(delta),
     );
 
@@ -109,7 +121,9 @@ describe("SummarizeService", () => {
     const rows = getSummariesByMediaId(db, media.id);
     expect(rows).toHaveLength(1);
 
-    expect(lastInput()?.content).toBe(assembleSummaryContent(prompt.body, "this is the transcript text"));
+    expect(lastInput()?.content).toBe(
+      assembleSummaryContent(prompt.body, "this is the transcript text"),
+    );
 
     db.close();
   });
@@ -125,10 +139,19 @@ describe("SummarizeService", () => {
     registry.register(provider);
 
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     await expect(
-      service.start({ metadata, providerId: "anthropic", model: "claude-opus-4-8", promptId: prompt.id }),
+      service.start({
+        metadata,
+        providerId: "anthropic",
+        model: "claude-opus-4-8",
+        promptId: prompt.id,
+      }),
     ).rejects.toThrow(/get a transcript first/i);
 
     const media = getMediaBySourceUrl(db, metadata.sourceUrl);
@@ -168,10 +191,19 @@ describe("SummarizeService", () => {
 
     const registry = new AiRegistry();
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     await expect(
-      service.start({ metadata, providerId: "anthropic", model: "claude-opus-4-8", promptId: prompt.id }),
+      service.start({
+        metadata,
+        providerId: "anthropic",
+        model: "claude-opus-4-8",
+        promptId: prompt.id,
+      }),
     ).rejects.toThrow(/unknown ai provider/i);
 
     db.close();
@@ -207,13 +239,19 @@ describe("SummarizeService", () => {
 
     const registry = new AiRegistry();
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     const path = await service.export(summary.id);
 
     expect(path.endsWith(".md")).toBe(true);
     expect(path.startsWith(downloadsDir)).toBe(true);
-    expect(readFileSync(path, "utf8")).toBe("This is the exported summary text.");
+    expect(readFileSync(path, "utf8")).toBe(
+      "This is the exported summary text.",
+    );
 
     db.close();
   });
@@ -236,7 +274,10 @@ describe("SummarizeService", () => {
       metadata_json: JSON.stringify(metadata.raw),
       download_status: "none",
     });
-    const prompt = createPrompt(db, { name: "Key Points", body: "Summarize: {{transcript}}" });
+    const prompt = createPrompt(db, {
+      name: "Key Points",
+      body: "Summarize: {{transcript}}",
+    });
     const summary = insertSummary(db, {
       media_id: media.id,
       prompt_id: prompt.id,
@@ -247,7 +288,11 @@ describe("SummarizeService", () => {
 
     const registry = new AiRegistry();
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     const outPath = await service.export(summary.id);
 
@@ -285,7 +330,11 @@ describe("SummarizeService", () => {
 
     const registry = new AiRegistry();
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     const outPath = await service.export(summary.id);
 
@@ -313,7 +362,10 @@ describe("SummarizeService", () => {
       metadata_json: JSON.stringify(metadata.raw),
       download_status: "none",
     });
-    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    const prompt = createPrompt(db, {
+      name: "Chapters",
+      body: "List chapters. {{TIMESTAMPS}}",
+    });
     insertTranscript(db, {
       media_id: media.id,
       provider_id: "whisper",
@@ -330,9 +382,18 @@ describe("SummarizeService", () => {
     const registry = new AiRegistry();
     registry.register(provider);
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
-    await service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id });
+    await service.start({
+      metadata,
+      providerId: "anthropic",
+      model: "m",
+      promptId: prompt.id,
+    });
 
     expect(lastInput()?.content).toContain("[00:00] one");
     expect(lastInput()?.content).toContain("[01:05] two");
@@ -373,9 +434,18 @@ describe("SummarizeService", () => {
     const registry = new AiRegistry();
     registry.register(provider);
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
-    await service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id });
+    await service.start({
+      metadata,
+      providerId: "anthropic",
+      model: "m",
+      promptId: prompt.id,
+    });
 
     expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
     expect(lastInput()?.content).not.toContain("[00:00]");
@@ -401,7 +471,10 @@ describe("SummarizeService", () => {
       metadata_json: JSON.stringify(metadata.raw),
       download_status: "none",
     });
-    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    const prompt = createPrompt(db, {
+      name: "Chapters",
+      body: "List chapters. {{TIMESTAMPS}}",
+    });
     insertTranscript(db, {
       media_id: media.id,
       provider_id: "whisper",
@@ -415,10 +488,19 @@ describe("SummarizeService", () => {
     const registry = new AiRegistry();
     registry.register(provider);
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     await expect(
-      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+      service.start({
+        metadata,
+        providerId: "anthropic",
+        model: "m",
+        promptId: prompt.id,
+      }),
     ).resolves.toBeDefined();
 
     expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
@@ -445,7 +527,10 @@ describe("SummarizeService", () => {
       metadata_json: JSON.stringify(metadata.raw),
       download_status: "none",
     });
-    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    const prompt = createPrompt(db, {
+      name: "Chapters",
+      body: "List chapters. {{TIMESTAMPS}}",
+    });
     insertTranscript(db, {
       media_id: media.id,
       provider_id: "whisper",
@@ -459,10 +544,19 @@ describe("SummarizeService", () => {
     const registry = new AiRegistry();
     registry.register(provider);
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     await expect(
-      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+      service.start({
+        metadata,
+        providerId: "anthropic",
+        model: "m",
+        promptId: prompt.id,
+      }),
     ).resolves.toBeDefined();
 
     expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
@@ -489,7 +583,10 @@ describe("SummarizeService", () => {
       metadata_json: JSON.stringify(metadata.raw),
       download_status: "none",
     });
-    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    const prompt = createPrompt(db, {
+      name: "Chapters",
+      body: "List chapters. {{TIMESTAMPS}}",
+    });
     insertTranscript(db, {
       media_id: media.id,
       provider_id: "whisper",
@@ -503,10 +600,19 @@ describe("SummarizeService", () => {
     const registry = new AiRegistry();
     registry.register(provider);
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     await expect(
-      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+      service.start({
+        metadata,
+        providerId: "anthropic",
+        model: "m",
+        promptId: prompt.id,
+      }),
     ).resolves.toBeDefined();
 
     expect(lastInput()?.content).toContain("----- TRANSCRIPT -----\none two");
@@ -533,13 +639,19 @@ describe("SummarizeService", () => {
       metadata_json: JSON.stringify(metadata.raw),
       download_status: "none",
     });
-    const prompt = createPrompt(db, { name: "Chapters", body: "List chapters. {{TIMESTAMPS}}" });
+    const prompt = createPrompt(db, {
+      name: "Chapters",
+      body: "List chapters. {{TIMESTAMPS}}",
+    });
     insertTranscript(db, {
       media_id: media.id,
       provider_id: "whisper",
       language: "en",
       text: "one two",
-      segments_json: JSON.stringify([{ start: 0, end: 3, text: "one" }, { foo: "bar" }]),
+      segments_json: JSON.stringify([
+        { start: 0, end: 3, text: "one" },
+        { foo: "bar" },
+      ]),
       model: "ggml-small",
     });
 
@@ -547,10 +659,19 @@ describe("SummarizeService", () => {
     const registry = new AiRegistry();
     registry.register(provider);
     const downloadsDir = mkdtempSync(join(tmpdir(), "sift-summarize-test-"));
-    const service = new SummarizeService({ db, registry, downloadsDir: () => downloadsDir });
+    const service = new SummarizeService({
+      db,
+      registry,
+      downloadsDir: () => downloadsDir,
+    });
 
     await expect(
-      service.start({ metadata, providerId: "anthropic", model: "m", promptId: prompt.id }),
+      service.start({
+        metadata,
+        providerId: "anthropic",
+        model: "m",
+        promptId: prompt.id,
+      }),
     ).resolves.toBeDefined();
 
     expect(lastInput()?.content).toContain("[00:00] one");

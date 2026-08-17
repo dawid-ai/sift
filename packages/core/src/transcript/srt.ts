@@ -24,7 +24,9 @@ export function segmentsToSrt(segments: TranscriptSegment[]): string {
     const text = seg.text.trim();
     if (!text) continue;
     const end = seg.end > seg.start ? seg.end : seg.start + 1;
-    cues.push(`${cues.length + 1}\n${srtTime(seg.start)} --> ${srtTime(end)}\n${text}`);
+    cues.push(
+      `${cues.length + 1}\n${srtTime(seg.start)} --> ${srtTime(end)}\n${text}`,
+    );
   }
   return cues.length ? `${cues.join("\n\n")}\n` : "";
 }

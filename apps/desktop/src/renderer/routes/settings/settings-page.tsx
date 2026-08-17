@@ -129,7 +129,8 @@ const THIN_SCROLLBAR = [
 ].join(" ");
 
 /** Step 2. Fill only — a border here would collide with the section card's own hairline. */
-export const NESTED_SURFACE = "rounded-xl border border-transparent bg-[hsl(24_10%_12%)]";
+export const NESTED_SURFACE =
+  "rounded-xl border border-transparent bg-[hsl(24_10%_12%)]";
 
 /** Step 3. Rows are not objects; a hairline is all that separates them. */
 export const ROW_LIST = "divide-y divide-white/[0.05]";
@@ -176,7 +177,10 @@ export const DESTRUCTIVE_ACTION = [
 /** Card identity strip. Deliberately NOT amber: saturated amber is reserved for the active
  * nav pill and the primary CTA, so nine identical labels can't spend the accent before the
  * eye reaches the one button that matters. Normally wrapped by EyebrowRow. */
-export function CardEyebrow({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+export function CardEyebrow({
+  className,
+  ...props
+}: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
       className={cn(
@@ -250,7 +254,9 @@ export function SettingsSection({
       <p className="mt-2 max-w-[62ch] text-[13px] leading-relaxed text-foreground/60 [text-wrap:pretty]">
         {description}
       </p>
-      <div className={cn("mt-5 border-t pt-5", SECTION_RULE, FULL_BLEED)}>{children}</div>
+      <div className={cn("mt-5 border-t pt-5", SECTION_RULE, FULL_BLEED)}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -276,14 +282,18 @@ export function SettingRow({
       )}
     >
       <div className="min-w-0 flex-1 basis-56">
-        <p className="text-sm font-medium leading-snug text-foreground">{label}</p>
+        <p className="text-sm font-medium leading-snug text-foreground">
+          {label}
+        </p>
         {hint && (
           <p className="mt-1.5 max-w-[62ch] text-[12px] leading-relaxed text-foreground/60 [text-wrap:pretty]">
             {hint}
           </p>
         )}
       </div>
-      {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+      {children && (
+        <div className="flex shrink-0 items-center gap-2">{children}</div>
+      )}
     </div>
   );
 }
@@ -296,7 +306,11 @@ export function SubPanel({
   className,
   children,
   ...rest
-}: { label?: ReactNode; count?: ReactNode; action?: ReactNode } & HTMLAttributes<HTMLDivElement>) {
+}: {
+  label?: ReactNode;
+  count?: ReactNode;
+  action?: ReactNode;
+} & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn(NESTED_SURFACE, "p-4", className)} {...rest}>
       {(label || action) && (
@@ -321,10 +335,16 @@ export function SubPanel({
 /** Label tier 2 — heads a group inside a card, INCLUDING the header of a nested block.
  * Sentence case and near-white on purpose: an uppercase tracked label here would read as a
  * second eyebrow competing with the card's own. */
-export function GroupLabel({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+export function GroupLabel({
+  className,
+  ...props
+}: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-[12px] font-semibold leading-4 text-foreground/70", className)}
+      className={cn(
+        "text-[12px] font-semibold leading-4 text-foreground/70",
+        className,
+      )}
       {...props}
     />
   );
@@ -337,10 +357,16 @@ export function GroupLabel({ className, ...props }: HTMLAttributes<HTMLParagraph
  * the header of a nested block, immediately followed by a CountTag — and were rendering at
  * two sizes, two weights and two brightnesses 350px apart on the same screen. Anything that
  * heads a block is a GroupLabel. */
-export function MicroLabel({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+export function MicroLabel({
+  className,
+  ...props
+}: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-[11px] font-medium leading-4 text-foreground/55", className)}
+      className={cn(
+        "text-[11px] font-medium leading-4 text-foreground/55",
+        className,
+      )}
       {...props}
     />
   );
@@ -349,7 +375,10 @@ export function MicroLabel({ className, ...props }: HTMLAttributes<HTMLParagraph
 /** The ONE way this page renders "how many". A count is DATA, so it is tinted like data —
  * a grey pill on a grey card is a smudge, not a number. Always sits right after the label
  * it counts, never floats at the far edge of a card, never carries a trailing noun. */
-export function CountTag({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
+export function CountTag({
+  className,
+  ...props
+}: HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
       className={cn(
@@ -389,7 +418,10 @@ export function SettingsSelect({
       >
         {children}
       </select>
-      <ChevronDown aria-hidden className="pointer-events-none absolute right-3 h-3.5 w-3.5 text-foreground/40" />
+      <ChevronDown
+        aria-hidden
+        className="pointer-events-none absolute right-3 h-3.5 w-3.5 text-foreground/40"
+      />
     </span>
   );
 }
@@ -420,7 +452,11 @@ export function SettingsTextarea({
 }
 
 /** Tinted danger block. Every section reports failures the same way. */
-export function SettingsError({ className, children, ...rest }: HTMLAttributes<HTMLParagraphElement>) {
+export function SettingsError({
+  className,
+  children,
+  ...rest
+}: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
       className={cn(
@@ -438,7 +474,10 @@ export function SettingsError({ className, children, ...rest }: HTMLAttributes<H
 
 /** Muted footnote under a control. 12px at ~5:1, held to a readable measure, and
  * balanced so a four-word orphan never strands on its own last line. */
-export function SettingsHint({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+export function SettingsHint({
+  className,
+  ...props
+}: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
       className={cn(
@@ -501,7 +540,9 @@ export function StatusDot({
         aria-hidden
         className={cn(
           "h-1.5 w-1.5 rounded-full ring-4",
-          tone === "ok" ? "bg-success ring-success/10" : "bg-warning ring-warning/10",
+          tone === "ok"
+            ? "bg-success ring-success/10"
+            : "bg-warning ring-warning/10",
         )}
       />
       {/* 12px, like every other line of copy in the rail. At 11px this word was the only
@@ -520,7 +561,11 @@ export function StatusDot({
 }
 
 type TabId = "general" | "transcription" | "ai" | "system";
-const TABS: { id: TabId; label: string; icon: ComponentType<{ className?: string }> }[] = [
+const TABS: {
+  id: TabId;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
   { id: "general", label: "General", icon: SlidersHorizontal },
   { id: "transcription", label: "Transcription", icon: Captions },
   { id: "ai", label: "AI", icon: Sparkles },
@@ -677,7 +722,11 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                       {active && (
                         <motion.span
                           layoutId="settings-tab-pill"
-                          transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 32,
+                          }}
                           className="pointer-events-none absolute inset-0 rounded-xl border border-[hsl(24_70%_38%)] bg-[hsl(24_60%_14%)]"
                         />
                       )}
@@ -685,7 +734,9 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                         aria-hidden
                         className={cn(
                           "relative h-4 w-4",
-                          active ? "text-[hsl(24_95%_70%)]" : "text-foreground/40",
+                          active
+                            ? "text-[hsl(24_95%_70%)]"
+                            : "text-foreground/40",
                         )}
                       />
                       <span className="relative">{t.label}</span>
@@ -701,7 +752,9 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
               eyebrow above it: two instances of one component, 230px apart in a 200px column,
               on two different left edges. */}
             <div className={cn(SECTION_SURFACE, "mt-6 hidden p-3 lg:block")}>
-              <CardEyebrow className="px-3 pb-2.5 pt-1">On this page</CardEyebrow>
+              <CardEyebrow className="px-3 pb-2.5 pt-1">
+                On this page
+              </CardEyebrow>
               <ul className="space-y-1.5 pb-1">
                 {TAB_INDEX[tab].map((title, i) => (
                   <li
@@ -791,9 +844,11 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                   title="Sign-in browser"
                   description={
                     <>
-                      Open a browser the app controls, sign into any site (YouTube, Vimeo, &hellip;), and
-                      its session is used for downloads and transcripts &mdash; fixing &ldquo;confirm
-                      you&apos;re not a bot&rdquo;. Your credentials go straight to the site.
+                      Open a browser the app controls, sign into any site
+                      (YouTube, Vimeo, &hellip;), and its session is used for
+                      downloads and transcripts &mdash; fixing &ldquo;confirm
+                      you&apos;re not a bot&rdquo;. Your credentials go straight
+                      to the site.
                     </>
                   }
                 >
@@ -912,9 +967,16 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
               <EyebrowRow icon={Laptop}>Local by default</EyebrowRow>
               <ul className={cn(NESTED_SURFACE, "mt-3 px-3.5", ROW_LIST)}>
                 {LOCALITY.map((row) => (
-                  <li key={row.what} className="flex items-center justify-between gap-3 py-2.5">
-                    <span className="text-[12px] text-foreground/55">{row.what}</span>
-                    <span className="text-[12px] font-medium text-foreground/85">{row.where}</span>
+                  <li
+                    key={row.what}
+                    className="flex items-center justify-between gap-3 py-2.5"
+                  >
+                    <span className="text-[12px] text-foreground/55">
+                      {row.what}
+                    </span>
+                    <span className="text-[12px] font-medium text-foreground/85">
+                      {row.where}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -935,8 +997,8 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
             <div className={cn(SECTION_SURFACE, "p-4")}>
               <EyebrowRow icon={Package}>Nothing bundled</EyebrowRow>
               <p className="mt-2.5 text-[12px] leading-relaxed text-foreground/60 [text-wrap:pretty]">
-                No tools ship inside the installer. They land in your app-data folder and can be
-                deleted any time.
+                No tools ship inside the installer. They land in your app-data
+                folder and can be deleted any time.
               </p>
             </div>
 

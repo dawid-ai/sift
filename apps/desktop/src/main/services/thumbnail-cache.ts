@@ -22,7 +22,12 @@ function contentType(b: Buffer): string {
   if (b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
   if (b[0] === 0x89 && b[1] === 0x50) return "image/png";
   if (b[0] === 0x47 && b[1] === 0x49) return "image/gif";
-  if (b.length > 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  if (
+    b.length > 12 &&
+    b.toString("ascii", 0, 4) === "RIFF" &&
+    b.toString("ascii", 8, 12) === "WEBP"
+  )
+    return "image/webp";
   return "application/octet-stream";
 }
 

@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 
 // No `electron` import — stays Node-loadable for Vitest, mirroring transcript-config.ts.
@@ -13,16 +19,27 @@ export interface DownloadsConfigDeps {
     mkdirSync(p: string, opts: { recursive: boolean }): void;
   };
 }
-const defaultFs: NonNullable<DownloadsConfigDeps["fs"]> = { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync };
+const defaultFs: NonNullable<DownloadsConfigDeps["fs"]> = {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  mkdirSync,
+};
 
-export function createDownloadsConfigStore(deps: DownloadsConfigDeps): { get(): string; set(path: string): void } {
+export function createDownloadsConfigStore(deps: DownloadsConfigDeps): {
+  get(): string;
+  set(path: string): void;
+} {
   const { filePath, defaultDir } = deps;
   const fs = deps.fs ?? defaultFs;
   return {
     get(): string {
       if (!fs.existsSync(filePath)) return defaultDir;
       try {
-        const parsed: unknown = JSON.parse(fs.readFileSync(filePath).toString("utf8"));
+        const parsed: unknown = JSON.parse(
+          fs.readFileSync(filePath).toString("utf8"),
+        );
         const p = (parsed as { path?: unknown } | null)?.path;
         return typeof p === "string" && p.trim().length > 0 ? p : defaultDir;
       } catch {

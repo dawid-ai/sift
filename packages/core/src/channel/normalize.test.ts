@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { countNewSince, isShort, normalizeChannel, normalizeChannelEntries } from "./normalize";
+import {
+  countNewSince,
+  isShort,
+  normalizeChannel,
+  normalizeChannelEntries,
+} from "./normalize";
 import { normalizeSubscriptions } from "./normalize";
 
 const RAW_CHANNEL = {
@@ -13,11 +18,28 @@ const RAW_CHANNEL = {
   playlist_count: 200,
   thumbnails: [
     { url: "https://x/avatar.jpg", width: 160, height: 160 },
-    { url: "https://x/banner.jpg", width: 2048, height: 288, id: "banner_uncropped" },
+    {
+      url: "https://x/banner.jpg",
+      width: 2048,
+      height: 288,
+      id: "banner_uncropped",
+    },
   ],
   entries: [
-    { id: "v1", url: "https://www.youtube.com/watch?v=v1", title: "Newest", duration: 600, view_count: 50 },
-    { id: "v2", url: "https://www.youtube.com/watch?v=v2", title: "Older", duration: 120, view_count: 900 },
+    {
+      id: "v1",
+      url: "https://www.youtube.com/watch?v=v1",
+      title: "Newest",
+      duration: 600,
+      view_count: 50,
+    },
+    {
+      id: "v2",
+      url: "https://www.youtube.com/watch?v=v2",
+      title: "Older",
+      duration: 120,
+      view_count: 900,
+    },
   ],
 };
 
@@ -45,16 +67,24 @@ describe("normalizeChannelEntries + isShort", () => {
     expect(vids.every((v) => v.isShort)).toBe(true); // shorts tab → all short
   });
   it("videos tab: short by /shorts/ url or <=60s duration", () => {
-    expect(isShort("https://www.youtube.com/shorts/x", 600, "videos")).toBe(true);
-    expect(isShort("https://www.youtube.com/watch?v=x", 45, "videos")).toBe(true);
-    expect(isShort("https://www.youtube.com/watch?v=x", 600, "videos")).toBe(false);
+    expect(isShort("https://www.youtube.com/shorts/x", 600, "videos")).toBe(
+      true,
+    );
+    expect(isShort("https://www.youtube.com/watch?v=x", 45, "videos")).toBe(
+      true,
+    );
+    expect(isShort("https://www.youtube.com/watch?v=x", 600, "videos")).toBe(
+      false,
+    );
   });
   it("live: entries map as long-form (never short)", () => {
     const vids = normalizeChannelEntries(RAW_CHANNEL, "live");
     expect(vids.every((v) => !v.isShort)).toBe(true);
   });
   it("isShort is false for live content type", () => {
-    expect(isShort("https://www.youtube.com/watch?v=x", 45, "live")).toBe(false);
+    expect(isShort("https://www.youtube.com/watch?v=x", 45, "live")).toBe(
+      false,
+    );
   });
 });
 
@@ -79,8 +109,11 @@ describe("normalizeSubscriptions", () => {
     const raw = {
       entries: [
         {
-          id: "UCaaa", url: "https://www.youtube.com/channel/UCaaa",
-          channel: "Alpha", uploader_id: "alpha", channel_follower_count: 1234,
+          id: "UCaaa",
+          url: "https://www.youtube.com/channel/UCaaa",
+          channel: "Alpha",
+          uploader_id: "alpha",
+          channel_follower_count: 1234,
           thumbnails: [{ url: "a.jpg", width: 100, height: 100 }],
         },
         { title: "no-id channel" }, // dropped

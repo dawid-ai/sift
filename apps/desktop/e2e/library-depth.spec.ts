@@ -16,7 +16,9 @@ test("Library table/tiles + detail downloads + remove (offline fixture)", async 
 
     // 1. Home → download (mirrors download.spec.ts exactly, so a media row
     // exists before the Library assertions below).
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
 
     const previewCard = window.getByTestId("preview-card");
     await expect(previewCard).toBeVisible();
@@ -43,10 +45,14 @@ test("Library table/tiles + detail downloads + remove (offline fixture)", async 
     // In-detail actions: pull a transcript (if missing) and run a prompt. (The round-trip
     // is covered by transcript.spec/summarize.spec from Home; here we just assert wiring.)
     // Transcript is the default tab; Summary/Files content lives behind their tabs.
-    await expect(window.getByTestId("media-detail-get-transcript")).toBeVisible();
+    await expect(
+      window.getByTestId("media-detail-get-transcript"),
+    ).toBeVisible();
     await window.getByTestId("media-detail-tab-summary").click();
     await expect(window.getByTestId("media-detail-summarize")).toBeVisible();
-    await expect(window.getByTestId("media-detail-summary-provider")).toBeVisible();
+    await expect(
+      window.getByTestId("media-detail-summary-provider"),
+    ).toBeVisible();
 
     // 3. The fixture download shows up as a Files entry in the detail view;
     // removing it clears the tab.
@@ -54,7 +60,9 @@ test("Library table/tiles + detail downloads + remove (offline fixture)", async 
     await expect(window.getByTestId("media-detail-download")).toHaveCount(1);
     await window.getByTestId("media-detail-download-remove").click();
     await expect(window.getByTestId("media-detail-download")).toHaveCount(0);
-    await expect(window.getByText("No files yet.", { exact: false })).toBeVisible();
+    await expect(
+      window.getByText("No files yet.", { exact: false }),
+    ).toBeVisible();
 
     // 4. Back to library list. Exercise the Tiles/Table toggle.
     await window.getByTestId("media-detail-back").click();

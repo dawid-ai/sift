@@ -20,7 +20,8 @@ export function parseWhisperJson(json: unknown): WhisperSegment[] {
   const out: WhisperSegment[] = [];
   for (const item of arr) {
     if (!item || typeof item !== "object") continue;
-    const off = (item as { offsets?: { from?: unknown; to?: unknown } }).offsets;
+    const off = (item as { offsets?: { from?: unknown; to?: unknown } })
+      .offsets;
     const text = (item as { text?: unknown }).text;
     if (!off || typeof text !== "string") continue;
     const from = Number(off.from);
@@ -51,24 +52,35 @@ export function createWhisperRunner(deps: {
   readJson?: (path: string) => unknown;
 }): WhisperRunner {
   const spawn = deps.spawn ?? defaultSpawn;
-  const readJson = deps.readJson ?? ((p: string) => JSON.parse(readFileSync(p, "utf8")));
+  const readJson =
+    deps.readJson ?? ((p: string) => JSON.parse(readFileSync(p, "utf8")));
   return {
     transcribe({ wavPath, language }, onProgress) {
       const binary = deps.getBinaryPath();
       const model = deps.getModelPath();
-      if (!binary) throw new Error("whisper is not installed — install it in Settings → Transcription → Whisper");
-      if (!model) throw new Error("whisper model is missing — install it in Settings → Transcription → Whisper");
+      if (!binary)
+        throw new Error(
+          "whisper is not installed — install it in Settings → Transcription → Whisper",
+        );
+      if (!model)
+        throw new Error(
+          "whisper model is missing — install it in Settings → Transcription → Whisper",
+        );
 
       const outBase = join(tmpdir(), `sift-whisper-${randomUUID()}`);
       const jsonPath = `${outBase}.json`;
       return new Promise<{ segments: WhisperSegment[] }>((resolve, reject) => {
         const proc = spawn(binary, [
-          "-m", model,
-          "-f", wavPath,
-          "-l", language,
-          "-oj",          // --output-json → writes <outBase>.json
-          "-pp",          // --print-progress → `progress = N%` on stderr
-          "-of", outBase, // --output-file base (no extension)
+          "-m",
+          model,
+          "-f",
+          wavPath,
+          "-l",
+          language,
+          "-oj", // --output-json → writes <outBase>.json
+          "-pp", // --print-progress → `progress = N%` on stderr
+          "-of",
+          outBase, // --output-file base (no extension)
         ]);
         let last = -1;
         proc.stdout.on("data", () => {}); // drain

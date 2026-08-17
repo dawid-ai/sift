@@ -32,29 +32,39 @@ Card.displayName = "Card";
  * is done (its input answered, its link resolved) steps back down to `Card` and hands the
  * light to whatever is now active. Two lit panels on screen at once is the same as none.
  */
-export const CardLit = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("panel-lit", className)} {...props} />
-  ),
-);
+export const CardLit = forwardRef<
+  HTMLDivElement,
+  HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("panel-lit", className)} {...props} />
+));
 CardLit.displayName = "CardLit";
 
-export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex flex-col gap-1.5 p-5", className)} {...props} />
-  ),
-);
+export const CardHeader = forwardRef<
+  HTMLDivElement,
+  HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col gap-1.5 p-5", className)}
+    {...props}
+  />
+));
 CardHeader.displayName = "CardHeader";
 
-export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3
-      ref={ref}
-      className={cn("text-base font-semibold leading-none tracking-tight text-foreground", className)}
-      {...props}
-    />
-  ),
-);
+export const CardTitle = forwardRef<
+  HTMLHeadingElement,
+  HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-base font-semibold leading-none tracking-tight text-foreground",
+      className,
+    )}
+    {...props}
+  />
+));
 CardTitle.displayName = "CardTitle";
 
 /**
@@ -62,11 +72,12 @@ CardTitle.displayName = "CardTitle";
  * for why. If an eyebrow carries a leading icon, that icon is `text-primary-muted`
  * (= `--accent-muted`), never `text-primary` and never a 1.8:1 dark coral smudge.
  */
-export const CardEyebrow = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("eyebrow", className)} {...props} />
-  ),
-);
+export const CardEyebrow = forwardRef<
+  HTMLParagraphElement,
+  HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p ref={ref} className={cn("eyebrow", className)} {...props} />
+));
 CardEyebrow.displayName = "CardEyebrow";
 
 /**
@@ -75,16 +86,18 @@ CardEyebrow.displayName = "CardEyebrow";
  * panel is about. Without it a media title set at 15px semibold is typographically identical
  * to the format picker underneath it.
  */
-export const CardSubject = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h2 ref={ref} className={cn("title-md", className)} {...props} />
-  ),
-);
+export const CardSubject = forwardRef<
+  HTMLHeadingElement,
+  HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h2 ref={ref} className={cn("title-md", className)} {...props} />
+));
 CardSubject.displayName = "CardSubject";
 
-export const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-5 pt-0", className)} {...props} />
-  ),
-);
+export const CardContent = forwardRef<
+  HTMLDivElement,
+  HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-5 pt-0", className)} {...props} />
+));
 CardContent.displayName = "CardContent";

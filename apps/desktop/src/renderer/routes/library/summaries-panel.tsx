@@ -30,7 +30,8 @@ const DANGER_GHOST_BUTTON = `${GHOST_BUTTON} hover:border-danger/30 hover:bg-dan
  * tabs never trades a bounded box for a caption stranded above 200px of bare surface. */
 const EMPTY_BOX =
   "flex flex-col items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-9 text-center";
-const EMPTY_CHIP = "grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] text-foreground/50";
+const EMPTY_CHIP =
+  "grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] text-foreground/50";
 
 export interface SummariesPanelProps {
   summaries: MediaDetail["summaries"];
@@ -139,10 +140,15 @@ export function SummariesPanel({
             {summarizing ? "Summarizing…" : "Run prompt"}
           </Button>
           {transcriptsCount === 0 && (
-            <span className="text-[13px] text-muted-foreground">Get a transcript first</span>
+            <span className="text-[13px] text-muted-foreground">
+              Get a transcript first
+            </span>
           )}
           {transcriptsCount > 0 && noProviderReady && (
-            <span data-testid="media-detail-no-provider" className="text-[13px] text-muted-foreground">
+            <span
+              data-testid="media-detail-no-provider"
+              className="text-[13px] text-muted-foreground"
+            >
               Add an AI provider key in Settings
             </span>
           )}
@@ -168,7 +174,9 @@ export function SummariesPanel({
               caption owns the card's full width and the timestamp is never the part that clips. */}
           <div className="mb-3 flex min-w-0 flex-col gap-1">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="truncate text-sm font-medium text-foreground">{promptName(s.promptId)}</span>
+              <span className="truncate text-sm font-medium text-foreground">
+                {promptName(s.promptId)}
+              </span>
               <div className="ml-auto flex flex-none items-center gap-1.5">
                 <Button
                   size="sm"
@@ -208,7 +216,9 @@ export function SummariesPanel({
           <span className={EMPTY_CHIP} aria-hidden>
             <Sparkles className="h-4 w-4" />
           </span>
-          <p className="text-[13px] font-semibold text-foreground">No prompt run yet.</p>
+          <p className="text-[13px] font-semibold text-foreground">
+            No prompt run yet.
+          </p>
           <p className="max-w-[38ch] text-[13px] leading-relaxed text-muted-foreground">
             {blocked
               ? "Summaries appear here once a transcript and an AI provider are ready."
@@ -220,7 +230,15 @@ export function SummariesPanel({
   );
 }
 
-function Field({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+function Field({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <div className={className}>
       <label className={LABEL_CLASS}>{label}</label>

@@ -5,12 +5,54 @@ import { computeDownloadOptions } from "./download-options";
 // AV1 mp4, VP9 webm), 720p, and an m4a audio track.
 const RAW = {
   formats: [
-    { ext: "m4a", vcodec: "none", acodec: "mp4a.40.2", height: null, tbr: 129, filesize: 7_000_000 },
-    { ext: "webm", vcodec: "opus", acodec: "opus", height: null, tbr: 145, filesize: 8_000_000 },
-    { ext: "mp4", vcodec: "avc1.64002a", acodec: "none", height: 1080, tbr: 1455, filesize: 338_000_000 },
-    { ext: "mp4", vcodec: "av01.0.09M.08", acodec: "none", height: 1080, tbr: 1354, filesize: 315_000_000 },
-    { ext: "webm", vcodec: "vp9", acodec: "none", height: 1080, tbr: 2907, filesize: 676_000_000 },
-    { ext: "mp4", vcodec: "avc1.4d401f", acodec: "none", height: 720, tbr: 640, filesize: 149_000_000 },
+    {
+      ext: "m4a",
+      vcodec: "none",
+      acodec: "mp4a.40.2",
+      height: null,
+      tbr: 129,
+      filesize: 7_000_000,
+    },
+    {
+      ext: "webm",
+      vcodec: "opus",
+      acodec: "opus",
+      height: null,
+      tbr: 145,
+      filesize: 8_000_000,
+    },
+    {
+      ext: "mp4",
+      vcodec: "avc1.64002a",
+      acodec: "none",
+      height: 1080,
+      tbr: 1455,
+      filesize: 338_000_000,
+    },
+    {
+      ext: "mp4",
+      vcodec: "av01.0.09M.08",
+      acodec: "none",
+      height: 1080,
+      tbr: 1354,
+      filesize: 315_000_000,
+    },
+    {
+      ext: "webm",
+      vcodec: "vp9",
+      acodec: "none",
+      height: 1080,
+      tbr: 2907,
+      filesize: 676_000_000,
+    },
+    {
+      ext: "mp4",
+      vcodec: "avc1.4d401f",
+      acodec: "none",
+      height: 720,
+      tbr: 640,
+      filesize: 149_000_000,
+    },
   ],
 };
 
@@ -38,8 +80,22 @@ describe("computeDownloadOptions", () => {
   it("uses webm selector when a height has no mp4 stream", () => {
     const opts = computeDownloadOptions({
       formats: [
-        { ext: "webm", vcodec: "vp9", acodec: "none", height: 1440, tbr: 4000, filesize: 900_000_000 },
-        { ext: "m4a", vcodec: "none", acodec: "mp4a.40.2", height: null, tbr: 129, filesize: 7_000_000 },
+        {
+          ext: "webm",
+          vcodec: "vp9",
+          acodec: "none",
+          height: 1440,
+          tbr: 4000,
+          filesize: 900_000_000,
+        },
+        {
+          ext: "m4a",
+          vcodec: "none",
+          acodec: "mp4a.40.2",
+          height: null,
+          tbr: 129,
+          filesize: 7_000_000,
+        },
       ],
     });
     const p1440 = opts.find((o) => o.id === "1440p")!;
@@ -57,6 +113,9 @@ describe("computeDownloadOptions", () => {
   it("does not throw on malformed input", () => {
     expect(() => computeDownloadOptions(null)).not.toThrow();
     expect(() => computeDownloadOptions({ formats: "nope" })).not.toThrow();
-    expect(computeDownloadOptions(null).map((o) => o.id)).toEqual(["best", "audio"]);
+    expect(computeDownloadOptions(null).map((o) => o.id)).toEqual([
+      "best",
+      "audio",
+    ]);
   });
 });

@@ -67,11 +67,17 @@ describe("ytdlp-subs provider", () => {
   });
   it("canHandle: true when the resolved language is in the caption list", () => {
     const p = createYtdlpSubsProvider({ runner: runnerWith(null) });
-    expect(p.canHandle(makeCtx({ language: "en", captionLanguages: ["es", "en-US"] }))).toBe(true);
+    expect(
+      p.canHandle(
+        makeCtx({ language: "en", captionLanguages: ["es", "en-US"] }),
+      ),
+    ).toBe(true);
   });
   it("canHandle: false when the resolved language is NOT in a known caption list", () => {
     const p = createYtdlpSubsProvider({ runner: runnerWith(null) });
-    expect(p.canHandle(makeCtx({ language: "en", captionLanguages: ["es", "fr"] }))).toBe(false);
+    expect(
+      p.canHandle(makeCtx({ language: "en", captionLanguages: ["es", "fr"] })),
+    ).toBe(false);
   });
   it("transcribes fetched subs into a TranscriptResult (vtt format)", async () => {
     const vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nHello there\n";
@@ -84,7 +90,9 @@ describe("ytdlp-subs provider", () => {
   });
   it("dispatches to parseJson3 when the runner reports json3 format", async () => {
     const raw = JSON.stringify({
-      events: [{ tStartMs: 1000, dDurationMs: 2000, segs: [{ utf8: "Hello there" }] }],
+      events: [
+        { tStartMs: 1000, dDurationMs: 2000, segs: [{ utf8: "Hello there" }] },
+      ],
     });
     const p = createYtdlpSubsProvider({ runner: runnerWithJson3(raw) });
     const res = await p.transcribe(ctx, () => {});
@@ -95,6 +103,8 @@ describe("ytdlp-subs provider", () => {
   });
   it("throws a clear error when no captions come back", async () => {
     const p = createYtdlpSubsProvider({ runner: runnerWith(null) });
-    await expect(p.transcribe(ctx, () => {})).rejects.toThrow(/no en captions/i);
+    await expect(p.transcribe(ctx, () => {})).rejects.toThrow(
+      /no en captions/i,
+    );
   });
 });

@@ -19,13 +19,20 @@ export function insertDocument(db: SiftDatabase, d: NewDocument): DocumentRow {
        VALUES (@media_id, @format, @path, @provider_id, @model, @created_at)`,
     )
     .run({ ...d, created_at });
-  return db.prepare<DocumentRow>("SELECT * FROM document WHERE id = @id").get({ id: Number(res.lastInsertRowid) })!;
+  return db
+    .prepare<DocumentRow>("SELECT * FROM document WHERE id = @id")
+    .get({ id: Number(res.lastInsertRowid) })!;
 }
 
 /** Documents for a media, newest first. */
-export function getDocumentsByMediaId(db: SiftDatabase, mediaId: number): DocumentRow[] {
+export function getDocumentsByMediaId(
+  db: SiftDatabase,
+  mediaId: number,
+): DocumentRow[] {
   return db
-    .prepare<DocumentRow>("SELECT * FROM document WHERE media_id = @mediaId ORDER BY created_at DESC, id DESC")
+    .prepare<DocumentRow>(
+      "SELECT * FROM document WHERE media_id = @mediaId ORDER BY created_at DESC, id DESC",
+    )
     .all({ mediaId });
 }
 

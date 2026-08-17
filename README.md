@@ -21,7 +21,7 @@ searchable library — on your machine, with no subscription.
 **macOS and Linux are not built yet** (planned, not started — see [`docs/FAQ.md`](./docs/FAQ.md)).
 
 Or browse [all releases](https://github.com/dawid-ai/sift/releases). The installer is unsigned,
-so Windows SmartScreen shows an "unknown publisher" prompt — choose *More info → Run anyway*.
+so Windows SmartScreen shows an "unknown publisher" prompt — choose _More info → Run anyway_.
 The app updates itself after that. Both points are explained in the [FAQ](./docs/FAQ.md).
 
 ## Features

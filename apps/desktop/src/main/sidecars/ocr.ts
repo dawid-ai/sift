@@ -9,7 +9,11 @@ export interface OcrResult {
 /** Shape a raw Tesseract result into the fields the keep-frame gate reads. */
 export function toOcrResult(rawText: string, confidence: number): OcrResult {
   const text = rawText.trim();
-  return { text, wordCount: text ? text.split(/\s+/).length : 0, meanConfidence: confidence };
+  return {
+    text,
+    wordCount: text ? text.split(/\s+/).length : 0,
+    meanConfidence: confidence,
+  };
 }
 
 /** Minimal shape `createOcrRunner` depends on — injectable so tests skip the WASM. */

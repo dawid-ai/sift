@@ -14,18 +14,25 @@
 export const OUTLIER_THRESHOLD = 2;
 
 /** Median view count across the videos that have one, or null if none do. */
-export function medianViews(videos: { viewCount: number | null }[]): number | null {
+export function medianViews(
+  videos: { viewCount: number | null }[],
+): number | null {
   const counts = videos
     .map((v) => v.viewCount)
     .filter((c): c is number => typeof c === "number")
     .sort((a, b) => a - b);
   if (counts.length === 0) return null;
   const mid = Math.floor(counts.length / 2);
-  return counts.length % 2 === 1 ? counts[mid]! : (counts[mid - 1]! + counts[mid]!) / 2;
+  return counts.length % 2 === 1
+    ? counts[mid]!
+    : (counts[mid - 1]! + counts[mid]!) / 2;
 }
 
 /** How many times the channel median this video got. Null when it can't be computed. */
-export function outlierScore(viewCount: number | null, median: number | null): number | null {
+export function outlierScore(
+  viewCount: number | null,
+  median: number | null,
+): number | null {
   if (viewCount == null || median == null || median <= 0) return null;
   return viewCount / median;
 }

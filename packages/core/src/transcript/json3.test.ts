@@ -5,8 +5,16 @@ describe("parseJson3", () => {
   it("parses events into clean {start,end,text} with no rolling duplication", () => {
     const raw = JSON.stringify({
       events: [
-        { tStartMs: 0, dDurationMs: 1000, segs: [{ utf8: "hello" }, { utf8: " world" }] },
-        { tStartMs: 1000, dDurationMs: 1000, segs: [{ utf8: "this is a test" }] },
+        {
+          tStartMs: 0,
+          dDurationMs: 1000,
+          segs: [{ utf8: "hello" }, { utf8: " world" }],
+        },
+        {
+          tStartMs: 1000,
+          dDurationMs: 1000,
+          segs: [{ utf8: "this is a test" }],
+        },
       ],
     });
     expect(parseJson3(raw)).toEqual([

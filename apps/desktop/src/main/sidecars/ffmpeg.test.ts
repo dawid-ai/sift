@@ -19,7 +19,11 @@ function fakeProc() {
   } = {};
   const proc = {
     stdout: { on: () => {} },
-    stderr: { on: (_ev: "data", cb: (c: string) => void) => { listeners.stderr = cb; } },
+    stderr: {
+      on: (_ev: "data", cb: (c: string) => void) => {
+        listeners.stderr = cb;
+      },
+    },
     on(ev: "close" | "error", cb: never) {
       if (ev === "close") listeners.close = cb as (code: number | null) => void;
       if (ev === "error") listeners.error = cb as (e: Error) => void;
@@ -31,8 +35,19 @@ function fakeProc() {
 describe("buildWavArgs", () => {
   it("produces 16 kHz mono pcm_s16le with overwrite", () => {
     expect(buildWavArgs("/in.mp4", "/out.wav")).toEqual([
-      "-i", "/in.mp4", "-vn", "-ar", "16000", "-ac", "1",
-      "-c:a", "pcm_s16le", "-y", "-loglevel", "error", "/out.wav",
+      "-i",
+      "/in.mp4",
+      "-vn",
+      "-ar",
+      "16000",
+      "-ac",
+      "1",
+      "-c:a",
+      "pcm_s16le",
+      "-y",
+      "-loglevel",
+      "error",
+      "/out.wav",
     ]);
   });
 });
@@ -40,14 +55,38 @@ describe("buildWavArgs", () => {
 describe("buildFrameAtArgs", () => {
   it("hybrid-seeks (fast to ~5s before, then exact) to grab a single frame", () => {
     expect(buildFrameAtArgs("/in.mp4", "/out/manual.jpg", 12.5)).toEqual([
-      "-ss", "7.5", "-i", "/in.mp4", "-ss", "5", "-frames:v", "1",
-      "-qscale:v", "3", "-y", "-loglevel", "error", "/out/manual.jpg",
+      "-ss",
+      "7.5",
+      "-i",
+      "/in.mp4",
+      "-ss",
+      "5",
+      "-frames:v",
+      "1",
+      "-qscale:v",
+      "3",
+      "-y",
+      "-loglevel",
+      "error",
+      "/out/manual.jpg",
     ]);
   });
   it("clamps the pre-seek at 0 near the start of the video", () => {
     expect(buildFrameAtArgs("/in.mp4", "/o.jpg", 2)).toEqual([
-      "-ss", "0", "-i", "/in.mp4", "-ss", "2", "-frames:v", "1",
-      "-qscale:v", "3", "-y", "-loglevel", "error", "/o.jpg",
+      "-ss",
+      "0",
+      "-i",
+      "/in.mp4",
+      "-ss",
+      "2",
+      "-frames:v",
+      "1",
+      "-qscale:v",
+      "3",
+      "-y",
+      "-loglevel",
+      "error",
+      "/o.jpg",
     ]);
   });
 });
@@ -55,18 +94,45 @@ describe("buildFrameAtArgs", () => {
 describe("buildSceneScanArgs", () => {
   it("scans for scene changes on a downscaled stream with no image output", () => {
     expect(buildSceneScanArgs("/in.mp4", 0.4)).toEqual([
-      "-i", "/in.mp4",
-      "-vf", "scale=640:-2,select='gt(scene,0.4)',showinfo",
-      "-fps_mode", "vfr", "-f", "null", "-",
+      "-i",
+      "/in.mp4",
+      "-vf",
+      "scale=640:-2,select='gt(scene,0.4)',showinfo",
+      "-fps_mode",
+      "vfr",
+      "-f",
+      "null",
+      "-",
     ]);
   });
 });
 
 describe("crop", () => {
   it("adds -vf crop to a single-frame grab (after the hybrid seek)", () => {
-    expect(buildFrameAtArgs("/in.mp4", "/o/m.jpg", 12, { x: 0, y: 0, w: 0.5, h: 0.5 })).toEqual([
-      "-ss", "7", "-i", "/in.mp4", "-ss", "5", "-vf", "crop=iw*0.5:ih*0.5:iw*0:ih*0",
-      "-frames:v", "1", "-qscale:v", "3", "-y", "-loglevel", "error", "/o/m.jpg",
+    expect(
+      buildFrameAtArgs("/in.mp4", "/o/m.jpg", 12, {
+        x: 0,
+        y: 0,
+        w: 0.5,
+        h: 0.5,
+      }),
+    ).toEqual([
+      "-ss",
+      "7",
+      "-i",
+      "/in.mp4",
+      "-ss",
+      "5",
+      "-vf",
+      "crop=iw*0.5:ih*0.5:iw*0:ih*0",
+      "-frames:v",
+      "1",
+      "-qscale:v",
+      "3",
+      "-y",
+      "-loglevel",
+      "error",
+      "/o/m.jpg",
     ]);
   });
 });
@@ -89,7 +155,11 @@ describe("parseShowinfoTimestamps", () => {
 
 describe("parseFfmpegTime", () => {
   it("reads the scan position (seconds) from an ffmpeg status line", () => {
-    expect(parseFfmpegTime("frame= 12 fps=0 q=3.0 size=N/A time=00:01:02.50 bitrate=N/A")).toBe(62.5);
+    expect(
+      parseFfmpegTime(
+        "frame= 12 fps=0 q=3.0 size=N/A time=00:01:02.50 bitrate=N/A",
+      ),
+    ).toBe(62.5);
   });
   it("returns null for a line without time=", () => {
     expect(parseFfmpegTime("[showinfo] pts_time:5")).toBeNull();
@@ -99,16 +169,19 @@ describe("parseFfmpegTime", () => {
 describe("createFfmpegRunner", () => {
   it("throws when ffmpeg is not installed", async () => {
     const r = createFfmpegRunner({ getBinaryPath: () => null });
-    await expect(r.extractWav({ inputPath: "/a", outputPath: "/b" })).rejects.toBeInstanceOf(
-      FfmpegNotInstalledError,
-    );
+    await expect(
+      r.extractWav({ inputPath: "/a", outputPath: "/b" }),
+    ).rejects.toBeInstanceOf(FfmpegNotInstalledError);
   });
 
   it("execs the installed binary with the WAV args", async () => {
     const exec = vi.fn().mockResolvedValue({ stdout: "", stderr: "" });
     const r = createFfmpegRunner({ getBinaryPath: () => "/bin/ffmpeg", exec });
     await r.extractWav({ inputPath: "/in.mp4", outputPath: "/out.wav" });
-    expect(exec).toHaveBeenCalledWith("/bin/ffmpeg", buildWavArgs("/in.mp4", "/out.wav"));
+    expect(exec).toHaveBeenCalledWith(
+      "/bin/ffmpeg",
+      buildWavArgs("/in.mp4", "/out.wav"),
+    );
   });
 
   it("detectSceneTimes spawns the scan, streams progress, and returns scene times", async () => {
@@ -120,12 +193,17 @@ describe("createFfmpegRunner", () => {
     };
     const r = createFfmpegRunner({ getBinaryPath: () => "/bin/ffmpeg", spawn });
     const seconds: number[] = [];
-    const promise = r.detectSceneTimes({ inputPath: "/in.mp4", onProgress: (s) => seconds.push(s) });
+    const promise = r.detectSceneTimes({
+      inputPath: "/in.mp4",
+      onProgress: (s) => seconds.push(s),
+    });
 
     // ffmpeg streams status (time=) and showinfo (pts_time) on stderr, then exits 0.
     listeners.stderr?.("frame=1 time=00:00:04.00 bitrate=N/A\r");
     listeners.stderr?.("[showinfo] n:0 pts_time:16.9169 pos:1\n");
-    listeners.stderr?.("frame=2 time=00:00:20.00 bitrate=N/A\r[showinfo] n:1 pts_time:63.1 pos:2\n");
+    listeners.stderr?.(
+      "frame=2 time=00:00:20.00 bitrate=N/A\r[showinfo] n:1 pts_time:63.1 pos:2\n",
+    );
     listeners.close?.(0);
 
     expect(spawnedArgs).toEqual(buildSceneScanArgs("/in.mp4", 0.4));
@@ -145,8 +223,8 @@ describe("createFfmpegRunner", () => {
 
   it("detectSceneTimes throws when ffmpeg is not installed", async () => {
     const r = createFfmpegRunner({ getBinaryPath: () => null });
-    await expect(r.detectSceneTimes({ inputPath: "/a" })).rejects.toBeInstanceOf(
-      FfmpegNotInstalledError,
-    );
+    await expect(
+      r.detectSceneTimes({ inputPath: "/a" }),
+    ).rejects.toBeInstanceOf(FfmpegNotInstalledError);
   });
 });

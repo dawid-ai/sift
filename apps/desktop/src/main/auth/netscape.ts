@@ -20,7 +20,17 @@ export function toNetscapeCookies(cookies: NetscapeCookieInput[]): string {
     const includeSub = c.domain.startsWith(".") ? "TRUE" : "FALSE";
     const secure = c.secure ? "TRUE" : "FALSE";
     const expiry = c.expirationDate ? Math.floor(c.expirationDate) : 0;
-    lines.push([c.domain, includeSub, c.path, secure, String(expiry), c.name, c.value].join("\t"));
+    lines.push(
+      [
+        c.domain,
+        includeSub,
+        c.path,
+        secure,
+        String(expiry),
+        c.name,
+        c.value,
+      ].join("\t"),
+    );
   }
   return lines.join("\n") + "\n";
 }

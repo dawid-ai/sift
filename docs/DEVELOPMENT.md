@@ -63,7 +63,7 @@ rather than bundled:
   (no network); `check(kind)` resolves the latest release and compares versions;
   `install(kind)` downloads+verifies (extracting archives for ffmpeg's zip/tar.xz
   builds), then `upsertAsset()`s a row with `{ kind, name, version, path, sha256,
-  installed_at, last_checked }`. Binaries are stored under
+installed_at, last_checked }`. Binaries are stored under
   `app.getPath("userData")/binaries` (`apps/desktop/src/main/paths.ts`).
 - **IPC** (`apps/desktop/src/main/ipc/binaries.ts`): `binaries:list` /
   `binaries:check` / `binaries:install`, plus a `binaries:progress` push channel
@@ -80,7 +80,7 @@ installed `yt-dlp` binary and normalizes its output:
   `yt-dlp -J --no-warnings <url>` and `JSON.parse`s stdout; `listExtractors()`
   runs `yt-dlp --list-extractors` and splits stdout into lines. Throws
   `YtDlpNotInstalledError` if no binary is registered yet (`getAsset(db,
-  "ytdlp")` returns nothing) — surfaced to the renderer as the "Install yt-dlp
+"ytdlp")` returns nothing) — surfaced to the renderer as the "Install yt-dlp
   in Settings → Binaries" hint. Failure messages go through
   `ytdlpFailureMessage(action, url, stderr)`: yt-dlp's `ERROR: Unsupported URL`
   is a **normal** outcome (a link from a site with no extractor), so it becomes
@@ -91,7 +91,7 @@ installed `yt-dlp` binary and normalizes its output:
   (whose `cmd` contains the user's local cookie path) is kept only as `cause`,
   never in the message — `ipcMain.handle` sends `message` to the renderer.
   **A rejected handler is not a crash:** Electron logs `Error occurred in
-  handler for 'metadata:fetch'` to the main console for every rejected
+handler for 'metadata:fetch'` to the main console for every rejected
   `ipcMain.handle`, which is exactly how this codebase reports IPC errors;
   `HomeView`'s `.catch` renders it as `home-error` and the app stays usable.
   `metadata.spec.ts`'s second test pins that.
@@ -133,16 +133,16 @@ Downloading is a straight pipeline from the Home preview card to a persisted
   `"bv*+ba/b"`, `"720p"` → `"bv*[height<=720]+ba/b"`.
 - **Runner** (`apps/desktop/src/main/sidecars/ytdlp.ts`, `createYtDlpRunner().download`):
   spawns `yt-dlp -f <selector> -o <outputTemplate> --no-playlist --newline
-  --quiet --no-warnings --progress --progress-template "SIFTPROG
-  %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.speed)s
-  %(progress.eta)s" --print after_move:filepath -- <url>` as an arg array (never
+--quiet --no-warnings --progress --progress-template "SIFTPROG
+%(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.speed)s
+%(progress.eta)s" --print after_move:filepath -- <url>` as an arg array (never
   a shell string — the `--` sentinel stops URL-as-flag injection). Every stdout
   line is matched against `PROGRESS_LINE_RE` (`^SIFTPROG (\S+) (\S+) (\S+)
-  (\S+)$`) by `parseProgressLine`, which converts the 4 captures (downloaded
+(\S+)$`) by `parseProgressLine`, which converts the 4 captures (downloaded
   bytes, total bytes, speed, eta) to `RawDownloadProgress`, treating yt-dlp's
   `"NA"` sentinel as `null` (e.g. unknown total on a live stream). Any non-empty,
   non-`SIFTPROG` line is kept as the latest `filePathCandidate`; the `--print
-  after_move:filepath` line is expected to be the final one, giving the real
+after_move:filepath` line is expected to be the final one, giving the real
   on-disk path after any post-processing move. On `close` with exit code 0 and a
   candidate path, resolves `{ filePath }`; otherwise rejects with the last
   stderr line attached.
@@ -150,11 +150,11 @@ Downloading is a straight pipeline from the Home preview card to a persisted
   `apps/desktop/src/main/services/download-service.ts`): builds the output
   template as `<downloadsDir>/<uploader>__<title>.%(ext)s` via
   `buildOutputBaseName` (`@sift/core`, sanitized/length-capped), inserts a
-  `media` row with `download_status: "downloading"` *before* the download
+  `media` row with `download_status: "downloading"` _before_ the download
   starts, calls `runner.download(...)` forwarding each progress tick over
   `onProgress` with `mediaId` attached, then on success calls
   `setMediaDownload(db, id, "done", filePath)` or on failure `setMediaDownload(db,
-  id, "error", null)` and rethrows. `list()` reads all `media` rows, newest
+id, "error", null)` and rethrows. `list()` reads all `media` rows, newest
   first, for the Library grid.
 - **IPC** (`apps/desktop/src/main/ipc/download.ts`, `ipc/library.ts`):
   `download:start` invokes `DownloadService.start` and fans out each progress
@@ -201,7 +201,7 @@ Downloading is a straight pipeline from the Home preview card to a persisted
   report no uploader URL fall back to plain text. **Length**
   (`data-testid="library-row-duration"`) is its own column;
   neither is stacked under the title any more. **Formats** always shows the
-  *quality* you have on disk (`1080p`, `audio`), falling back to the container
+  _quality_ you have on disk (`1080p`, `audio`), falling back to the container
   (`MP3`) only when there is genuinely no video — see the poster/height note in
   "Local file import" for how an imported row gets its resolution. Remove is an
   icon-only trash button in both views (`aria-label`/`title` carry the label);
@@ -231,14 +231,14 @@ without a real yt-dlp binary or network access, reusing the same
   ticks (`{received:512,total:1024,speed:256,eta:2}` then
   `{received:1024,total:1024,speed:256,eta:0}`) synchronously and resolves
   `{ filePath: "<temp>/sift-e2e-downloads/Fixture Channel__Fixture Video
-  Title.mp4" }` — no `spawn`, no real file is written. The base name
+Title.mp4" }` — no `spawn`, no real file is written. The base name
   (`"Fixture Channel__Fixture Video Title"`) matches what
   `buildOutputBaseName` would produce from `FIXTURE_METADATA_JSON`'s `uploader:
-  "Fixture Channel"` / `title: "Fixture Video Title"`, so the fixture path stays
+"Fixture Channel"` / `title: "Fixture Video Title"`, so the fixture path stays
   consistent with the real naming convention even though nothing is actually
   downloaded.
 - `DownloadService` is constructed with `downloadsDir:
-  join(app.getPath("temp"), "sift-e2e-downloads")` whenever the
+join(app.getPath("temp"), "sift-e2e-downloads")` whenever the
   `SIFT_E2E_FIXTURE_DIR` branch is active, instead of the real `downloadsDir()`
   — so `mkdirSync(downloadsDir, { recursive: true })` in `DownloadService.start`
   never touches a real user's `Downloads` folder during e2e.
@@ -284,7 +284,7 @@ call, no download stage:
   `localFileMetadata(absPath, durationSec?)`, which synthesizes a full
   `MediaMetadata` with no yt-dlp involved: `sourceUrl` is
   `pathToFileURL(absPath).href`, `platform: { id: "local", label: "Local file",
-  tier: "tested" }` (the pseudo-platform is built here rather than added to the
+tier: "tested" }` (the pseudo-platform is built here rather than added to the
   curated `TESTED_PLATFORMS` list of real yt-dlp extractor keys, since `"tested"`
   here only suppresses the UI's "this platform is untested" caution, not a claim
   about yt-dlp coverage), and `hasCaptions: false` — load-bearing, since it makes
@@ -308,7 +308,7 @@ call, no download stage:
   lives. Re-importing the same path is idempotent — same media row, same download
   row upserted. Two things are set for presentation: the row's **label** is the
   probed video `height` as `"1080p"` when the renderer could read one, else the
-  container (`"MP3"`, `"M4A"`), so the Library's Formats column shows a *format*
+  container (`"MP3"`, `"M4A"`), so the Library's Formats column shows a _format_
   and an imported row reads exactly like a downloaded one; and `LOCAL_TAG` is
   added here rather than in the renderer, so both entry points (drop and picker)
   get it for free (`addTag` is `INSERT OR IGNORE` over a `NOCASE` column, so
@@ -356,7 +356,7 @@ call, no download stage:
   import, so a failure just leaves `thumbnail_path` null. It re-extracts on every
   import rather than reusing an existing `<mediaId>.jpg`, because SQLite reuses
   the last rowid after a delete and a cached file could otherwise be served as a
-  *different* import's poster.
+  _different_ import's poster.
 - **Resolution backfill** (`backfillHeightFromPoster`, same file): the poster is
   encoded at the source frame size, so `jpegSize()` (a SOFn-marker read in
   `local-file.ts`) recovers the video's height from it and relabels the download
@@ -394,7 +394,7 @@ call, no download stage:
   strictly one at a time, each calling `import.local` → `metadata.fetch` →
   `transcript.get` in sequence. `import.local` is what commits the library row,
   so that's tracked separately (as "landed") from a successful transcribe:
-  `onDone()` (navigates to Library) fires once at least one file *landed*, even
+  `onDone()` (navigates to Library) fires once at least one file _landed_, even
   if every transcribe in the batch failed — Whisper is an on-demand binary, not
   installed by default, so a failed transcribe on a fresh install is the common
   case, not an edge case, and the row must still be visible. Each per-file
@@ -404,7 +404,7 @@ call, no download stage:
   (not state, so the drag-listener effect only depends on `runImports` and
   registers its listeners exactly once) rejects a second drop/pick while a batch
   is in flight — this is load-bearing, not just UX polish: `TranscriptService`
-  only dedupes in-flight jobs per `sourceUrl`, so two *different* files dropped
+  only dedupes in-flight jobs per `sourceUrl`, so two _different_ files dropped
   together would otherwise both launch a Whisper run concurrently. Classification
   is delegated to a pure, exported `partitionDropped(files)` helper — DOM-free so
   it's unit-testable without jsdom (`use-file-import.test.ts`) — which sorts each
@@ -486,7 +486,7 @@ outside Playwright's reach. A human pass must verify:
 7. Pressing Esc mid-drag dismisses the overlay rather than leaving it stuck.
 8. **Drag a file slowly across the window over several UI elements — the
    overlay must stay solid, not flicker.** `onDragLeave`'s `relatedTarget ===
-   null` check is a shaky "left the window" test in Chromium; if it flickers,
+null` check is a shaky "left the window" test in Chromium; if it flickers,
    the fix is a dragenter/dragleave depth counter.
 9. **Drag a link from a browser into the window — the app must not navigate
    away**, and the Home URL input should still accept a dropped URL normally.
@@ -495,7 +495,7 @@ outside Playwright's reach. A human pass must verify:
     synchronously — so only a real run exercises it), and multi-file drops count
     "File N of M".
 11. **An imported video gets a poster thumbnail** in the Library once ffmpeg is
-    installed, and importing with ffmpeg *not* installed still succeeds with no
+    installed, and importing with ffmpeg _not_ installed still succeeds with no
     thumbnail rather than failing.
 
 ### Design decisions
@@ -536,23 +536,25 @@ registry so a second (local, audio-based) provider can be added later without
 touching the resolution call site:
 
 - **Types** (`packages/core/src/transcript/types.ts`): `TranscriptSegment {
-  start, end, text }` (seconds, float); `TranscriptContext { sourceUrl,
-  hasCaptions, language, audioPath }` — `audioPath` is always `null` in 4a and
+start, end, text }` (seconds, float); `TranscriptContext { sourceUrl,
+hasCaptions, language, audioPath }` — `audioPath` is always `null` in 4a and
   only meaningful once a local (Whisper) provider exists; `TranscriptResult {
-  providerId, language, text, segments, model }`; `TranscriptProvider { id,
-  label, canHandle(ctx), transcribe(ctx, onProgress) }`.
+providerId, language, text, segments, model }`; `TranscriptProvider { id,
+label, canHandle(ctx), transcribe(ctx, onProgress) }`.
 - **Registry** (`packages/core/src/transcript/registry.ts`,
   `TranscriptRegistry`): an ordered list of providers. `register()` replaces
   an existing provider with the same `id` (idempotent re-registration) or
   appends. `resolve(ctx)` returns the **first** provider whose `canHandle(ctx)`
-  is true, or `null` — first-match-wins, so registration order *is* the
+  is true, or `null` — first-match-wins, so registration order _is_ the
   resolution order. Two providers register today
   (`apps/desktop/src/main/index.ts`):
   ```ts
   transcriptRegistry.register(createYtdlpSubsProvider({ runner }));
-  transcriptRegistry.register(createWhisperProvider({ ffmpeg, whisper, isInstalled }));
+  transcriptRegistry.register(
+    createWhisperProvider({ ffmpeg, whisper, isInstalled }),
+  );
   ```
-  The Whisper provider registers *after* `ytdlp-subs`, and its `canHandle` is
+  The Whisper provider registers _after_ `ytdlp-subs`, and its `canHandle` is
   true only when a downloaded audio file exists **and** the binary + model are
   installed, so "if captions exist → fast free subtitle pull, else → local
   transcription" falls out of the registry's ordering for free; no branching
@@ -564,7 +566,7 @@ touching the resolution call site:
   dir, calls `runner.fetchSubtitles({ url, language, outputDir })`, reads the
   returned `.vtt` off disk, and runs it through `parseVtt()`; the scratch dir
   is always removed in a `finally`, success or failure. Throws `"No <lang>
-  captions available for this video"` if the runner returns `null` (yt-dlp
+captions available for this video"` if the runner returns `null` (yt-dlp
   exited 0 but wrote no subtitle file — e.g. the caption track disappeared
   between metadata fetch and transcribe).
 - **VTT parsing** (`packages/core/src/transcript/vtt.ts`): `parseVtt(vtt)`
@@ -579,9 +581,9 @@ touching the resolution call site:
   joins segment text with `\n` for the flat `TranscriptRecord.text` field.
 - **Runner** (`apps/desktop/src/main/sidecars/ytdlp.ts`,
   `createYtDlpRunner().fetchSubtitles`): runs `yt-dlp --skip-download
-  --write-subs --write-auto-subs --sub-langs "<lang>.*" --sub-format vtt
-  --convert-subs vtt --no-playlist --no-warnings -o
-  "<outputDir>/subs.%(ext)s" -- <url>` (via `exec`, not `spawn` — subtitle
+--write-subs --write-auto-subs --sub-langs "<lang>.*" --sub-format vtt
+--convert-subs vtt --no-playlist --no-warnings -o
+"<outputDir>/subs.%(ext)s" -- <url>` (via `exec`, not `spawn` — subtitle
   fetch has no meaningful progress stream to parse) then picks the first
   `*.vtt` file in `outputDir`. caller always hands it a fresh temp
   dir, so "first `.vtt` on disk" is unambiguous for a single language; exact
@@ -609,7 +611,7 @@ touching the resolution call site:
   resolves a provider from the registry (`registry.resolve(ctx)`); if none can
   handle it (no captions, and Whisper not installed or the video not
   downloaded), throws `"No captions found. Install Whisper (Settings →
-  Binaries) to transcribe downloaded videos locally."` (the media row is left
+Binaries) to transcribe downloaded videos locally."` (the media row is left
   in place so a later Whisper run can attach a transcript to it). On success, persists the
   result via `insertTranscript` and returns the mapped `TranscriptRecord`.
 - **IPC** (`apps/desktop/src/main/ipc/transcript.ts`, `packages/ipc-contract`):
@@ -667,7 +669,7 @@ timestamps and readable text. This is a Phase 4a/8 follow-up, not a gap in
 the automated suite.
 
 **Local transcription (no captions) is handled by the Whisper provider**
-(registered after `ytdlp-subs`). When Whisper is *not* installed, a
+(registered after `ytdlp-subs`). When Whisper is _not_ installed, a
 caption-less video gets a clean `"No captions found. Install Whisper
 (Settings → Binaries) to transcribe downloaded videos locally."` error
 (`transcript-error` in the UI) instead of a
@@ -714,7 +716,7 @@ summarize/download:
   cues — the caller treats that as "nothing to export".
 - **Service** (`apps/desktop/src/main/services/transcript-service.ts`, `TranscriptService.exportSrt`):
   loads the transcript row, parses `segments_json`, and throws `"This transcript has no
-  timestamps, so it can't be exported as subtitles."` if `segmentsToSrt` comes back empty (a
+timestamps, so it can't be exported as subtitles."` if `segmentsToSrt` comes back empty (a
   caption source can produce text with no segments). Otherwise writes
   `<base>__transcript-<providerId>.srt` under the downloads dir (same `buildOutputBaseName` +
   `sanitizeFilename` naming helper as every other export) and returns the absolute path.
@@ -758,7 +760,7 @@ registry, the design is a provider registry so OpenAI/Ollama/custom providers
 - **Anthropic provider** (`apps/desktop/src/main/ai/anthropic-provider.ts`,
   `createAnthropicProvider`, id `ANTHROPIC_ID = "anthropic"`): wraps
   `@anthropic-ai/sdk`'s `client.messages.stream({ model, max_tokens, system,
-  messages })`, forwards each `stream.on("text", delta => onToken(delta))`
+messages })`, forwards each `stream.on("text", delta => onToken(delta))`
   event, then awaits `stream.finalMessage()` and joins its text content
   blocks into the returned full string. `ANTHROPIC_MODELS` is the curated
   list (`claude-opus-4-8`, `claude-sonnet-5`, `claude-haiku-4-5`). The SDK
@@ -796,7 +798,7 @@ registry, the design is a provider registry so OpenAI/Ollama/custom providers
 - **Prompt assembly** (`packages/core/src/ai/prompt.ts`):
   `SUMMARY_SYSTEM_PROMPT` is a fixed system message (summarize spoken-word
   transcripts faithfully, no invented information); `assembleSummaryContent
-  (promptBody, transcriptText, frames?, segments?)` builds the user message:
+(promptBody, transcriptText, frames?, segments?)` builds the user message:
   prompt body + `----- TRANSCRIPT -----` + transcript text, plus a
   `----- ON-SCREEN TEXT (SLIDES) -----` section when `frames` (OCR'd
   on-screen text, timestamped) are present — frame extraction itself is the
@@ -822,7 +824,7 @@ registry, the design is a provider registry so OpenAI/Ollama/custom providers
   duplicated a third time across Download/Transcript/Summarize services;
   fold into a shared `@sift/db` helper in 5b/6, this is the "unify on the
   3rd caller" line), loads the newest transcript (`getTranscriptsByMediaId
-  (...)[0]`, throws `"Get a transcript first."` if none), resolves the
+(...)[0]`, throws `"Get a transcript first."` if none), resolves the
   provider from the registry (throws `"Unknown AI provider."`) and the
   prompt by id (throws `"Prompt not found."`), assembles the content, calls
   `provider.summarize(...)` forwarding deltas to the caller's `onToken`,
@@ -839,7 +841,7 @@ registry, the design is a provider registry so OpenAI/Ollama/custom providers
   `packages/ipc-contract`): `summarize:start(input)` calls
   `SummarizeService.start`, streaming each token delta to **every** open
   window over a `summarize:token` push channel as `SummaryToken { requestId,
-  delta, done }` (`requestId` is caller-supplied so the renderer can ignore
+delta, done }` (`requestId` is caller-supplied so the renderer can ignore
   stale streams from a superseded request — see below), then sends one final
   `{ requestId, delta: "", done: true }` once the record is persisted;
   `summarize:export(summaryId)` proxies `SummarizeService.export`;
@@ -867,7 +869,7 @@ registry, the design is a provider registry so OpenAI/Ollama/custom providers
   (an incrementing counter, not a UUID — enough to ignore stale
   streams; a real id space isn't needed for one active summary), clears
   prior state, and calls `window.sift.summarize.start({ metadata,
-  providerId, model, promptId, requestId })` with the user's selected
+providerId, model, promptId, requestId })` with the user's selected
   provider (5a hardcoded `providerId: "anthropic"`; 5b threads the picker's
   selection through); a
   `window.sift.summarize.onToken` subscription (mounted once) appends
@@ -942,7 +944,7 @@ providers (see "Offline e2e fixture hook" below).
 - **OpenAI provider** (`apps/desktop/src/main/ai/openai-provider.ts`,
   `createOpenAiProvider`, id `OPENAI_ID = "openai"`): wraps the `openai` npm
   SDK's `client.chat.completions.create({ model, max_tokens, stream: true,
-  messages: [{ role: "system", ... }, { role: "user", ... }] })` — the
+messages: [{ role: "system", ... }, { role: "user", ... }] })` — the
   widely-compatible `chat.completions` streaming surface (not the newer
   Responses API), chosen specifically because every OpenAI-compatible
   endpoint (custom base_url, many local servers) implements it, so the
@@ -950,7 +952,7 @@ providers (see "Offline e2e fixture hook" below).
   returned `AsyncIterable` of chunks, forwarding each
   `chunk.choices[0].delta.content` to `onToken` and accumulating the full
   string. `OPENAI_MODELS` is the curated static list (`gpt-4o`, `gpt-4o
-  mini`, `gpt-4-turbo`). The SDK surface is narrowed to a minimal
+mini`, `gpt-4-turbo`). The SDK surface is narrowed to a minimal
   `OpenAiClientLike` structural interface (injectable via `clientFactory`)
   so the provider is unit-testable with a fake async-iterable, never a real
   network call.
@@ -967,15 +969,15 @@ providers (see "Offline e2e fixture hook" below).
   newline-terminated lines are parsed; a trailing partial line is carried
   into the next read) and stops as soon as a chunk with `done: true` is
   seen, flushing any final unterminated line first. A failed `fetch` (or a
-  non-OK/bodyless response) is normalized to `` Could not reach Ollama at
-  ${baseUrl}. Is it running? `` — the daemon-not-running case a local user
+  non-OK/bodyless response) is normalized to `Could not reach Ollama at
+${baseUrl}. Is it running?` — the daemon-not-running case a local user
   hits constantly. `OLLAMA_MODELS` is a small static fallback (`llama3.1`,
   `mistral`); a live `/api/tags` fetch to list whatever the daemon actually
   has pulled is a later nicety, not implemented.
 - **Custom provider**: not a separate implementation — it's
   `createOpenAiProvider({ apiKey, baseURL: cfg.baseUrl, id: "custom", label:
-  "Custom (OpenAI-compatible)", models: [{ id: cfg.model, label: cfg.model
-  }] })`, i.e. the OpenAI provider pointed at a user-supplied base_url with a
+"Custom (OpenAI-compatible)", models: [{ id: cfg.model, label: cfg.model
+}] })`, i.e. the OpenAI provider pointed at a user-supplied base_url with a
   single free-text model. "Custom (OpenAI-compatible)" means exactly that:
   no separate SDK, no model discovery, just the same `chat.completions`
   streaming call against a different host. Supports **one** endpoint/model;
@@ -998,7 +1000,7 @@ providers (see "Offline e2e fixture hook" below).
   secrets file at all (keyless).
 - **`AiRegistry.unregister(id)`** (`packages/core/src/ai/registry.ts`):
   removes a provider by id (no-op if never registered). `ai-providers:
-  clearKey` now calls both `secretsFor(providerId).clearKey()` **and**
+clearKey` now calls both `secretsFor(providerId).clearKey()` **and**
   `registry.unregister(providerId)` — a true revoke, so a cleared key stops
   working immediately instead of lingering in the live registry until the
   next app launch (this closes the 5a follow-up noted in the Summarize flow
@@ -1016,7 +1018,7 @@ providers (see "Offline e2e fixture hook" below).
   `apps/desktop/src/main/ipc/summarize.ts` — the `prompts:create`/`:update`/
   `:delete` channels are registered alongside `summarize:start` in the same
   file as `prompts:list` — `apps/desktop/src/renderer/routes/settings/
-  prompts-section.tsx`): built-ins (`is_builtin = 1`, the three seeded rows)
+prompts-section.tsx`): built-ins (`is_builtin = 1`, the three seeded rows)
   are **read-only** — the UI renders a "Built-in" badge and no Edit/Delete
   controls for them (`prompts-section.tsx` only renders the edit/delete
   button group `{!p.isBuiltin && (...)}`). User prompts get full CRUD:
@@ -1037,7 +1039,7 @@ providers (see "Offline e2e fixture hook" below).
   knowing what it does.
 - **Prompt pack import/export** (`prompts:export`/`prompts:import`,
   `apps/desktop/src/main/ipc/summarize.ts`, `apps/desktop/src/main/ipc/
-  prompt-pack.ts`, `packages/db/src/prompt.ts`'s `upsertPromptByName`):
+prompt-pack.ts`, `packages/db/src/prompt.ts`'s `upsertPromptByName`):
   `prompts:export` (`data-testid="prompts-export"`) writes every non-builtin
   prompt (`{ name, body }[]`) to a user-chosen `.json` file via a native save
   dialog (parented to the focused window, defaulting to
@@ -1053,7 +1055,7 @@ providers (see "Offline e2e fixture hook" below).
   matching a built-in throws rather than shadowing it. `upsertPromptByName`
   reports whether each entry was created or replaced an existing same-named
   row, folded into `PromptImportResult { imported, skipped, created,
-  replaced }`; the renderer's `data-testid="prompts-notice"` banner
+replaced }`; the renderer's `data-testid="prompts-notice"` banner
   (`prompts-section.tsx`) surfaces that split — e.g. "Imported 7 — 5
   replaced existing prompts of the same name." — so importing a pack over
   hand-edited prompts (the seeded creator pack's own names are the obvious
@@ -1071,7 +1073,7 @@ providers (see "Offline e2e fixture hook" below).
   picker can show and let the user key a provider that isn't registered
   yet, avoiding a chicken-and-egg. `App.tsx`'s `loadProviders()` effect
   overlays live state on top: it swaps in the real `[{ id: cfg.model, label:
-  cfg.model }]` for `custom` once `getCustomConfig()` resolves, and computes
+cfg.model }]` for `custom` once `getCustomConfig()` resolves, and computes
   `defaultProviderId` as the **first** `KNOWN_PROVIDERS` entry whose key
   check passes (`keyStatus(id)` for keyed providers, `Promise.resolve(true)`
   for Ollama since it's keyless) — so an unkeyed fresh install with no
@@ -1125,11 +1127,11 @@ has a Details affordance and a two-step Remove
   (`media-detail.tsx`, `data-testid="media-detail"`, title
   `media-detail-title`), which loads a single media row's downloads,
   transcripts, and summaries via `library:detail` (`MediaDetail { media,
-  downloads, transcripts, summaries }`). `media-detail-back` returns to the
+downloads, transcripts, summaries }`). `media-detail-back` returns to the
   library list (whichever view — table or tiles — was active).
 - **Downloads section** (Part B): one `Card` per `DownloadRecord`
   (`data-testid="media-detail-download"`, header `"<format label> ·
-  <status>"`) with, depending on status: `media-detail-download-reveal`
+<status>"`) with, depending on status: `media-detail-download-reveal`
   ("Show in folder", only when `status === "done"` and a `filePath` exists),
   `media-detail-download-retry` (only when `status === "error"` — re-fetches
   metadata, resolves the same `formatId`'s option, and re-runs the download
@@ -1221,8 +1223,8 @@ file named `yt-dlp` before launching the built app, and `main/index.ts`
    of a real user's.
 2. Construct `BinariesService` with a fixture `BinarySource` for `ytdlp` whose
    `resolveLatest()` returns a fixed `{ version: "9.9.9", assetUrl:
-   "fixture://yt-dlp", sha256: <sha256 of the fixture file>, binaryName: "yt-dlp"
-   }` (`ffmpeg`'s fixture source throws — the e2e doesn't exercise it).
+"fixture://yt-dlp", sha256: <sha256 of the fixture file>, binaryName: "yt-dlp"
+}` (`ffmpeg`'s fixture source throws — the e2e doesn't exercise it).
 3. Inject a fixture `fetchImpl` that resolves `fixture://<name>` URLs by reading
    `<SIFT_E2E_FIXTURE_DIR>/<name>` off disk and wrapping it in a `Response`, since
    Node's global `fetch` has no `file://`/custom-scheme support.
@@ -1230,7 +1232,7 @@ file named `yt-dlp` before launching the built app, and `main/index.ts`
    (`fixtureYtDlpRunner()` in `index.ts`) instead of `createYtDlpRunner(...)` —
    its `dumpJson()` returns a canned `-J` object (title "Fixture Video Title",
    `extractor_key: "Youtube"`, `automatic_captions: { en: [{}] }`, so it
-   normalizes to a "tested"/"YouTube"/`hasCaptions: true` preview) for *any*
+   normalizes to a "tested"/"YouTube"/`hasCaptions: true` preview) for _any_
    URL, and `listExtractors()` returns a fixed short list. Exercised by
    `apps/desktop/e2e/metadata.spec.ts`, which never shells out to a real
    yt-dlp binary or touches the network. The same stub's `download()` returns
@@ -1243,7 +1245,7 @@ file named `yt-dlp` before launching the built app, and `main/index.ts`
    "Offline transcript e2e fixture" above), exercised by
    `apps/desktop/e2e/transcript.spec.ts`. In the same branch, `AiRegistry`
    registers a small **keyless fixture set** — `fixtureAiProvider("anthropic",
-   "Fixture AI")` and `fixtureAiProvider("ollama", "Fixture Ollama")` — instead
+"Fixture AI")` and `fixtureAiProvider("ollama", "Fixture Ollama")` — instead
    of the real keyed providers, and `SummarizeService` is pointed at the same
    `<temp>/sift-e2e-downloads` directory (see "Offline summarize e2e
    fixture" above), exercised by `apps/desktop/e2e/summarize.spec.ts` and
@@ -1269,7 +1271,7 @@ point at any site — YouTube, Vimeo, whatever needs a login — rather than
 asking anyone to hand-export a `cookies.txt`. `openSignInBrowser()`
 (`apps/desktop/src/main/auth/sign-in-browser.ts`) opens a `BrowserWindow`
 with an inline address bar driving a single `<webview>`
-(`webviewTag: true` is enabled *only* on this window, never on the main
+(`webviewTag: true` is enabled _only_ on this window, never on the main
 app window) scoped to one shared `persist:auth` partition; the user types in
 whatever URL they want and logs in normally, and the returned promise
 resolves once they close the window. `createAuthManager`
@@ -1324,7 +1326,7 @@ the same per-video services (download/transcript/summarize) used by Home:
   (`queue-format.ts`) against that item's freshly-fetched metadata, not a
   single format picked at add-time. Each op's outcome is tracked
   independently in `ops_json` (`pending | running | done | error |
-  skipped`) — a failed download doesn't block transcript/summarize from
+skipped`) — a failed download doesn't block transcript/summarize from
   still being attempted, and the item still reaches the terminal `done`
   status with per-op errors visible (**partial success**, not all-or-nothing).
   `retry(id)` resets only the `error` ops back to `pending` and re-runs the
@@ -1343,12 +1345,12 @@ the same per-video services (download/transcript/summarize) used by Home:
 - **IPC + renderer** (`apps/desktop/src/main/ipc/queue.ts`,
   `apps/desktop/src/renderer/routes/queue/queue-page.tsx`):
   `window.sift.queue.{add,list,remove,cancel,retry,reorder,pause,resume,
-  onUpdate}` mirror the worker's public methods 1:1. `QueuePage`
+onUpdate}` mirror the worker's public methods 1:1. `QueuePage`
   (`data-testid="queue-page"`) has a multi-line URL textarea
   (`queue-urls`), format/op checkboxes, a `queue-add` button, and a
   `queue-pause`/Resume toggle. One `data-testid="queue-item"` row per queued
   item shows a status line (`data-testid="queue-item-status"`, e.g. `"done
-  · 1 issue"` when some ops errored) plus up/down reorder, cancel (while
+· 1 issue"` when some ops errored) plus up/down reorder, cancel (while
   queued/running), retry (once done with an error), and `queue-item-remove`
   buttons.
 - **Offline e2e** (`apps/desktop/e2e/queue.spec.ts`): reuses the same
@@ -1423,7 +1425,7 @@ batch of its videos straight into the Queue, on top of the same
 - **Runner** (`apps/desktop/src/main/sidecars/ytdlp.ts`,
   `createYtDlpRunner().flatPlaylist(url, { items? }, cookiesFile?)`): runs
   `yt-dlp --flat-playlist -J --no-warnings [--playlist-items <items>] --
-  <url>` (same `--` arg-safety sentinel as `download`/`fetchSubtitles` — the
+<url>` (same `--` arg-safety sentinel as `download`/`fetchSubtitles` — the
   channel URL is never interpolated into a shell string) and `JSON.parse`s
   stdout. `items` is a yt-dlp playlist-items slice expression (`"1:1"` for
   add-time identity, `"1:<N>"` for latest-N, `"-<N>:"` for oldest-N) —
@@ -1517,7 +1519,7 @@ batch of its videos straight into the Queue, on top of the same
 
 `apps/desktop/e2e/channels.spec.ts` exercises add → detail → get videos →
 select → queue, fully offline, reusing the same `SIFT_E2E_FIXTURE_DIR` hook
-as every other spec — no new fixture *mechanism*, just a fuller canned
+as every other spec — no new fixture _mechanism_, just a fuller canned
 payload. `fixtureYtDlpRunner().flatPlaylist()` in `main/index.ts` returns
 `FIXTURE_CHANNEL_JSON` (finalized in this phase from Task 3's placeholder)
 regardless of the requested `items` slice, shaped like a real yt-dlp channel
@@ -1590,7 +1592,7 @@ When both are set, electron-builder signs the packaged executable and installer 
 no config changes are needed.
 
 **Known blocker — `winCodeSign` requires Windows Developer Mode:** electron-builder 25.x
-downloads a `winCodeSign` tool bundle while packaging *any* Windows target (NSIS included), even
+downloads a `winCodeSign` tool bundle while packaging _any_ Windows target (NSIS included), even
 for a fully unsigned build with no `CSC_LINK` set. That archive contains macOS `.dylib` files
 stored as real symlinks; extracting them via `7za.exe` requires either Windows Developer Mode
 (Settings → Privacy & security → For developers → Developer Mode) or an elevated

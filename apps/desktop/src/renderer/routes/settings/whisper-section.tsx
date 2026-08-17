@@ -23,8 +23,15 @@ const EMPTY: WhisperStatus = {
 function PartState({ label, done }: { label: string; done: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span aria-hidden className={done ? "text-success" : "text-foreground/45"}>
-        {done ? <Check className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+      <span
+        aria-hidden
+        className={done ? "text-success" : "text-foreground/45"}
+      >
+        {done ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <Minus className="h-3.5 w-3.5" />
+        )}
       </span>
       <span className="text-foreground/85">{label}</span>
       {/* "downloaded", never "installed": whisper.spec.ts resolves `getByText("Installed")`
@@ -105,7 +112,11 @@ export function WhisperSection() {
         )}
       </div>
 
-      {error && <SettingsError data-testid="binary-whisper-error">{error}</SettingsError>}
+      {error && (
+        <SettingsError data-testid="binary-whisper-error">
+          {error}
+        </SettingsError>
+      )}
 
       <AnimatePresence>
         {installing && (
@@ -116,7 +127,9 @@ export function WhisperSection() {
             className="flex flex-col gap-1.5"
           >
             <MicroLabel>
-              {progress?.stage === "model" ? "Downloading model…" : "Downloading binary…"}
+              {progress?.stage === "model"
+                ? "Downloading model…"
+                : "Downloading binary…"}
             </MicroLabel>
             <div className="h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
               {percent !== null ? (
@@ -129,7 +142,11 @@ export function WhisperSection() {
                 <motion.div
                   className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary to-primary-lit"
                   animate={{ x: ["-100%", "300%"] }}
-                  transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.2,
+                    ease: "linear",
+                  }}
                 />
               )}
             </div>

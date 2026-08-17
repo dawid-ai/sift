@@ -6,7 +6,8 @@ export type BinaryUpdateState = Partial<Record<BinaryKind, BinaryNotice>>;
 
 export const initialBinaryUpdateState: BinaryUpdateState = {};
 
-export type BinaryUpdateAction = BinaryUpdateEvent | { type: "dismiss"; kind: BinaryKind };
+export type BinaryUpdateAction =
+  BinaryUpdateEvent | { type: "dismiss"; kind: BinaryKind };
 
 export function binaryUpdateReducer(
   state: BinaryUpdateState,

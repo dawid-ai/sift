@@ -51,7 +51,10 @@ const AUDIO_SELECTOR = "ba[ext=m4a]/ba";
  * extractor doesn't enumerate formats.
  */
 export function computeDownloadOptions(raw: unknown): DownloadOption[] {
-  const record = typeof raw === "object" && raw !== null ? (raw as { formats?: unknown }) : {};
+  const record =
+    typeof raw === "object" && raw !== null
+      ? (raw as { formats?: unknown })
+      : {};
   const formats: RawFormat[] = Array.isArray(record.formats)
     ? (record.formats as RawFormat[])
     : [];
@@ -60,18 +63,18 @@ export function computeDownloadOptions(raw: unknown): DownloadOption[] {
   const audios = formats.filter(isAudioOnly);
 
   // Best audio: prefer m4a (AAC, mp4-friendly), then highest bitrate.
-  const bestAudio = audios
-    .slice()
-    .sort((a, b) => {
-      const am4a = a.ext === "m4a" ? 1 : 0;
-      const bm4a = b.ext === "m4a" ? 1 : 0;
-      if (am4a !== bm4a) return bm4a - am4a;
-      return tbrOf(b) - tbrOf(a);
-    })[0];
+  const bestAudio = audios.slice().sort((a, b) => {
+    const am4a = a.ext === "m4a" ? 1 : 0;
+    const bm4a = b.ext === "m4a" ? 1 : 0;
+    if (am4a !== bm4a) return bm4a - am4a;
+    return tbrOf(b) - tbrOf(a);
+  })[0];
   const audioBytes = bestAudio ? sizeOf(bestAudio) : null;
 
   const options: DownloadOption[] = [];
-  const heights = Array.from(new Set(videos.map((v) => v.height as number))).sort((a, b) => b - a);
+  const heights = Array.from(
+    new Set(videos.map((v) => v.height as number)),
+  ).sort((a, b) => b - a);
 
   for (const h of heights) {
     const atHeight = videos.filter((v) => v.height === h);
@@ -82,7 +85,9 @@ export function computeDownloadOptions(raw: unknown): DownloadOption[] {
     const isMp4 = chosen.ext === "mp4";
     const videoBytes = sizeOf(chosen);
     const approxBytes =
-      videoBytes !== null || audioBytes !== null ? (videoBytes ?? 0) + (audioBytes ?? 0) : null;
+      videoBytes !== null || audioBytes !== null
+        ? (videoBytes ?? 0) + (audioBytes ?? 0)
+        : null;
 
     options.push({
       id: `${h}p`,

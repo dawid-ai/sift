@@ -10,7 +10,10 @@
  */
 
 /** Split the field into the segments already separated by commas and the term being typed. */
-export function splitTagInput(value: string): { before: string[]; term: string } {
+export function splitTagInput(value: string): {
+  before: string[];
+  term: string;
+} {
   const parts = value.split(",");
   // The last segment is the caret's segment — it is what the user is still writing.
   const term = (parts.pop() ?? "").trim();
@@ -26,13 +29,19 @@ export function splitTagInput(value: string): { before: string[]; term: string }
  * An empty term yields nothing — same as an empty field, so a trailing comma does not dump the
  * entire tag list over the panel below.
  */
-export function tagSuggestions(value: string, all: string[], attached: string[]): string[] {
+export function tagSuggestions(
+  value: string,
+  all: string[],
+  attached: string[],
+): string[] {
   const { before, term } = splitTagInput(value);
   if (!term) return [];
   // NOCASE storage, so matching and de-duping are both case-insensitive.
   const taken = new Set([...attached, ...before].map((t) => t.toLowerCase()));
   const q = term.toLowerCase();
-  return all.filter((n) => n.toLowerCase().includes(q) && !taken.has(n.toLowerCase()));
+  return all.filter(
+    (n) => n.toLowerCase().includes(q) && !taken.has(n.toLowerCase()),
+  );
 }
 
 /** Replace the term being typed with `pick`, keeping every earlier segment intact. */

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createOllamaSlideClassifier, parseSlideAnswer } from "./frame-classifier";
+import {
+  createOllamaSlideClassifier,
+  parseSlideAnswer,
+} from "./frame-classifier";
 
 describe("parseSlideAnswer", () => {
   it("keeps on yes, drops on no (with punctuation / trailing prose)", () => {
@@ -22,23 +25,39 @@ describe("createOllamaSlideClassifier", () => {
       ok: true,
       json: async () => ({ message: { content: "no" } }),
     });
-    const c = createOllamaSlideClassifier({ model: "moondream", fetchImpl: fetchImpl as never, readImage });
+    const c = createOllamaSlideClassifier({
+      model: "moondream",
+      fetchImpl: fetchImpl as never,
+      readImage,
+    });
     expect(await c.classify("/f.jpg")).toBe(false);
     const body = JSON.parse(fetchImpl.mock.calls[0]![1].body);
     expect(body.model).toBe("moondream");
     expect(body.stream).toBe(false);
-    expect(body.messages[0].images[0]).toBe(Buffer.from("imgbytes").toString("base64"));
+    expect(body.messages[0].images[0]).toBe(
+      Buffer.from("imgbytes").toString("base64"),
+    );
   });
 
   it("throws a clear error when the model isn't available (non-ok)", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 404 });
-    const c = createOllamaSlideClassifier({ model: "missing", fetchImpl: fetchImpl as never, readImage });
+    const c = createOllamaSlideClassifier({
+      model: "missing",
+      fetchImpl: fetchImpl as never,
+      readImage,
+    });
     await expect(c.classify("/f.jpg")).rejects.toThrow(/vision model pulled/);
   });
 
   it("throws when the daemon is unreachable", async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
-    const c = createOllamaSlideClassifier({ model: "x", fetchImpl: fetchImpl as never, readImage });
-    await expect(c.classify("/f.jpg")).rejects.toThrow(/Could not reach Ollama/);
+    const c = createOllamaSlideClassifier({
+      model: "x",
+      fetchImpl: fetchImpl as never,
+      readImage,
+    });
+    await expect(c.classify("/f.jpg")).rejects.toThrow(
+      /Could not reach Ollama/,
+    );
   });
 });

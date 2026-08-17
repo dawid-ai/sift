@@ -8,7 +8,9 @@ import type { MetadataService } from "../services/metadata-service";
  * turns a thrown/rejected handler into a rejected renderer-side invoke.
  */
 export function registerMetadataIpc(service: MetadataService): void {
-  ipcMain.handle(IPC.metadataFetch, (_event, url: string) => service.fetch(url));
+  ipcMain.handle(IPC.metadataFetch, (_event, url: string) =>
+    service.fetch(url),
+  );
 
   ipcMain.handle(IPC.metadataListExtractors, () => service.listExtractors());
 }

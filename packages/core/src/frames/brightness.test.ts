@@ -19,7 +19,8 @@ describe("brightPixelFraction", () => {
 
   it("splits a mostly-bright frame from a mostly-dark one across the 0.6 line", () => {
     // top half bright, bottom half dark → ~0.5
-    const w = 64, h = 36;
+    const w = 64,
+      h = 36;
     const data = new Uint8Array(w * h * 4);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -35,6 +36,8 @@ describe("brightPixelFraction", () => {
   });
 
   it("returns 0 for an empty image", () => {
-    expect(brightPixelFraction({ width: 0, height: 0, data: new Uint8Array() })).toBe(0);
+    expect(
+      brightPixelFraction({ width: 0, height: 0, data: new Uint8Array() }),
+    ).toBe(0);
   });
 });

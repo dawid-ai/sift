@@ -3,7 +3,11 @@ export type { SiftDatabase, Statement } from "./database";
 export { runMigrations } from "./migrations";
 export { upsertAsset, getAsset, listAssets, touchAssetChecked } from "./assets";
 export type { AssetKind, AssetRow } from "./assets";
-export { insertDocument, getDocumentsByMediaId, deleteDocument } from "./documents";
+export {
+  insertDocument,
+  getDocumentsByMediaId,
+  deleteDocument,
+} from "./documents";
 export type { DocumentRow, NewDocument } from "./documents";
 export {
   insertMedia,
@@ -102,7 +106,10 @@ export {
 } from "./channel";
 export type { ChannelRow, NewChannel } from "./channel";
 export {
-  upsertSubscription, listSubscriptions, replaceSubscriptions, clearSubscriptions,
+  upsertSubscription,
+  listSubscriptions,
+  replaceSubscriptions,
+  clearSubscriptions,
 } from "./subscription";
 export type { SubscriptionRow, NewSubscription } from "./subscription";
 export { searchMedia } from "./search";

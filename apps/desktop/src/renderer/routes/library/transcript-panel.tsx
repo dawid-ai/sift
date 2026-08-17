@@ -27,7 +27,8 @@ const DANGER_GHOST_BUTTON = `${GHOST_BUTTON} hover:border-danger/30 hover:bg-dan
 /** Empty states are not drop targets, so they must not borrow the dashed drop-zone idiom. */
 const EMPTY_BOX =
   "flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-9 text-center";
-const EMPTY_CHIP = "grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] text-foreground/50";
+const EMPTY_CHIP =
+  "grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] text-foreground/50";
 
 /* Both scrollers below wear `.scroll-thin` from globals.css — the foundation's one "scrollbar
  * inside a card" recipe (a thumb with a transparent gutter, so it clears the container's own
@@ -55,20 +56,35 @@ export interface TranscriptPanelProps {
  * scrolled into view. Source transcripts appear as one compact removable row each (no duplicate
  * full-text block), plus the Get transcript / Re-transcribe actions. */
 export function TranscriptPanel({
-  transcripts, hasPlayer, currentTime, transcribeMode, transcriptStage, transcriptRatio,
-  canRetranscribe, onSeek, onGetTranscript, onRetranscribe, onRemoveTranscript, onExportSrt,
+  transcripts,
+  hasPlayer,
+  currentTime,
+  transcribeMode,
+  transcriptStage,
+  transcriptRatio,
+  canRetranscribe,
+  onSeek,
+  onGetTranscript,
+  onRetranscribe,
+  onRemoveTranscript,
+  onExportSrt,
 }: TranscriptPanelProps) {
   const [search, setSearch] = useState("");
   const timed = transcripts.find((t) => t.segments.length > 0) ?? null;
   // A transcript with no timestamps (rare) can't drive the synced viewer — show its raw text.
-  const fallbackText = !timed ? transcripts[0]?.text ?? null : null;
+  const fallbackText = !timed ? (transcripts[0]?.text ?? null) : null;
   const q = search.trim().toLowerCase();
   const segments = timed
-    ? q === "" ? timed.segments : timed.segments.filter((s) => s.text.toLowerCase().includes(q))
+    ? q === ""
+      ? timed.segments
+      : timed.segments.filter((s) => s.text.toLowerCase().includes(q))
     : [];
   // Active index is computed over the FULL segment list (playback position is absolute),
   // then matched by start time within the filtered view.
-  const activeStart = timed ? timed.segments[activeSegmentIndex(timed.segments, currentTime)]?.start ?? null : null;
+  const activeStart = timed
+    ? (timed.segments[activeSegmentIndex(timed.segments, currentTime)]?.start ??
+      null)
+    : null;
 
   const activeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -76,7 +92,8 @@ export function TranscriptPanel({
   }, [activeStart]);
 
   const busy = transcribeMode !== null;
-  const whisperPct = transcriptRatio === null ? 0 : Math.round(transcriptRatio * 100);
+  const whisperPct =
+    transcriptRatio === null ? 0 : Math.round(transcriptRatio * 100);
   // The filled primary is spent on the ONE state where fetching is the job: no transcript yet.
   // With a transcript already listed below it, a saturated "Get transcript" pointed the panel's
   // strongest weight at work that is already done — so both routes demote to peer secondaries.
@@ -95,9 +112,13 @@ export function TranscriptPanel({
           size={hasTranscript ? "sm" : "default"}
           variant={hasTranscript ? "ghost" : "default"}
           className={hasTranscript ? GHOST_BUTTON : undefined}
-          disabled={busy} onClick={onGetTranscript}
+          disabled={busy}
+          onClick={onGetTranscript}
         >
-          <Captions className={hasTranscript ? "h-3.5 w-3.5" : "h-4 w-4"} aria-hidden />
+          <Captions
+            className={hasTranscript ? "h-3.5 w-3.5" : "h-4 w-4"}
+            aria-hidden
+          />
           {transcribeMode === "captions"
             ? transcriptStageLabel(transcriptStage)
             : hasTranscript
@@ -106,22 +127,34 @@ export function TranscriptPanel({
         </Button>
         {canRetranscribe && (
           <Button
-            size="sm" variant="ghost" className={GHOST_BUTTON}
+            size="sm"
+            variant="ghost"
+            className={GHOST_BUTTON}
             data-testid="media-detail-retranscribe"
-            disabled={busy} onClick={onRetranscribe}
+            disabled={busy}
+            onClick={onRetranscribe}
           >
             <AudioLines className="h-3.5 w-3.5" aria-hidden />
-            {transcribeMode === "whisper" ? transcriptStageLabel(transcriptStage) : "Re-transcribe with Whisper"}
+            {transcribeMode === "whisper"
+              ? transcriptStageLabel(transcriptStage)
+              : "Re-transcribe with Whisper"}
           </Button>
         )}
       </div>
 
       {/* Whisper progress — only the transcribe stage reports a ratio (audio extract is quick). */}
       {transcribeMode === "whisper" && transcriptRatio !== null && (
-        <div data-testid="transcript-progress" className="flex-none rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3">
+        <div
+          data-testid="transcript-progress"
+          className="flex-none rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3"
+        >
           <div className="mb-2 flex items-baseline justify-between gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">Whisper</span>
-            <span className="text-[11px] font-medium tabular-nums text-foreground/70">{whisperPct}%</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">
+              Whisper
+            </span>
+            <span className="text-[11px] font-medium tabular-nums text-foreground/70">
+              {whisperPct}%
+            </span>
           </div>
           <div className="h-[3px] w-full overflow-hidden rounded-full bg-white/10">
             <div
@@ -129,7 +162,9 @@ export function TranscriptPanel({
               style={{ width: `${whisperPct}%` }}
             />
           </div>
-          <p className="mt-2 text-[13px] text-muted-foreground">{transcriptStageLabel(transcriptStage)}</p>
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            {transcriptStageLabel(transcriptStage)}
+          </p>
         </div>
       )}
 
@@ -149,8 +184,12 @@ export function TranscriptPanel({
                   `EN` here and "English  CAPTIONS" one tab away — one record, two vocabularies,
                   two orderings. This is also the transcript length's single home; the status line
                   at the foot of the panel used to print the same number a second time. */}
-              <span className="truncate text-sm font-medium text-foreground">{languageName(t.language)}</span>
-              <Badge variant="code">{transcriptProviderLabel(t.providerId)}</Badge>
+              <span className="truncate text-sm font-medium text-foreground">
+                {languageName(t.language)}
+              </span>
+              <Badge variant="code">
+                {transcriptProviderLabel(t.providerId)}
+              </Badge>
               {t.segments.length > 0 && (
                 <span className="text-[12px] tabular-nums text-muted-foreground">
                   {t.segments.length} lines
@@ -158,7 +197,9 @@ export function TranscriptPanel({
               )}
               <div className="ml-auto flex items-center gap-1.5">
                 <Button
-                  size="sm" variant="ghost" className={GHOST_BUTTON}
+                  size="sm"
+                  variant="ghost"
+                  className={GHOST_BUTTON}
                   data-testid={`transcript-export-srt-${t.id}`}
                   disabled={busy || t.segments.length === 0}
                   onClick={() => onExportSrt(t.id)}
@@ -166,7 +207,8 @@ export function TranscriptPanel({
                   Export .srt
                 </Button>
                 <Button
-                  size="sm" variant="ghost"
+                  size="sm"
+                  variant="ghost"
                   data-testid="media-detail-transcript-remove"
                   onClick={() => onRemoveTranscript(t.id)}
                   className={DANGER_GHOST_BUTTON}
@@ -182,10 +224,15 @@ export function TranscriptPanel({
       {timed && (
         <div className="flex min-h-0 flex-1 flex-col gap-2.5">
           <div className="relative flex-none">
-            <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/35" />
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/35"
+            />
             <Input
               data-testid="media-detail-transcript-search"
-              type="search" placeholder="Search transcript…" value={search}
+              type="search"
+              placeholder="Search transcript…"
+              value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 border-white/10 pl-11"
             />
@@ -227,7 +274,9 @@ export function TranscriptPanel({
               );
             })}
             {segments.length === 0 && (
-              <p className="px-3.5 py-8 text-center text-[13px] text-muted-foreground">No matching lines.</p>
+              <p className="px-3.5 py-8 text-center text-[13px] text-muted-foreground">
+                No matching lines.
+              </p>
             )}
           </div>
         </div>
@@ -261,9 +310,12 @@ export function TranscriptPanel({
           <span className={EMPTY_CHIP} aria-hidden>
             <Captions className="h-4 w-4" />
           </span>
-          <p className="text-[13px] font-semibold text-foreground">No transcript yet.</p>
+          <p className="text-[13px] font-semibold text-foreground">
+            No transcript yet.
+          </p>
           <p className="max-w-[38ch] text-[13px] leading-relaxed text-muted-foreground">
-            Get one from captions, or re-transcribe a downloaded video with Whisper.
+            Get one from captions, or re-transcribe a downloaded video with
+            Whisper.
           </p>
         </div>
       )}

@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Link as LinkIcon, Plus, RefreshCw, Rss, Trash2, Tv, type LucideIcon } from "lucide-react";
+import {
+  Link as LinkIcon,
+  Plus,
+  RefreshCw,
+  Rss,
+  Trash2,
+  Tv,
+  type LucideIcon,
+} from "lucide-react";
 import type { ChannelRecord, SubscriptionRecord } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +28,15 @@ const PILL =
  * rectangle, which reads as an untethered outline, not a surface. And it sits on the real
  * `.panel` fill — the same layer as the form card above it — instead of a 2% white wash the
  * ambient gradient mottles straight through. */
-function EmptyState({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
+function EmptyState({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+}) {
   return (
     <div className="panel relative flex min-h-[280px] flex-col items-center justify-center overflow-hidden px-6 py-16 text-center">
       <span
@@ -33,7 +49,9 @@ function EmptyState({ icon: Icon, title, body }: { icon: LucideIcon; title: stri
       >
         <Icon strokeWidth={1.5} className="h-6 w-6" />
       </span>
-      <p className="relative mt-4 text-[15px] font-semibold tracking-[-0.01em] text-foreground">{title}</p>
+      <p className="relative mt-4 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+        {title}
+      </p>
       <p className="relative mx-auto mt-2 max-w-[32ch] text-balance text-[13px] leading-[1.6] text-muted-foreground">
         {body}
       </p>
@@ -84,18 +102,33 @@ function discTint(key: string | number): string {
  *
  * The letter reads at `foreground/80` (~8:1). At /40 it measured 3.38:1 at 13px — under the
  * floor, on the one glyph that tells two rows apart. */
-function Avatar({ url, title, seed }: { url: string | null; title: string; seed: string | number }) {
+function Avatar({
+  url,
+  title,
+  seed,
+}: {
+  url: string | null;
+  title: string;
+  seed: string | number;
+}) {
   return (
     <span className="relative grid h-11 w-11 flex-none place-items-center overflow-hidden rounded-full border border-border bg-surface-2 text-[13px] font-semibold uppercase text-foreground/80">
-      <span aria-hidden className={`pointer-events-none absolute inset-0 ${discTint(seed)}`} />
-      <span aria-hidden className="relative">{initial(title)}</span>
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 ${discTint(seed)}`}
+      />
+      <span aria-hidden className="relative">
+        {initial(title)}
+      </span>
       {url && (
         <img
           src={thumbUrl(url)}
           alt=""
           loading="lazy"
           referrerPolicy="no-referrer"
-          onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+          onError={(e) => {
+            e.currentTarget.style.visibility = "hidden";
+          }}
           className="absolute inset-0 h-full w-full object-cover"
         />
       )}
@@ -103,7 +136,15 @@ function Avatar({ url, title, seed }: { url: string | null; title: string; seed:
   );
 }
 
-export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { focusChannel?: ChannelRecord | null; onFocusHandled?: () => void; onOpenMedia?: (mediaId: number) => void }) {
+export function ChannelsPage({
+  focusChannel,
+  onFocusHandled,
+  onOpenMedia,
+}: {
+  focusChannel?: ChannelRecord | null;
+  onFocusHandled?: () => void;
+  onOpenMedia?: (mediaId: number) => void;
+}) {
   const [channels, setChannels] = useState<ChannelRecord[]>([]);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -112,50 +153,89 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
   const [tab, setTab] = useState<"channels" | "subs">("channels");
 
   const reload = () => window.sift.channels.list().then(setChannels);
-  useEffect(() => { void reload(); }, []);
   useEffect(() => {
-    if (focusChannel) { setChannels((c) => (c.some((x) => x.id === focusChannel.id) ? c : [focusChannel, ...c])); setOpenId(focusChannel.id); onFocusHandled?.(); }
+    void reload();
+  }, []);
+  useEffect(() => {
+    if (focusChannel) {
+      setChannels((c) =>
+        c.some((x) => x.id === focusChannel.id) ? c : [focusChannel, ...c],
+      );
+      setOpenId(focusChannel.id);
+      onFocusHandled?.();
+    }
   }, [focusChannel, onFocusHandled]);
 
   const add = async () => {
     if (!url.trim()) return;
-    setBusy(true); setError(null);
-    try { await window.sift.channels.add(url.trim()); setUrl(""); await reload(); }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setError(null);
+    try {
+      await window.sift.channels.add(url.trim());
+      setUrl("");
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   };
   const refreshAll = async () => {
-    setBusy(true); setError(null);
+    setBusy(true);
+    setError(null);
     try {
       const result = await window.sift.channels.refreshAll();
       await reload();
-      if (result.failures.length > 0) setError(`${result.failures.length} channel(s) failed to refresh`);
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(false); }
+      if (result.failures.length > 0)
+        setError(`${result.failures.length} channel(s) failed to refresh`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   };
   const refresh = async (id: number) => {
     setError(null);
-    try { await window.sift.channels.refresh(id); await reload(); }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    try {
+      await window.sift.channels.refresh(id);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
   const remove = async (id: number) => {
     setError(null);
-    try { await window.sift.channels.remove(id); await reload(); }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    try {
+      await window.sift.channels.remove(id);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
   const importSub = async (sub: SubscriptionRecord) => {
     setError(null);
     try {
       const record = await window.sift.channels.add(sub.url); // upsert; tracked subs return their existing record
-      setChannels((c) => (c.some((x) => x.id === record.id) ? c : [record, ...c]));
+      setChannels((c) =>
+        c.some((x) => x.id === record.id) ? c : [record, ...c],
+      );
       setTab("channels");
       setOpenId(record.id);
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   if (openId != null) {
     const ch = channels.find((c) => c.id === openId);
-    if (ch) return <ChannelDetail channel={ch} onBack={() => setOpenId(null)} onOpenMedia={onOpenMedia} />;
+    if (ch)
+      return (
+        <ChannelDetail
+          channel={ch}
+          onBack={() => setOpenId(null)}
+          onOpenMedia={onOpenMedia}
+        />
+      );
   }
 
   return (
@@ -182,7 +262,8 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
             The creators you follow.
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Track a channel, pull its latest uploads, and send a batch straight to the queue.
+            Track a channel, pull its latest uploads, and send a batch straight
+            to the queue.
           </p>
 
           {/* Tab bar — same underline treatment as the media detail view, so the app reads as
@@ -195,14 +276,23 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
               is the body-copy rung (7:1) and still sits two clear rungs below the active tab,
               which carries full-strength ink AND the coral underline. */}
           <div className="mt-6 flex gap-5">
-            {([["channels", "Channels", Tv], ["subs", "Subscribed", Rss]] as const).map(([key, label, Icon]) => (
+            {(
+              [
+                ["channels", "Channels", Tv],
+                ["subs", "Subscribed", Rss],
+              ] as const
+            ).map(([key, label, Icon]) => (
               <button
                 key={key}
-                data-testid={key === "channels" ? "channels-tab-my" : "channels-tab-subs"}
+                data-testid={
+                  key === "channels" ? "channels-tab-my" : "channels-tab-subs"
+                }
                 type="button"
                 onClick={() => setTab(key)}
                 className={`-mb-px flex items-center gap-1.5 border-b-2 pb-2.5 pt-1 text-sm font-medium transition-colors ${
-                  tab === key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                  tab === key
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {/* The active tab is already marked twice — a coral underline and full-strength
@@ -225,7 +315,9 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
         </motion.header>
 
         {error && (
-          <p className="rounded-xl border border-danger/25 bg-danger/12 px-4 py-3 text-sm text-danger">{error}</p>
+          <p className="rounded-xl border border-danger/25 bg-danger/12 px-4 py-3 text-sm text-danger">
+            {error}
+          </p>
         )}
 
         {tab === "subs" ? (
@@ -236,7 +328,9 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
             <section className="panel-lit px-6 py-5">
               {/* `accent-muted` by name, not a fraction of `primary`: it is the token that
                   exists for this decorative rung, and it cannot drift when the CTA hue moves. */}
-              <p className="eyebrow text-[10px] tracking-[0.16em] text-accent-muted">TRACK A CHANNEL</p>
+              <p className="eyebrow text-[10px] tracking-[0.16em] text-accent-muted">
+                TRACK A CHANNEL
+              </p>
               {/* The heading is the card's only heading slot, so it may not spend it repeating
                   the field's own placeholder 40px below it. */}
               <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.01em] text-foreground">
@@ -256,18 +350,28 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
                     (3.7:1) instead of the `--placeholder` token every other field in the app
                     reads from. One field object, one definition. */}
                 <div className="relative h-11 min-w-[240px] flex-1">
-                  <LinkIcon aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/35" />
+                  <LinkIcon
+                    aria-hidden
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/35"
+                  />
                   <Input
                     data-testid="channels-add-url"
                     className={cn(FIELD, "pl-11")}
                     placeholder="youtube.com/@handle or channel URL"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") void add(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void add();
+                    }}
                   />
                 </div>
                 <div className="flex flex-none items-center gap-3">
-                  <Button data-testid="channels-add" className="h-11" onClick={add} disabled={busy}>
+                  <Button
+                    data-testid="channels-add"
+                    className="h-11"
+                    onClick={add}
+                    disabled={busy}
+                  >
                     <Plus aria-hidden className="h-4 w-4" />
                     Add channel
                   </Button>
@@ -305,7 +409,9 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
               <section className="panel overflow-hidden">
                 <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-2/40 px-5 py-3">
                   <p className="eyebrow">Tracked</p>
-                  <span className={`${PILL} border-foreground/[0.12] bg-foreground/[0.06] text-muted-foreground`}>
+                  <span
+                    className={`${PILL} border-foreground/[0.12] bg-foreground/[0.06] text-muted-foreground`}
+                  >
                     <span className="tabular-nums">{channels.length}</span>
                     {channels.length === 1 ? "channel" : "channels"}
                   </span>
@@ -314,23 +420,37 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
                 {channels.map((c) => {
                   const meta = [
                     c.handle,
-                    c.videoCount != null ? `${c.videoCount.toLocaleString()} videos` : null,
-                    c.followerCount != null ? `${c.followerCount.toLocaleString()} subs` : null,
-                  ].filter(Boolean).join(" · ");
+                    c.videoCount != null
+                      ? `${c.videoCount.toLocaleString()} videos`
+                      : null,
+                    c.followerCount != null
+                      ? `${c.followerCount.toLocaleString()} subs`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
                   return (
                     <div
                       data-testid="channel-row"
                       key={c.id}
                       className="group flex items-center gap-3.5 border-b border-border px-5 py-3.5 transition-colors last:border-b-0 hover:bg-foreground/[0.03]"
                     >
-                      <Avatar url={c.avatarUrl} title={c.title} seed={c.channelId} />
+                      <Avatar
+                        url={c.avatarUrl}
+                        title={c.title}
+                        seed={c.channelId}
+                      />
                       <button
                         type="button"
                         className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         onClick={() => setOpenId(c.id)}
                       >
-                        <p className="truncate text-sm font-semibold text-foreground/90 transition-colors group-hover:text-foreground">{c.title}</p>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
+                        <p className="truncate text-sm font-semibold text-foreground/90 transition-colors group-hover:text-foreground">
+                          {c.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {meta}
+                        </p>
                       </button>
                       {/* A count of new uploads is information, not an action. Five of these
                           stacked down the right rail in the CTA's own hue out-weighed the one
@@ -339,8 +459,14 @@ export function ChannelsPage({ focusChannel, onFocusHandled, onOpenMedia }: { fo
                           spending coral on every row: `accent-muted` is the token that exists
                           for exactly this — warm, 3:1-clear, not the CTA. */}
                       {c.newCount > 0 && (
-                        <span data-testid="channel-new-badge" className={`${PILL} flex-none border-foreground/[0.12] bg-foreground/[0.06] text-foreground/85`}>
-                          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent-muted" />
+                        <span
+                          data-testid="channel-new-badge"
+                          className={`${PILL} flex-none border-foreground/[0.12] bg-foreground/[0.06] text-foreground/85`}
+                        >
+                          <span
+                            aria-hidden
+                            className="h-1.5 w-1.5 rounded-full bg-accent-muted"
+                          />
                           <span className="tabular-nums">{c.newCount} new</span>
                         </span>
                       )}

@@ -1,27 +1,78 @@
 import { describe, expect, it } from "vitest";
 import { decideUpdateAction } from "./binary-update-orchestrator";
-import type { BinaryStatus, BinaryUpdateEvent, BinaryKind } from "@sift/ipc-contract";
+import type {
+  BinaryStatus,
+  BinaryUpdateEvent,
+  BinaryKind,
+} from "@sift/ipc-contract";
 import { runStartupBinaryMaintenance } from "./binary-update-orchestrator";
 
 describe("decideUpdateAction", () => {
   it("not installed → install-required (regardless of policy)", () => {
-    expect(decideUpdateAction({ installed: false, updateAvailable: false, policy: "auto" })).toBe("install-required");
-    expect(decideUpdateAction({ installed: false, updateAvailable: true, policy: "notify" })).toBe("install-required");
+    expect(
+      decideUpdateAction({
+        installed: false,
+        updateAvailable: false,
+        policy: "auto",
+      }),
+    ).toBe("install-required");
+    expect(
+      decideUpdateAction({
+        installed: false,
+        updateAvailable: true,
+        policy: "notify",
+      }),
+    ).toBe("install-required");
   });
   it("installed + update + auto → auto-update", () => {
-    expect(decideUpdateAction({ installed: true, updateAvailable: true, policy: "auto" })).toBe("auto-update");
+    expect(
+      decideUpdateAction({
+        installed: true,
+        updateAvailable: true,
+        policy: "auto",
+      }),
+    ).toBe("auto-update");
   });
   it("installed + update + notify → notify", () => {
-    expect(decideUpdateAction({ installed: true, updateAvailable: true, policy: "notify" })).toBe("notify");
+    expect(
+      decideUpdateAction({
+        installed: true,
+        updateAvailable: true,
+        policy: "notify",
+      }),
+    ).toBe("notify");
   });
   it("installed + no update → none", () => {
-    expect(decideUpdateAction({ installed: true, updateAvailable: false, policy: "auto" })).toBe("none");
-    expect(decideUpdateAction({ installed: true, updateAvailable: false, policy: "notify" })).toBe("none");
+    expect(
+      decideUpdateAction({
+        installed: true,
+        updateAvailable: false,
+        policy: "auto",
+      }),
+    ).toBe("none");
+    expect(
+      decideUpdateAction({
+        installed: true,
+        updateAvailable: false,
+        policy: "notify",
+      }),
+    ).toBe("none");
   });
 });
 
-function status(kind: BinaryKind, over: Partial<BinaryStatus> = {}): BinaryStatus {
-  return { kind, installed: true, installedVersion: "1", latestVersion: "1", updateAvailable: false, path: "/x", ...over };
+function status(
+  kind: BinaryKind,
+  over: Partial<BinaryStatus> = {},
+): BinaryStatus {
+  return {
+    kind,
+    installed: true,
+    installedVersion: "1",
+    latestVersion: "1",
+    updateAvailable: false,
+    path: "/x",
+    ...over,
+  };
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -32,10 +83,17 @@ describe("runStartupBinaryMaintenance", () => {
     const installed: BinaryKind[] = [];
     await runStartupBinaryMaintenance({
       kinds: ["ytdlp"],
-      list: async () => [status("ytdlp", { installed: false, installedVersion: null })],
+      list: async () => [
+        status("ytdlp", { installed: false, installedVersion: null }),
+      ],
       getLastChecked: () => null,
-      check: async () => { throw new Error("check must not run for a missing binary"); },
-      install: async (k) => { installed.push(k); return status(k, { installedVersion: "2024.09.01" }); },
+      check: async () => {
+        throw new Error("check must not run for a missing binary");
+      },
+      install: async (k) => {
+        installed.push(k);
+        return status(k, { installedVersion: "2024.09.01" });
+      },
       policy: () => "auto",
       emit: (e) => events.push(e),
       now: () => 1_000_000,
@@ -43,7 +101,12 @@ describe("runStartupBinaryMaintenance", () => {
     expect(installed).toEqual(["ytdlp"]);
     expect(events).toEqual([
       { type: "installing", kind: "ytdlp" },
-      { type: "ready", kind: "ytdlp", version: "2024.09.01", reason: "installed" },
+      {
+        type: "ready",
+        kind: "ytdlp",
+        version: "2024.09.01",
+        reason: "installed",
+      },
     ]);
   });
 
@@ -53,7 +116,10 @@ describe("runStartupBinaryMaintenance", () => {
       kinds: ["ytdlp"],
       list: async () => [status("ytdlp")],
       getLastChecked: () => 999_000, // 1000ms ago vs now
-      check: async () => { checked = true; return status("ytdlp"); },
+      check: async () => {
+        checked = true;
+        return status("ytdlp");
+      },
       install: async (k) => status(k),
       policy: () => "auto",
       emit: () => {},
@@ -69,7 +135,12 @@ describe("runStartupBinaryMaintenance", () => {
       kinds: ["ytdlp"],
       list: async () => [status("ytdlp", { installedVersion: "old" })],
       getLastChecked: () => 0, // stale
-      check: async () => status("ytdlp", { installedVersion: "old", latestVersion: "new", updateAvailable: true }),
+      check: async () =>
+        status("ytdlp", {
+          installedVersion: "old",
+          latestVersion: "new",
+          updateAvailable: true,
+        }),
       install: async (k) => status(k, { installedVersion: "new" }),
       policy: () => "auto",
       emit: (e) => events.push(e),
@@ -88,15 +159,28 @@ describe("runStartupBinaryMaintenance", () => {
       kinds: ["ytdlp"],
       list: async () => [status("ytdlp", { installedVersion: "old" })],
       getLastChecked: () => 0,
-      check: async () => status("ytdlp", { installedVersion: "old", latestVersion: "new", updateAvailable: true }),
-      install: async (k) => { installs++; return status(k); },
+      check: async () =>
+        status("ytdlp", {
+          installedVersion: "old",
+          latestVersion: "new",
+          updateAvailable: true,
+        }),
+      install: async (k) => {
+        installs++;
+        return status(k);
+      },
       policy: () => "notify",
       emit: (e) => events.push(e),
       now: () => 1_000_000,
     });
     expect(installs).toBe(0);
     expect(events).toEqual([
-      { type: "available", kind: "ytdlp", installedVersion: "old", latestVersion: "new" },
+      {
+        type: "available",
+        kind: "ytdlp",
+        installedVersion: "old",
+        latestVersion: "new",
+      },
     ]);
   });
 
@@ -104,9 +188,14 @@ describe("runStartupBinaryMaintenance", () => {
     const events: BinaryUpdateEvent[] = [];
     await runStartupBinaryMaintenance({
       kinds: ["ytdlp", "deno"],
-      list: async () => [status("ytdlp"), status("deno", { installed: false, installedVersion: null })],
+      list: async () => [
+        status("ytdlp"),
+        status("deno", { installed: false, installedVersion: null }),
+      ],
       getLastChecked: () => 0,
-      check: async () => { throw new Error("network down"); },
+      check: async () => {
+        throw new Error("network down");
+      },
       install: async (k) => status(k, { installedVersion: "1.0.0" }),
       policy: () => "auto",
       emit: (e) => events.push(e),
@@ -124,9 +213,13 @@ describe("runStartupBinaryMaintenance", () => {
     await expect(
       runStartupBinaryMaintenance({
         kinds: ["ytdlp"],
-        list: async () => { throw new Error("db down"); },
+        list: async () => {
+          throw new Error("db down");
+        },
         getLastChecked: () => null,
-        check: async () => { throw new Error("unused"); },
+        check: async () => {
+          throw new Error("unused");
+        },
         install: async (k) => status(k),
         policy: () => "auto",
         emit: (e) => events.push(e),
@@ -141,12 +234,17 @@ describe("runStartupBinaryMaintenance", () => {
     await expect(
       runStartupBinaryMaintenance({
         kinds: ["ytdlp"],
-        list: async () => [status("ytdlp", { installed: false, installedVersion: null })],
+        list: async () => [
+          status("ytdlp", { installed: false, installedVersion: null }),
+        ],
         getLastChecked: () => null,
         check: async () => status("ytdlp"),
         install: async (k) => status(k, { installedVersion: "1" }),
         policy: () => "auto",
-        emit: () => { calls++; throw new Error("send failed"); },
+        emit: () => {
+          calls++;
+          throw new Error("send failed");
+        },
         now: () => 1_000_000,
       }),
     ).resolves.toBeUndefined();
@@ -158,8 +256,11 @@ describe("runStartupBinaryMaintenance", () => {
       runStartupBinaryMaintenance({
         kinds: ["ytdlp"],
         list: async () => [status("ytdlp")],
-        getLastChecked: () => { throw new Error("db read failed"); },
-        check: async () => status("ytdlp", { updateAvailable: true, latestVersion: "new" }),
+        getLastChecked: () => {
+          throw new Error("db read failed");
+        },
+        check: async () =>
+          status("ytdlp", { updateAvailable: true, latestVersion: "new" }),
         install: async (k) => status(k),
         policy: () => "auto",
         emit: () => {},

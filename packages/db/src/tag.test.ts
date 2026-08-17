@@ -3,16 +3,32 @@ import { openTestDatabase } from "./testing";
 import type { SiftDatabase } from "./database";
 import { runMigrations } from "./migrations";
 import { insertMedia } from "./media";
-import { addTag, backfillPlatformTag, removeTag, tagsForMedia, tagsForMediaIds, listAllTags } from "./tag";
+import {
+  addTag,
+  backfillPlatformTag,
+  removeTag,
+  tagsForMedia,
+  tagsForMediaIds,
+  listAllTags,
+} from "./tag";
 
 // NewMedia literal copied from media.test.ts's sample() helper, with source_url
 // swapped for the passed url.
 function newMedia(db: SiftDatabase, url: string): number {
   return insertMedia(db, {
-    source_url: url, platform_id: "youtube", external_id: "abc",
-    title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 100,
-    thumbnail_path: "https://y/thumb.jpg", view_count: 5, like_count: 1,
-    published_at: null, metadata_json: "{}", download_status: "downloading",
+    source_url: url,
+    platform_id: "youtube",
+    external_id: "abc",
+    title: "Vid",
+    uploader: "Chan",
+    uploader_url: null,
+    duration_s: 100,
+    thumbnail_path: "https://y/thumb.jpg",
+    view_count: 5,
+    like_count: 1,
+    published_at: null,
+    metadata_json: "{}",
+    download_status: "downloading",
   }).id;
 }
 
@@ -33,10 +49,19 @@ describe("media_tag CRUD", () => {
 
   it("backfills a platform tag, touching only that platform, and stays a no-op on re-run", () => {
     const local = insertMedia(db, {
-      source_url: "file:///c/a.mp4", platform_id: "local", external_id: null,
-      title: "A", uploader: null, uploader_url: null, duration_s: 60,
-      thumbnail_path: null, view_count: null, like_count: null,
-      published_at: null, metadata_json: "{}", download_status: "done",
+      source_url: "file:///c/a.mp4",
+      platform_id: "local",
+      external_id: null,
+      title: "A",
+      uploader: null,
+      uploader_url: null,
+      duration_s: 60,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "done",
     }).id;
     const remote = newMedia(db, "https://y/watch?v=1");
     addTag(db, local, "keepme");

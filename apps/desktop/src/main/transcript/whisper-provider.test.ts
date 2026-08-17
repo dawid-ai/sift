@@ -52,7 +52,10 @@ describe("whisper provider transcribe", () => {
     const result = await p.transcribe(baseCtx, () => {});
 
     expect(f.ffmpeg.extractWav).toHaveBeenCalledOnce();
-    const wavArg = f.ffmpeg.extractWav.mock.calls[0]![0] as { inputPath: string; outputPath: string };
+    const wavArg = f.ffmpeg.extractWav.mock.calls[0]![0] as {
+      inputPath: string;
+      outputPath: string;
+    };
     expect(wavArg.inputPath).toBe("/downloads/video.mp4");
     expect(f.whisper.transcribe).toHaveBeenCalledWith(
       { wavPath: wavArg.outputPath, language: "en" },

@@ -75,8 +75,16 @@ export function SummaryPanel({ text, summary, onExport }: SummaryPanelProps) {
         <div className="flex flex-wrap items-center gap-1.5">
           {summary ? (
             <>
-              <span className={cn(CHIP_SHELL, CHIP_STRONG)}>{summary.providerId}</span>
-              <span className={cn(CHIP_SHELL, CHIP_STRONG, "font-mono tracking-normal")}>
+              <span className={cn(CHIP_SHELL, CHIP_STRONG)}>
+                {summary.providerId}
+              </span>
+              <span
+                className={cn(
+                  CHIP_SHELL,
+                  CHIP_STRONG,
+                  "font-mono tracking-normal",
+                )}
+              >
                 {summary.model}
               </span>
             </>
@@ -100,7 +108,10 @@ export function SummaryPanel({ text, summary, onExport }: SummaryPanelProps) {
         <div className="relative">
           <div
             ref={wellRef}
-            className={cn(WELL, "max-h-80 overflow-y-auto px-4 py-3.5 [scrollbar-gutter:stable]")}
+            className={cn(
+              WELL,
+              "max-h-80 overflow-y-auto px-4 py-3.5 [scrollbar-gutter:stable]",
+            )}
           >
             <p
               data-testid="summary-content"

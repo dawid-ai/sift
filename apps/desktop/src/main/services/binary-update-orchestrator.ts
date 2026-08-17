@@ -1,6 +1,12 @@
-import type { BinaryStatus, BinaryUpdateEvent, BinaryKind, BinaryUpdatePolicy } from "@sift/ipc-contract";
+import type {
+  BinaryStatus,
+  BinaryUpdateEvent,
+  BinaryKind,
+  BinaryUpdatePolicy,
+} from "@sift/ipc-contract";
 
-export type UpdateAction = "install-required" | "auto-update" | "notify" | "none";
+export type UpdateAction =
+  "install-required" | "auto-update" | "notify" | "none";
 
 /** Pure decision — no network, no db, no side effects. */
 export function decideUpdateAction(input: {
@@ -32,7 +38,9 @@ function errText(e: unknown): string {
 }
 
 /** Runs once at startup. Never throws — a per-kind failure emits `error` and moves on. */
-export async function runStartupBinaryMaintenance(deps: BinaryMaintenanceDeps): Promise<void> {
+export async function runStartupBinaryMaintenance(
+  deps: BinaryMaintenanceDeps,
+): Promise<void> {
   const throttleMs = deps.throttleMs ?? DEFAULT_THROTTLE_MS;
 
   // Startup maintenance is best-effort. If list() itself rejects there's no
@@ -56,7 +64,12 @@ export async function runStartupBinaryMaintenance(deps: BinaryMaintenanceDeps): 
         deps.emit({ type: "installing", kind });
         try {
           const r = await deps.install(kind);
-          deps.emit({ type: "ready", kind, version: r.installedVersion ?? "", reason: "installed" });
+          deps.emit({
+            type: "ready",
+            kind,
+            version: r.installedVersion ?? "",
+            reason: "installed",
+          });
         } catch (e) {
           deps.emit({ type: "error", kind, message: errText(e) });
         }
@@ -77,11 +90,22 @@ export async function runStartupBinaryMaintenance(deps: BinaryMaintenanceDeps): 
       }
       if (!checked.updateAvailable) continue;
 
-      if (decideUpdateAction({ installed: true, updateAvailable: true, policy: deps.policy() }) === "auto-update") {
+      if (
+        decideUpdateAction({
+          installed: true,
+          updateAvailable: true,
+          policy: deps.policy(),
+        }) === "auto-update"
+      ) {
         deps.emit({ type: "installing", kind });
         try {
           const r = await deps.install(kind);
-          deps.emit({ type: "ready", kind, version: r.installedVersion ?? "", reason: "updated" });
+          deps.emit({
+            type: "ready",
+            kind,
+            version: r.installedVersion ?? "",
+            reason: "updated",
+          });
         } catch (e) {
           deps.emit({ type: "error", kind, message: errText(e) });
         }

@@ -56,7 +56,8 @@ export const buttonVariants = cva(
           "border border-border bg-surface-2/80 text-muted-foreground shadow-bevel hover:border-border-strong hover:bg-surface-2 hover:text-foreground",
         secondary:
           "border border-border bg-surface-2/80 text-muted-foreground shadow-bevel hover:border-border-strong hover:bg-surface-2 hover:text-foreground",
-        ghost: "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
+        ghost:
+          "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
         // A low-key *selected* state: an active page number, a chosen segment. Deliberately
         // not the coral fill — the strongest colour on a screen must not be spent on a
         // paginator, which is what made "page 1" louder than every real action around it.

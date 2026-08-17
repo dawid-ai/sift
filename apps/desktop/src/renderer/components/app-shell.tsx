@@ -40,13 +40,20 @@ const IDLE = "text-fg-subtle hover:bg-foreground/[0.06] hover:text-foreground";
  * -7px against a slot inset 8px from the frame, which put it 1px from the window edge — it
  * read as a rendering seam rather than an affordance, and it was redundant with the filled
  * tile it decorated. */
-const ACTIVE_FILL = "rounded-[11px] border border-primary/30 bg-primary/14 shadow-bevel";
+const ACTIVE_FILL =
+  "rounded-[11px] border border-primary/30 bg-primary/14 shadow-bevel";
 
 /** Icon rail (Ember spec): 52px, corner-bracketed app mark, a rim-lit hairline separating it
  * from the canvas, Settings + Exit pinned to the bottom. Icon-only, so each button carries an
  * aria-label — that stays the accessible name the e2e suite's getByRole("button", { name })
  * selectors match on, and removing one would break roughly thirty specs. */
-export function Sidebar({ view, onNavigate }: { view: View; onNavigate: (v: View) => void }) {
+export function Sidebar({
+  view,
+  onNavigate,
+}: {
+  view: View;
+  onNavigate: (v: View) => void;
+}) {
   return (
     <aside
       className={cn(
@@ -131,7 +138,11 @@ export function Sidebar({ view, onNavigate }: { view: View; onNavigate: (v: View
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
-              <Icon aria-hidden className={cn(ICON, "relative")} strokeWidth={1.85} />
+              <Icon
+                aria-hidden
+                className={cn(ICON, "relative")}
+                strokeWidth={1.85}
+              />
             </button>
           );
         })}
@@ -144,9 +155,16 @@ export function Sidebar({ view, onNavigate }: { view: View; onNavigate: (v: View
           title="Settings"
           aria-current={view === "settings" ? "page" : undefined}
           onClick={() => onNavigate("settings")}
-          className={cn(SLOT, view === "settings" ? cn(ACTIVE_FILL, "text-primary") : IDLE)}
+          className={cn(
+            SLOT,
+            view === "settings" ? cn(ACTIVE_FILL, "text-primary") : IDLE,
+          )}
         >
-          <Settings aria-hidden className={cn(ICON, "relative")} strokeWidth={1.85} />
+          <Settings
+            aria-hidden
+            className={cn(ICON, "relative")}
+            strokeWidth={1.85}
+          />
         </button>
         <button
           type="button"
@@ -154,7 +172,10 @@ export function Sidebar({ view, onNavigate }: { view: View; onNavigate: (v: View
           title="Exit"
           onClick={() => void window.sift.app.quit()}
           data-testid="app-exit"
-          className={cn(SLOT, "text-fg-subtle hover:bg-danger/12 hover:text-danger")}
+          className={cn(
+            SLOT,
+            "text-fg-subtle hover:bg-danger/12 hover:text-danger",
+          )}
         >
           <LogOut aria-hidden className={ICON} strokeWidth={1.85} />
         </button>

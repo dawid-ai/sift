@@ -12,8 +12,13 @@ export function resolveAssetPath(binariesDir: string, stored: string): string {
  *  under binariesDir to its binariesDir-relative form. Rows already relative,
  *  or absolute but outside binariesDir (e.g. a homebrew whisper-cli), are left
  *  untouched. NOT a schema migration — safe to run on every launch. */
-export function normalizeAssetPaths(db: SiftDatabase, binariesDir: string): void {
-  const rows = db.prepare<{ kind: AssetKind; path: string }>("SELECT kind, path FROM asset").all();
+export function normalizeAssetPaths(
+  db: SiftDatabase,
+  binariesDir: string,
+): void {
+  const rows = db
+    .prepare<{ kind: AssetKind; path: string }>("SELECT kind, path FROM asset")
+    .all();
   const update = db.prepare("UPDATE asset SET path = ? WHERE kind = ?");
   for (const row of rows) {
     if (!isAbsolute(row.path)) continue;

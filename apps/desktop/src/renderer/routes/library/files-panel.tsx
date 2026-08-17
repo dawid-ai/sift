@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import { Captions, FileText, FolderOpen, Sparkles } from "lucide-react";
-import type { DocumentRecord, PromptInfo, SummaryRecord, TranscriptRecord } from "@sift/ipc-contract";
+import type {
+  DocumentRecord,
+  PromptInfo,
+  SummaryRecord,
+  TranscriptRecord,
+} from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { KNOWN_PROVIDERS } from "@/lib/ai-provider-catalog";
@@ -62,7 +67,10 @@ function baseName(label: string): string {
  * result card, `ollama · llama3.1` in these captions — so every site now resolves through the
  * same catalog the pickers are built from. An id absent from the catalog (a provider registered
  * outside the curated mirror) falls back to the raw value rather than to nothing. */
-export function aiLabel(providerId: string | null, model: string | null): string {
+export function aiLabel(
+  providerId: string | null,
+  model: string | null,
+): string {
   if (!providerId) return "No AI (raw)";
   const provider = KNOWN_PROVIDERS.find((p) => p.id === providerId);
   const name = provider ? baseName(provider.label) : providerId;
@@ -78,7 +86,8 @@ export function aiLabel(providerId: string | null, model: string | null): string
  *
  * Box and tone are separate constants because a failed download swaps the row to the danger hue,
  * and it must not have to restate the geometry to do it. */
-export const ROW_BOX = "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 transition-colors";
+export const ROW_BOX =
+  "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 transition-colors";
 export const ROW_SURFACE =
   "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]";
 export const ROW_SHELL = `${ROW_BOX} ${ROW_SURFACE}`;
@@ -130,7 +139,14 @@ export interface FilesPanelProps {
  * record once. Documents carry their tier in the row instead (Sparkles + the engine that
  * polished them, vs. a plain page and "No AI (raw)"), so the list is now the whole truth and
  * the badge (documents + transcripts + summaries + downloads) equals the rows rendered. */
-export function FilesPanel({ documents, transcripts, summaries, prompts, onReveal, onOpenTab }: FilesPanelProps) {
+export function FilesPanel({
+  documents,
+  transcripts,
+  summaries,
+  prompts,
+  onReveal,
+  onOpenTab,
+}: FilesPanelProps) {
   const promptName = (id: number | null): string =>
     (id != null && prompts.find((p) => p.id === id)?.name) || "—";
 
@@ -139,7 +155,11 @@ export function FilesPanel({ documents, transcripts, summaries, prompts, onRevea
       <Section
         title="Documents"
         count={documents.length}
-        empty={documents.length === 0 ? "No documents yet — build one from the Slides tab." : null}
+        empty={
+          documents.length === 0
+            ? "No documents yet — build one from the Slides tab."
+            : null
+        }
         emptyIcon={<FileText />}
       >
         {documents.map((d) => (
@@ -151,10 +171,21 @@ export function FilesPanel({ documents, transcripts, summaries, prompts, onRevea
             icon={d.providerId ? <Sparkles /> : <FileText />}
             title={d.path.split(/[\\/]/).pop() ?? d.format}
             titleAttr={d.path}
-            badges={<Badge variant="code" className="flex-none">{d.format}</Badge>}
-            caption={<Caption note={aiLabel(d.providerId, d.model)} at={d.createdAt} />}
+            badges={
+              <Badge variant="code" className="flex-none">
+                {d.format}
+              </Badge>
+            }
+            caption={
+              <Caption note={aiLabel(d.providerId, d.model)} at={d.createdAt} />
+            }
             actions={
-              <Button size="sm" variant="ghost" className={GHOST_BUTTON} onClick={() => onReveal(d.path)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className={GHOST_BUTTON}
+                onClick={() => onReveal(d.path)}
+              >
                 <FolderOpen className="h-3.5 w-3.5" aria-hidden />
                 Open
               </Button>
@@ -178,17 +209,31 @@ export function FilesPanel({ documents, transcripts, summaries, prompts, onRevea
             testid="files-transcript"
             icon={<Captions />}
             title={languageName(t.language)}
-            badges={<Badge variant="code" className="flex-none">{transcriptProviderLabel(t.providerId)}</Badge>}
+            badges={
+              <Badge variant="code" className="flex-none">
+                {transcriptProviderLabel(t.providerId)}
+              </Badge>
+            }
             caption={<Caption at={t.createdAt} />}
             actions={
               <>
                 {t.filePath && (
-                  <Button size="sm" variant="ghost" className={GHOST_BUTTON} onClick={() => onReveal(t.filePath!)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={GHOST_BUTTON}
+                    onClick={() => onReveal(t.filePath!)}
+                  >
                     <FolderOpen className="h-3.5 w-3.5" aria-hidden />
                     Open
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" className={GHOST_BUTTON} onClick={() => onOpenTab("transcript")}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={GHOST_BUTTON}
+                  onClick={() => onOpenTab("transcript")}
+                >
                   Go to
                 </Button>
               </>
@@ -209,16 +254,28 @@ export function FilesPanel({ documents, transcripts, summaries, prompts, onRevea
             testid="files-summary"
             icon={<Sparkles />}
             title={promptName(s.promptId)}
-            caption={<Caption note={aiLabel(s.providerId, s.model)} at={s.createdAt} />}
+            caption={
+              <Caption note={aiLabel(s.providerId, s.model)} at={s.createdAt} />
+            }
             actions={
               <>
                 {s.filePath && (
-                  <Button size="sm" variant="ghost" className={GHOST_BUTTON} onClick={() => onReveal(s.filePath!)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={GHOST_BUTTON}
+                    onClick={() => onReveal(s.filePath!)}
+                  >
                     <FolderOpen className="h-3.5 w-3.5" aria-hidden />
                     Open
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" className={GHOST_BUTTON} onClick={() => onOpenTab("summary")}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={GHOST_BUTTON}
+                  onClick={() => onOpenTab("summary")}
+                >
                   Go to
                 </Button>
               </>
@@ -249,8 +306,13 @@ function Section({
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-2.5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">{title}</p>
-        <Badge variant="count" className={count > 0 ? "flex-none" : `flex-none ${COUNT_ZERO}`}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">
+          {title}
+        </p>
+        <Badge
+          variant="count"
+          className={count > 0 ? "flex-none" : `flex-none ${COUNT_ZERO}`}
+        >
           {count}
         </Badge>
         <span className="h-px flex-1 bg-white/[0.06]" aria-hidden />
@@ -260,7 +322,9 @@ function Section({
           <span aria-hidden className={EMPTY_CHIP}>
             {emptyIcon}
           </span>
-          <p className="min-w-0 truncate text-[12.5px] text-muted-foreground">{empty}</p>
+          <p className="min-w-0 truncate text-[12.5px] text-muted-foreground">
+            {empty}
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">{children}</div>
@@ -303,11 +367,18 @@ function Row({
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium text-foreground" title={titleAttr}>
+          <span
+            className="truncate text-sm font-medium text-foreground"
+            title={titleAttr}
+          >
             {title}
           </span>
           {badges}
-          {actions && <div className="ml-auto flex flex-none items-center gap-1.5">{actions}</div>}
+          {actions && (
+            <div className="ml-auto flex flex-none items-center gap-1.5">
+              {actions}
+            </div>
+          )}
         </div>
         {caption}
       </div>

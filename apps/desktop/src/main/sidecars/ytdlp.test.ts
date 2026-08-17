@@ -3,7 +3,11 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ExecFn, SpawnedProcess, SpawnFn } from "./ytdlp";
-import { createYtDlpRunner, parseProgressLine, YtDlpNotInstalledError } from "./ytdlp";
+import {
+  createYtDlpRunner,
+  parseProgressLine,
+  YtDlpNotInstalledError,
+} from "./ytdlp";
 
 const FAKE_PATH = "/opt/sift/bin/yt-dlp";
 
@@ -54,7 +58,10 @@ describe("createYtDlpRunner", () => {
         return { stdout: CANNED_JSON, stderr: "" };
       };
 
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, exec });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        exec,
+      });
       const url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
       const result = await runner.dumpJson(url);
 
@@ -62,7 +69,14 @@ describe("createYtDlpRunner", () => {
       expect(calls).toHaveLength(1);
       const [call] = calls;
       expect(call?.file).toBe(FAKE_PATH);
-      expect(call?.args).toEqual(["--js-runtimes", "node", "-J", "--no-warnings", "--", url]);
+      expect(call?.args).toEqual([
+        "--js-runtimes",
+        "node",
+        "-J",
+        "--no-warnings",
+        "--",
+        url,
+      ]);
       const separatorIndex = call?.args.indexOf("--");
       expect(separatorIndex).toBeGreaterThanOrEqual(0);
       expect(call?.args[(separatorIndex ?? -1) + 1]).toBe(url);
@@ -74,16 +88,21 @@ describe("createYtDlpRunner", () => {
       };
       const runner = createYtDlpRunner({ getBinaryPath: () => null, exec });
 
-      await expect(runner.dumpJson("https://example.com/video")).rejects.toBeInstanceOf(
-        YtDlpNotInstalledError,
-      );
+      await expect(
+        runner.dumpJson("https://example.com/video"),
+      ).rejects.toBeInstanceOf(YtDlpNotInstalledError);
     });
 
     it("rejects with a descriptive Error (not a raw SyntaxError) when stdout is not valid JSON", async () => {
       const exec: ExecFn = async () => ({ stdout: "not json{{{", stderr: "" });
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, exec });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        exec,
+      });
 
-      await expect(runner.dumpJson("https://example.com/video")).rejects.toThrow(Error);
+      await expect(
+        runner.dumpJson("https://example.com/video"),
+      ).rejects.toThrow(Error);
     });
 
     it("dumpJson adds --cookies before -- when a cookiesFile is given", async () => {
@@ -96,23 +115,42 @@ describe("createYtDlpRunner", () => {
         },
       });
       await runner.dumpJson("https://x/1", "/tmp/c.txt");
-      expect(calls[0]).toEqual(["--cookies", "/tmp/c.txt", "--js-runtimes", "node", "-J", "--no-warnings", "--", "https://x/1"]);
+      expect(calls[0]).toEqual([
+        "--cookies",
+        "/tmp/c.txt",
+        "--js-runtimes",
+        "node",
+        "-J",
+        "--no-warnings",
+        "--",
+        "https://x/1",
+      ]);
     });
 
     it("reports an unsupported site as a plain sentence, not a yt-dlp stack", async () => {
       const url = "https://dribbble.com/shots/27595845-Motion-Graphics-Promo";
       const exec: ExecFn = async () => {
-        throw Object.assign(new Error("Command failed: yt-dlp --cookies C:\\Users\\me\\auth.txt …"), {
-          stderr: `ERROR: Unsupported URL: ${url}\n`,
-        });
+        throw Object.assign(
+          new Error(
+            "Command failed: yt-dlp --cookies C:\\Users\\me\\auth.txt …",
+          ),
+          {
+            stderr: `ERROR: Unsupported URL: ${url}\n`,
+          },
+        );
       };
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, exec });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        exec,
+      });
 
       await expect(runner.dumpJson(url)).rejects.toThrow(
         /yt-dlp has no extractor for dribbble\.com/,
       );
       // The command line (which carries the user's local cookie path) must not reach the UI.
-      await expect(runner.dumpJson(url)).rejects.not.toThrow(/auth\.txt|Command failed/);
+      await expect(runner.dumpJson(url)).rejects.not.toThrow(
+        /auth\.txt|Command failed/,
+      );
     });
 
     it("keeps raw stderr for every other failure, so auth detection still matches", async () => {
@@ -121,7 +159,10 @@ describe("createYtDlpRunner", () => {
           stderr: "ERROR: Sign in to confirm you're not a bot\n",
         });
       };
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, exec });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        exec,
+      });
 
       await expect(runner.dumpJson("https://youtu.be/x")).rejects.toThrow(
         /Sign in to confirm you're not a bot/,
@@ -147,14 +188,26 @@ describe("createYtDlpRunner", () => {
       let captured: string[] = [];
       const runner = createYtDlpRunner({
         getBinaryPath: () => "/yt-dlp",
-        exec: async (_file, args) => { captured = args; return { stdout: "{}", stderr: "" }; },
+        exec: async (_file, args) => {
+          captured = args;
+          return { stdout: "{}", stderr: "" };
+        },
       });
-      await runner.flatPlaylist("https://youtube.com/@c/videos", { items: "1:50" }, "/cookies.txt");
+      await runner.flatPlaylist(
+        "https://youtube.com/@c/videos",
+        { items: "1:50" },
+        "/cookies.txt",
+      );
       expect(captured).toEqual([
-        "--cookies", "/cookies.txt",
-        "--flat-playlist", "-J", "--no-warnings",
-        "--playlist-items", "1:50",
-        "--", "https://youtube.com/@c/videos",
+        "--cookies",
+        "/cookies.txt",
+        "--flat-playlist",
+        "-J",
+        "--no-warnings",
+        "--playlist-items",
+        "1:50",
+        "--",
+        "https://youtube.com/@c/videos",
       ]);
     });
 
@@ -162,17 +215,32 @@ describe("createYtDlpRunner", () => {
       let captured: string[] = [];
       const runner = createYtDlpRunner({
         getBinaryPath: () => "/yt-dlp",
-        exec: async (_file, args) => { captured = args; return { stdout: "{}", stderr: "" }; },
+        exec: async (_file, args) => {
+          captured = args;
+          return { stdout: "{}", stderr: "" };
+        },
       });
       await runner.flatPlaylist("https://youtube.com/@c/videos", {});
-      expect(captured).toEqual(["--flat-playlist", "-J", "--no-warnings", "--", "https://youtube.com/@c/videos"]);
+      expect(captured).toEqual([
+        "--flat-playlist",
+        "-J",
+        "--no-warnings",
+        "--",
+        "https://youtube.com/@c/videos",
+      ]);
     });
   });
 
   describe("listExtractors", () => {
     it("splits stdout into non-empty trimmed lines", async () => {
-      const exec: ExecFn = async () => ({ stdout: "Youtube\nVimeo\n\n", stderr: "" });
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, exec });
+      const exec: ExecFn = async () => ({
+        stdout: "Youtube\nVimeo\n\n",
+        stderr: "",
+      });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        exec,
+      });
 
       const extractors = await runner.listExtractors();
 
@@ -185,7 +253,9 @@ describe("createYtDlpRunner", () => {
       };
       const runner = createYtDlpRunner({ getBinaryPath: () => null, exec });
 
-      await expect(runner.listExtractors()).rejects.toBeInstanceOf(YtDlpNotInstalledError);
+      await expect(runner.listExtractors()).rejects.toBeInstanceOf(
+        YtDlpNotInstalledError,
+      );
     });
   });
 
@@ -198,12 +268,19 @@ describe("createYtDlpRunner", () => {
         return proc;
       };
 
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, spawn });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        spawn,
+      });
       const onProgress = vi.fn();
       const url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
       const promise = runner.download(
-        { url, format: "bestvideo+bestaudio", outputTemplate: "/out/dir/%(title)s.%(ext)s" },
+        {
+          url,
+          format: "bestvideo+bestaudio",
+          outputTemplate: "/out/dir/%(title)s.%(ext)s",
+        },
         onProgress,
       );
 
@@ -213,7 +290,12 @@ describe("createYtDlpRunner", () => {
       const result = await promise;
 
       expect(result).toEqual({ filePath: "/out/dir/Video.mp4" });
-      expect(onProgress).toHaveBeenCalledWith({ received: 512, total: 1024, speed: 256, eta: 2 });
+      expect(onProgress).toHaveBeenCalledWith({
+        received: 512,
+        total: 1024,
+        speed: 256,
+        eta: 2,
+      });
 
       expect(calls).toHaveLength(1);
       const [call] = calls;
@@ -237,11 +319,18 @@ describe("createYtDlpRunner", () => {
     it("handles progress and filePath lines split across multiple stdout chunks", async () => {
       const { proc, listeners } = createFakeProcess();
       const spawn: SpawnFn = () => proc;
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, spawn });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        spawn,
+      });
       const onProgress = vi.fn();
 
       const promise = runner.download(
-        { url: "https://example.com/v", format: "best", outputTemplate: "/out/%(title)s.%(ext)s" },
+        {
+          url: "https://example.com/v",
+          format: "best",
+          outputTemplate: "/out/%(title)s.%(ext)s",
+        },
         onProgress,
       );
 
@@ -252,17 +341,29 @@ describe("createYtDlpRunner", () => {
       const result = await promise;
 
       expect(result).toEqual({ filePath: "/out/dir/Partial.mp4" });
-      expect(onProgress).toHaveBeenCalledWith({ received: 100, total: null, speed: null, eta: null });
+      expect(onProgress).toHaveBeenCalledWith({
+        received: 100,
+        total: null,
+        speed: null,
+        eta: null,
+      });
     });
 
     it("ignores non-progress stderr diagnostics and never lets them override the stdout filePath", async () => {
       const { proc, listeners } = createFakeProcess();
       const spawn: SpawnFn = () => proc;
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, spawn });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        spawn,
+      });
       const onProgress = vi.fn();
 
       const promise = runner.download(
-        { url: "https://example.com/v", format: "best", outputTemplate: "/out/%(title)s.%(ext)s" },
+        {
+          url: "https://example.com/v",
+          format: "best",
+          outputTemplate: "/out/%(title)s.%(ext)s",
+        },
         onProgress,
       );
 
@@ -273,16 +374,28 @@ describe("createYtDlpRunner", () => {
       const result = await promise;
 
       expect(result).toEqual({ filePath: "/out/dir/Video.mp4" });
-      expect(onProgress).toHaveBeenCalledWith({ received: 512, total: 1024, speed: 256, eta: 2 });
+      expect(onProgress).toHaveBeenCalledWith({
+        received: 512,
+        total: 1024,
+        speed: 256,
+        eta: 2,
+      });
     });
 
     it("rejects when yt-dlp exits with a non-zero code, including stderr text in the error", async () => {
       const { proc, listeners } = createFakeProcess();
       const spawn: SpawnFn = () => proc;
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, spawn });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        spawn,
+      });
 
       const promise = runner.download(
-        { url: "https://example.com/v", format: "best", outputTemplate: "/out/%(title)s.%(ext)s" },
+        {
+          url: "https://example.com/v",
+          format: "best",
+          outputTemplate: "/out/%(title)s.%(ext)s",
+        },
         () => {},
       );
 
@@ -295,10 +408,17 @@ describe("createYtDlpRunner", () => {
     it("rejects when the spawned process emits an error event", async () => {
       const { proc, listeners } = createFakeProcess();
       const spawn: SpawnFn = () => proc;
-      const runner = createYtDlpRunner({ getBinaryPath: () => FAKE_PATH, spawn });
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => FAKE_PATH,
+        spawn,
+      });
 
       const promise = runner.download(
-        { url: "https://example.com/v", format: "best", outputTemplate: "/out/%(title)s.%(ext)s" },
+        {
+          url: "https://example.com/v",
+          format: "best",
+          outputTemplate: "/out/%(title)s.%(ext)s",
+        },
         () => {},
       );
 
@@ -315,7 +435,11 @@ describe("createYtDlpRunner", () => {
 
       await expect(
         runner.download(
-          { url: "https://example.com/v", format: "best", outputTemplate: "/out/%(title)s.%(ext)s" },
+          {
+            url: "https://example.com/v",
+            format: "best",
+            outputTemplate: "/out/%(title)s.%(ext)s",
+          },
           () => {},
         ),
       ).rejects.toBeInstanceOf(YtDlpNotInstalledError);
@@ -332,16 +456,32 @@ describe("createYtDlpRunner", () => {
           writeFileSync(join(dir, "subs.en.vtt"), "WEBVTT\n"); // simulate yt-dlp writing the file
           return { stdout: "", stderr: "" };
         };
-        const runner = createYtDlpRunner({ getBinaryPath: () => "/bin/yt-dlp", exec });
-        const res = await runner.fetchSubtitles({ url: "https://y/x", language: "en", outputDir: dir });
-        expect(res).toEqual({ subPath: join(dir, "subs.en.vtt"), format: "vtt" });
+        const runner = createYtDlpRunner({
+          getBinaryPath: () => "/bin/yt-dlp",
+          exec,
+        });
+        const res = await runner.fetchSubtitles({
+          url: "https://y/x",
+          language: "en",
+          outputDir: dir,
+        });
+        expect(res).toEqual({
+          subPath: join(dir, "subs.en.vtt"),
+          format: "vtt",
+        });
         expect(recordedArgs.slice(-2)).toEqual(["--", "https://y/x"]);
         expect(recordedArgs).toContain("--skip-download");
-        expect(recordedArgs[recordedArgs.indexOf("--sub-langs") + 1]).toBe("en");
-        expect(recordedArgs[recordedArgs.indexOf("--sub-format") + 1]).toBe("json3/vtt");
+        expect(recordedArgs[recordedArgs.indexOf("--sub-langs") + 1]).toBe(
+          "en",
+        );
+        expect(recordedArgs[recordedArgs.indexOf("--sub-format") + 1]).toBe(
+          "json3/vtt",
+        );
         expect(recordedArgs).not.toContain("--convert-subs");
         // n-challenge JS runtime — subtitle extraction resolves formats too.
-        expect(recordedArgs[recordedArgs.indexOf("--js-runtimes") + 1]).toBe("node");
+        expect(recordedArgs[recordedArgs.indexOf("--js-runtimes") + 1]).toBe(
+          "node",
+        );
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -356,9 +496,19 @@ describe("createYtDlpRunner", () => {
           writeFileSync(join(dir, "subs.en.vtt"), "WEBVTT\n");
           return { stdout: "", stderr: "" };
         };
-        const runner = createYtDlpRunner({ getBinaryPath: () => "/bin/yt-dlp", exec });
-        const res = await runner.fetchSubtitles({ url: "https://y/x", language: "en", outputDir: dir });
-        expect(res).toEqual({ subPath: join(dir, "subs.en.vtt"), format: "vtt" });
+        const runner = createYtDlpRunner({
+          getBinaryPath: () => "/bin/yt-dlp",
+          exec,
+        });
+        const res = await runner.fetchSubtitles({
+          url: "https://y/x",
+          language: "en",
+          outputDir: dir,
+        });
+        expect(res).toEqual({
+          subPath: join(dir, "subs.en.vtt"),
+          format: "vtt",
+        });
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -369,12 +519,25 @@ describe("createYtDlpRunner", () => {
       try {
         const exec = async () => {
           writeFileSync(join(dir, "subs.en.vtt"), "WEBVTT\n");
-          writeFileSync(join(dir, "subs.en.json3"), JSON.stringify({ events: [] }));
+          writeFileSync(
+            join(dir, "subs.en.json3"),
+            JSON.stringify({ events: [] }),
+          );
           return { stdout: "", stderr: "" };
         };
-        const runner = createYtDlpRunner({ getBinaryPath: () => "/bin/yt-dlp", exec });
-        const res = await runner.fetchSubtitles({ url: "https://y/x", language: "en", outputDir: dir });
-        expect(res).toEqual({ subPath: join(dir, "subs.en.json3"), format: "json3" });
+        const runner = createYtDlpRunner({
+          getBinaryPath: () => "/bin/yt-dlp",
+          exec,
+        });
+        const res = await runner.fetchSubtitles({
+          url: "https://y/x",
+          language: "en",
+          outputDir: dir,
+        });
+        expect(res).toEqual({
+          subPath: join(dir, "subs.en.json3"),
+          format: "json3",
+        });
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -384,8 +547,17 @@ describe("createYtDlpRunner", () => {
       const dir = mkdtempSync(join(tmpdir(), "sift-subs-"));
       try {
         const exec = async () => ({ stdout: "", stderr: "" }); // writes nothing
-        const runner = createYtDlpRunner({ getBinaryPath: () => "/bin/yt-dlp", exec });
-        expect(await runner.fetchSubtitles({ url: "https://y/x", language: "en", outputDir: dir })).toBeNull();
+        const runner = createYtDlpRunner({
+          getBinaryPath: () => "/bin/yt-dlp",
+          exec,
+        });
+        expect(
+          await runner.fetchSubtitles({
+            url: "https://y/x",
+            language: "en",
+            outputDir: dir,
+          }),
+        ).toBeNull();
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -394,7 +566,11 @@ describe("createYtDlpRunner", () => {
     it("fetchSubtitles throws YtDlpNotInstalledError when binary is missing", async () => {
       const runner = createYtDlpRunner({ getBinaryPath: () => null });
       await expect(
-        runner.fetchSubtitles({ url: "https://y/x", language: "en", outputDir: "/nope" }),
+        runner.fetchSubtitles({
+          url: "https://y/x",
+          language: "en",
+          outputDir: "/nope",
+        }),
       ).rejects.toBeInstanceOf(YtDlpNotInstalledError);
     });
 
@@ -409,7 +585,12 @@ describe("createYtDlpRunner", () => {
       });
       // outputDir must exist for readdirSync; use the OS temp dir (empty result → null return is fine).
       const os = await import("node:os");
-      await runner.fetchSubtitles({ url: "https://x/1", language: "en", outputDir: os.tmpdir(), cookiesFile: "/tmp/c.txt" });
+      await runner.fetchSubtitles({
+        url: "https://x/1",
+        language: "en",
+        outputDir: os.tmpdir(),
+        cookiesFile: "/tmp/c.txt",
+      });
       expect(calls[0]?.slice(0, 2)).toEqual(["--cookies", "/tmp/c.txt"]);
     });
   });

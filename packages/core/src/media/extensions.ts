@@ -3,8 +3,20 @@
  * Shared by the renderer's drop filter and the main-process file picker so the two
  * entry points can never accept different sets. */
 export const MEDIA_EXTENSIONS = [
-  "mp4", "mkv", "webm", "mov", "avi", "m4v",
-  "mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "wma",
+  "mp4",
+  "mkv",
+  "webm",
+  "mov",
+  "avi",
+  "m4v",
+  "mp3",
+  "m4a",
+  "aac",
+  "wav",
+  "flac",
+  "ogg",
+  "opus",
+  "wma",
 ] as const;
 
 const ALLOWED = new Set<string>(MEDIA_EXTENSIONS);

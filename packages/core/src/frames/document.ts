@@ -22,7 +22,8 @@ export interface DocFrame {
   src: string;
 }
 
-export type Block = { kind: "text"; text: string } | { kind: "frame"; src: string; tsMs: number };
+export type Block =
+  { kind: "text"; text: string } | { kind: "frame"; src: string; tsMs: number };
 
 /** `12.5` s → `00:12` (or `1:02:03` past an hour). */
 function formatTs(seconds: number): string {
@@ -39,17 +40,29 @@ function formatTs(seconds: number): string {
  * transcript segments into a single paragraph (whisper emits ~one sentence per
  * segment). At an exact tie the slide comes after the narration at that moment.
  */
-export function buildDocumentBlocks(segments: DocSegment[], frames: DocFrame[]): Block[] {
+export function buildDocumentBlocks(
+  segments: DocSegment[],
+  frames: DocFrame[],
+): Block[] {
   const timeline: { t: number; order: number; block: Block }[] = [
-    ...segments.map((s) => ({ t: s.start, order: 0, block: { kind: "text", text: s.text } as Block })),
-    ...frames.map((f) => ({ t: f.tsMs / 1000, order: 1, block: { kind: "frame", src: f.src, tsMs: f.tsMs } as Block })),
+    ...segments.map((s) => ({
+      t: s.start,
+      order: 0,
+      block: { kind: "text", text: s.text } as Block,
+    })),
+    ...frames.map((f) => ({
+      t: f.tsMs / 1000,
+      order: 1,
+      block: { kind: "frame", src: f.src, tsMs: f.tsMs } as Block,
+    })),
   ];
   timeline.sort((a, b) => a.t - b.t || a.order - b.order);
 
   const out: Block[] = [];
   for (const { block } of timeline) {
     const last = out[out.length - 1];
-    if (block.kind === "text" && last?.kind === "text") last.text = `${last.text} ${block.text}`.trim();
+    if (block.kind === "text" && last?.kind === "text")
+      last.text = `${last.text} ${block.text}`.trim();
     else out.push(block.kind === "text" ? { ...block } : block);
   }
   return out;
@@ -60,7 +73,10 @@ export function buildDocumentBlocks(segments: DocSegment[], frames: DocFrame[]):
  * placeholders (1-indexed), returning the slide blocks in marker order so `fromMarkeredOutput`
  * can map each marker back to its image. This whole string is what the distillation model sees.
  */
-export function toMarkeredTranscript(blocks: Block[]): { text: string; slides: Block[] } {
+export function toMarkeredTranscript(blocks: Block[]): {
+  text: string;
+  slides: Block[];
+} {
   const slides: Block[] = [];
   const parts: string[] = [];
   for (const b of blocks) {
@@ -98,7 +114,8 @@ export function fromMarkeredOutput(output: string, slides: Block[]): Block[] {
   }
   const tail = output.slice(last).trim();
   if (tail) out.push({ kind: "text", text: tail });
-  for (let i = 0; i < slides.length; i++) if (!used.has(i)) out.push(slides[i]!);
+  for (let i = 0; i < slides.length; i++)
+    if (!used.has(i)) out.push(slides[i]!);
   return out;
 }
 
@@ -115,7 +132,10 @@ export function renderMarkdownBlocks(title: string, blocks: Block[]): string {
   const parts = [`# ${title}`];
   for (const b of blocks) {
     if (b.kind === "text") parts.push(b.text);
-    else parts.push(`![slide ${formatTs(b.tsMs / 1000)}](${b.src})\n\n*${formatTs(b.tsMs / 1000)}*`);
+    else
+      parts.push(
+        `![slide ${formatTs(b.tsMs / 1000)}](${b.src})\n\n*${formatTs(b.tsMs / 1000)}*`,
+      );
   }
   return `${parts.join("\n\n")}\n`;
 }
@@ -140,7 +160,10 @@ export function markdownToHtml(md: string): string {
     para = [];
   };
   const flushList = () => {
-    if (list.length) html.push(`<ul>${list.map((li) => `<li>${inlineMd(li)}</li>`).join("")}</ul>`);
+    if (list.length)
+      html.push(
+        `<ul>${list.map((li) => `<li>${inlineMd(li)}</li>`).join("")}</ul>`,
+      );
     list = [];
   };
   for (const raw of md.split(/\r?\n/)) {
@@ -205,11 +228,19 @@ ${body}
 }
 
 /** Raw (no-AI) Markdown document: interleaves segments + slides by timestamp. */
-export function renderMarkdownDocument(title: string, segments: DocSegment[], frames: DocFrame[]): string {
+export function renderMarkdownDocument(
+  title: string,
+  segments: DocSegment[],
+  frames: DocFrame[],
+): string {
   return renderMarkdownBlocks(title, buildDocumentBlocks(segments, frames));
 }
 
 /** Raw (no-AI) HTML document (feeds Electron printToPDF). */
-export function renderHtmlDocument(title: string, segments: DocSegment[], frames: DocFrame[]): string {
+export function renderHtmlDocument(
+  title: string,
+  segments: DocSegment[],
+  frames: DocFrame[],
+): string {
   return renderHtmlBlocks(title, buildDocumentBlocks(segments, frames));
 }

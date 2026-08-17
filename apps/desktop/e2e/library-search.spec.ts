@@ -19,7 +19,9 @@ test("search filters the library and shows a snippet", async () => {
     // 1. Home → download two rows via distinct source_urls (mirrors tags.spec.ts's
     // two-row setup: the fixture yt-dlp stub reports identical canned metadata for
     // any URL, so a distinct source_url is what makes these two separate media rows).
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();
@@ -31,7 +33,9 @@ test("search filters the library and shows a snippet", async () => {
     await expect(window.getByTestId("library-row")).toHaveCount(1);
     await window.getByRole("button", { name: "Home" }).click();
 
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture-second");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture-second");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();
@@ -45,7 +49,9 @@ test("search filters the library and shows a snippet", async () => {
     // has no require/dynamic-import, and this repo's better-sqlite3 is built against
     // Electron's Node ABI, so a plain Node process can't load it either). No app source
     // is touched — this only opens the app's own sqlite file from outside it.
-    const userDataPath = await app.evaluate(({ app: electronApp }) => electronApp.getPath("userData"));
+    const userDataPath = await app.evaluate(({ app: electronApp }) =>
+      electronApp.getPath("userData"),
+    );
     execFileSync(
       electronBinaryPath as unknown as string,
       [

@@ -1,6 +1,7 @@
 import type { TranscriptSegment } from "./types";
 
-const CUE_RE = /^(\d{2}:)?\d{2}:\d{2}[.,]\d{3}\s+-->\s+(\d{2}:)?\d{2}:\d{2}[.,]\d{3}/;
+const CUE_RE =
+  /^(\d{2}:)?\d{2}:\d{2}[.,]\d{3}\s+-->\s+(\d{2}:)?\d{2}:\d{2}[.,]\d{3}/;
 
 function toSeconds(ts: string): number {
   // HH:MM:SS.mmm or MM:SS.mmm ; comma or dot decimal
@@ -19,7 +20,10 @@ export function parseVtt(vtt: string): TranscriptSegment[] {
   const segments: TranscriptSegment[] = [];
   const blocks = vtt.replace(/\r\n/g, "\n").split(/\n\n+/);
   for (const block of blocks) {
-    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    const lines = block
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
     const timeIdx = lines.findIndex((l) => CUE_RE.test(l));
     if (timeIdx < 0) continue;
     const cueLine = lines[timeIdx];

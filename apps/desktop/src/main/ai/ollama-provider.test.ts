@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { OLLAMA_ID, createOllamaProvider, parseOllamaChunks } from "./ollama-provider";
+import {
+  OLLAMA_ID,
+  createOllamaProvider,
+  parseOllamaChunks,
+} from "./ollama-provider";
 
 /** Builds a fake `Response`-like object whose `body.getReader()` streams the given text
  *  as a sequence of `Uint8Array` chunks (one chunk per array entry), matching the
@@ -7,7 +11,10 @@ import { OLLAMA_ID, createOllamaProvider, parseOllamaChunks } from "./ollama-pro
 function fakeStreamResponse(
   ok: boolean,
   chunks: string[],
-): { ok: boolean; body: { getReader(): ReadableStreamDefaultReader<Uint8Array> } } {
+): {
+  ok: boolean;
+  body: { getReader(): ReadableStreamDefaultReader<Uint8Array> };
+} {
   const encoder = new TextEncoder();
   let i = 0;
   const reader = {
@@ -29,7 +36,8 @@ function fakeStreamResponse(
 
 describe("parseOllamaChunks", () => {
   it("parses complete newline-terminated NDJSON lines", () => {
-    const text = '{"message":{"content":"Hi "},"done":false}\n{"message":{"content":"there"},"done":true}\n';
+    const text =
+      '{"message":{"content":"Hi "},"done":false}\n{"message":{"content":"there"},"done":true}\n';
     expect(parseOllamaChunks(text)).toEqual([
       { content: "Hi ", done: false },
       { content: "there", done: true },
@@ -37,7 +45,8 @@ describe("parseOllamaChunks", () => {
   });
 
   it("ignores blank lines", () => {
-    const text = '{"message":{"content":"Hi "},"done":false}\n\n{"message":{"content":"there"},"done":true}\n';
+    const text =
+      '{"message":{"content":"Hi "},"done":false}\n\n{"message":{"content":"there"},"done":true}\n';
     expect(parseOllamaChunks(text)).toEqual([
       { content: "Hi ", done: false },
       { content: "there", done: true },
@@ -45,7 +54,8 @@ describe("parseOllamaChunks", () => {
   });
 
   it("does not parse a trailing partial line without a newline", () => {
-    const text = '{"message":{"content":"Hi "},"done":false}\n{"message":{"content":"partial"';
+    const text =
+      '{"message":{"content":"Hi "},"done":false}\n{"message":{"content":"partial"';
     expect(parseOllamaChunks(text)).toEqual([{ content: "Hi ", done: false }]);
   });
 
@@ -61,7 +71,9 @@ describe("parseOllamaChunks", () => {
 
 describe("ollama provider", () => {
   it("exposes id, label, needsKey=false, and the injected model list (falling back to default)", () => {
-    const provider = createOllamaProvider({ fetchImpl: async () => fakeStreamResponse(true, []) as never });
+    const provider = createOllamaProvider({
+      fetchImpl: async () => fakeStreamResponse(true, []) as never,
+    });
 
     expect(provider.id).toBe(OLLAMA_ID);
     expect(provider.label).toBe("Ollama (local)");
@@ -142,7 +154,9 @@ describe("ollama provider", () => {
       baseUrl: "http://192.168.1.5:11434",
       fetchImpl: (async (url: string) => {
         calls.push(url);
-        return fakeStreamResponse(true, ['{"message":{"content":"x"},"done":true}\n']) as never;
+        return fakeStreamResponse(true, [
+          '{"message":{"content":"x"},"done":true}\n',
+        ]) as never;
       }) as typeof fetch,
     });
 
@@ -160,8 +174,13 @@ describe("ollama provider", () => {
     });
 
     await expect(
-      provider.summarize({ model: "llama3.1", systemPrompt: "S", content: "C", maxTokens: 4096 }, () => {}),
-    ).rejects.toThrow("Could not reach Ollama at http://localhost:11434. Is it running?");
+      provider.summarize(
+        { model: "llama3.1", systemPrompt: "S", content: "C", maxTokens: 4096 },
+        () => {},
+      ),
+    ).rejects.toThrow(
+      "Could not reach Ollama at http://localhost:11434. Is it running?",
+    );
   });
 
   it("throws a clear error on a connection error (fetch rejects)", async () => {
@@ -172,7 +191,12 @@ describe("ollama provider", () => {
     });
 
     await expect(
-      provider.summarize({ model: "llama3.1", systemPrompt: "S", content: "C", maxTokens: 4096 }, () => {}),
-    ).rejects.toThrow("Could not reach Ollama at http://localhost:11434. Is it running?");
+      provider.summarize(
+        { model: "llama3.1", systemPrompt: "S", content: "C", maxTokens: 4096 },
+        () => {},
+      ),
+    ).rejects.toThrow(
+      "Could not reach Ollama at http://localhost:11434. Is it running?",
+    );
   });
 });

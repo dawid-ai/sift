@@ -1,6 +1,10 @@
 import type { BrowserWindow } from "electron";
 import { ipcMain } from "electron";
-import { IPC, type DownloadOption, type MediaMetadata } from "@sift/ipc-contract";
+import {
+  IPC,
+  type DownloadOption,
+  type MediaMetadata,
+} from "@sift/ipc-contract";
 import type { DownloadService } from "../services/download-service";
 
 /**

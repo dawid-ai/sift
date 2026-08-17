@@ -10,12 +10,19 @@ describe("highlightSegments", () => {
     ]);
   });
   it("returns one unmarked segment when absent", () => {
-    expect(highlightSegments("nothing here", "zzz")).toEqual([{ text: "nothing here", match: false }]);
+    expect(highlightSegments("nothing here", "zzz")).toEqual([
+      { text: "nothing here", match: false },
+    ]);
   });
   it("handles regex-special chars literally", () => {
-    expect(highlightSegments("a.b.c", ".")).toContainEqual({ text: ".", match: true });
+    expect(highlightSegments("a.b.c", ".")).toContainEqual({
+      text: ".",
+      match: true,
+    });
   });
   it("empty query → single unmarked", () => {
-    expect(highlightSegments("abc", "")).toEqual([{ text: "abc", match: false }]);
+    expect(highlightSegments("abc", "")).toEqual([
+      { text: "abc", match: false },
+    ]);
   });
 });

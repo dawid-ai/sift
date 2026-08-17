@@ -18,7 +18,9 @@ test("downloaded video renders an in-app player over sift-media", async () => {
     // (tiny decodable mp4) file to disk and DownloadService records a "done" download row
     // with that filePath — exactly what the in-app player needs to render a <video> instead
     // of the "Not downloaded yet" poster.
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
 
     const previewCard = window.getByTestId("preview-card");
     await expect(previewCard).toBeVisible();

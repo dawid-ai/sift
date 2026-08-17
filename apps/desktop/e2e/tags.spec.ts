@@ -15,7 +15,9 @@ test("tag a video in detail → chip in Library → filter", async () => {
     const window = await app.firstWindow();
 
     // 1. Home → download first (soon-to-be-tagged) row.
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();
@@ -34,18 +36,24 @@ test("tag a video in detail → chip in Library → filter", async () => {
     const tagEditor = window.getByTestId("tag-editor");
     await tagEditor.getByTestId("tag-input").fill("Music");
     await tagEditor.getByTestId("tag-input").press("Enter");
-    await expect(tagEditor.getByTestId("tag-chip").filter({ hasText: "Music" })).toBeVisible();
+    await expect(
+      tagEditor.getByTestId("tag-chip").filter({ hasText: "Music" }),
+    ).toBeVisible();
 
     // 4. Back to Library; the row now shows the "Music" chip.
     await window.getByTestId("media-detail-back").click();
     await expect(libraryTable).toBeVisible();
-    await expect(libraryTable.getByTestId("tag-chip").filter({ hasText: "Music" })).toBeVisible();
+    await expect(
+      libraryTable.getByTestId("tag-chip").filter({ hasText: "Music" }),
+    ).toBeVisible();
 
     // 5. Seed a second, untagged row (distinct sourceUrl → distinct media row,
     // even though the fixture yt-dlp stub reports identical canned metadata) so the
     // filter assertion is meaningful: tagged vs untagged.
     await window.getByRole("button", { name: "Home" }).click();
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture-second");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture-second");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();
@@ -54,13 +62,20 @@ test("tag a video in detail → chip in Library → filter", async () => {
     await expect(libraryTable).toBeVisible();
     await expect(window.getByTestId("library-row")).toHaveCount(2);
     // Only the first row carries the chip.
-    await expect(libraryTable.getByTestId("tag-chip").filter({ hasText: "Music" })).toHaveCount(1);
+    await expect(
+      libraryTable.getByTestId("tag-chip").filter({ hasText: "Music" }),
+    ).toHaveCount(1);
 
     // 6. Click the chip in the filter bar → only the tagged row remains.
     const filterBar = window.getByTestId("tag-filter-bar");
-    await filterBar.getByTestId("tag-chip").filter({ hasText: "Music" }).click();
+    await filterBar
+      .getByTestId("tag-chip")
+      .filter({ hasText: "Music" })
+      .click();
     await expect(window.getByTestId("library-row")).toHaveCount(1);
-    await expect(libraryTable.getByTestId("tag-chip").filter({ hasText: "Music" })).toBeVisible();
+    await expect(
+      libraryTable.getByTestId("tag-chip").filter({ hasText: "Music" }),
+    ).toBeVisible();
 
     // 7. Clear the filter → the full list is restored.
     await window.getByTestId("tag-filter-clear").click();

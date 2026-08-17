@@ -26,11 +26,16 @@ describe("runMigrations", () => {
     // A migration that creates a table THEN fails on a bad statement. The fix must
     // roll the CREATE back, so a retry sees neither the table nor a recorded version.
     const poison = [
-      { version: 1, sql: "CREATE TABLE poison (x INTEGER); INSERT INTO nonexistent VALUES (1)" },
+      {
+        version: 1,
+        sql: "CREATE TABLE poison (x INTEGER); INSERT INTO nonexistent VALUES (1)",
+      },
     ];
     expect(() => runMigrations(db, poison)).toThrow();
     const tables = db
-      .prepare<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name='poison'")
+      .prepare<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='poison'",
+      )
       .all();
     expect(tables).toHaveLength(0); // rolled back
     const applied = db

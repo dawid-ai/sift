@@ -14,7 +14,9 @@ const NO_MODELS: AiProviderInfo["models"] = [];
  * kicks off a summary. */
 export function useAiPickers() {
   const [providers, setProviders] = useState<AiProviderInfo[]>(KNOWN_PROVIDERS);
-  const [defaultProviderId, setDefaultProviderId] = useState<string | null>(null);
+  const [defaultProviderId, setDefaultProviderId] = useState<string | null>(
+    null,
+  );
   // The user's persisted default provider+model (Settings), or null. Seeds the initial selection.
   const [userDefaultModel, setUserDefaultModel] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<PromptInfo[]>([]);
@@ -30,7 +32,9 @@ export function useAiPickers() {
         window.sift.aiProviders.getDefault(),
         Promise.all(
           KNOWN_PROVIDERS.map((p) =>
-            p.needsKey ? window.sift.aiProviders.keyStatus(p.id) : Promise.resolve(true),
+            p.needsKey
+              ? window.sift.aiProviders.keyStatus(p.id)
+              : Promise.resolve(true),
           ),
         ),
       ]);
@@ -38,12 +42,16 @@ export function useAiPickers() {
       setProviders(
         KNOWN_PROVIDERS.map((p) =>
           p.id === "custom" && customConfig
-            ? { ...p, models: [{ id: customConfig.model, label: customConfig.model }] }
+            ? {
+                ...p,
+                models: [{ id: customConfig.model, label: customConfig.model }],
+              }
             : p,
         ),
       );
       // The user's persisted default wins; otherwise the first keyed/available provider.
-      const firstAvailable = KNOWN_PROVIDERS.find((_, i) => keyFlags[i])?.id ?? null;
+      const firstAvailable =
+        KNOWN_PROVIDERS.find((_, i) => keyFlags[i])?.id ?? null;
       setDefaultProviderId(userDefault?.providerId ?? firstAvailable);
       setUserDefaultModel(userDefault?.model ?? null);
     }
@@ -57,7 +65,8 @@ export function useAiPickers() {
     window.sift.prompts.list().then(setPrompts);
   }, []);
 
-  const models = providers.find((p) => p.id === selectedProviderId)?.models ?? NO_MODELS;
+  const models =
+    providers.find((p) => p.id === selectedProviderId)?.models ?? NO_MODELS;
 
   useEffect(() => {
     if (!defaultProviderId) return;

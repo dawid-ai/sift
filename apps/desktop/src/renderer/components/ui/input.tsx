@@ -53,7 +53,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         // Disabled reads as disabled from its own token, not from a blanket opacity that
         // dimmed a live field and a dead one to indistinguishable greys.
         "disabled:cursor-not-allowed disabled:bg-surface-2/40 disabled:text-fg-disabled disabled:placeholder:text-fg-disabled",
-        (type === "date" || type === "datetime-local" || type === "month" || type === "time") &&
+        (type === "date" ||
+          type === "datetime-local" ||
+          type === "month" ||
+          type === "time") &&
           DATE_LIKE,
         type === "search" && SEARCH_LIKE,
         className,

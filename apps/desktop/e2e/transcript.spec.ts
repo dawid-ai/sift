@@ -14,7 +14,9 @@ test("Home → transcript (offline fixture) parses captions into the transcript 
   try {
     const window = await app.firstWindow();
 
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
 
     const previewCard = window.getByTestId("preview-card");
     await expect(previewCard).toBeVisible();
@@ -26,7 +28,9 @@ test("Home → transcript (offline fixture) parses captions into the transcript 
     const transcriptPanel = window.getByTestId("transcript-panel");
     await expect(transcriptPanel).toBeVisible();
 
-    const firstSegment = transcriptPanel.getByTestId("transcript-segment").first();
+    const firstSegment = transcriptPanel
+      .getByTestId("transcript-segment")
+      .first();
     await expect(firstSegment).toContainText("Fixture caption line one");
 
     await expect(window.getByTestId("transcript-error")).toHaveCount(0);

@@ -2,20 +2,39 @@ import { describe, expect, it, vi } from "vitest";
 import { createAuthManager, type ManagerCookie } from "./auth-manager";
 
 const jar: ManagerCookie[] = [
-  { domain: ".youtube.com", path: "/", secure: true, expirationDate: 4102444800, name: "SID", value: "v" },
-  { domain: "accounts.google.com", path: "/", secure: true, name: "GAPS", value: "g" },
+  {
+    domain: ".youtube.com",
+    path: "/",
+    secure: true,
+    expirationDate: 4102444800,
+    name: "SID",
+    value: "v",
+  },
+  {
+    domain: "accounts.google.com",
+    path: "/",
+    secure: true,
+    name: "GAPS",
+    value: "g",
+  },
   { domain: ".vimeo.com", path: "/", secure: true, name: "vuid", value: "z" },
 ];
 
-function makeManager(over: Partial<Parameters<typeof createAuthManager>[0]> = {}) {
+function makeManager(
+  over: Partial<Parameters<typeof createAuthManager>[0]> = {},
+) {
   const writes: Record<string, string> = {};
   const removedDomains: string[] = [];
   const mgr = createAuthManager({
     readAllCookies: async () => jar,
-    removeCookiesForDomain: async (d) => { removedDomains.push(d); },
+    removeCookiesForDomain: async (d) => {
+      removedDomains.push(d);
+    },
     openBrowser: async () => {},
     cookiesPath: () => "/cookies/auth.txt",
-    writeFile: (p, data) => { writes[p] = data; },
+    writeFile: (p, data) => {
+      writes[p] = data;
+    },
     removeFile: () => {},
     ...over,
   });
@@ -26,7 +45,11 @@ describe("auth manager (generic)", () => {
   it("listSites groups cookies by registrable domain, deduped + sorted", async () => {
     const { mgr } = makeManager();
     const sites = await mgr.listSites();
-    expect(sites.map((s) => s.domain)).toEqual(["google.com", "vimeo.com", "youtube.com"]);
+    expect(sites.map((s) => s.domain)).toEqual([
+      "google.com",
+      "vimeo.com",
+      "youtube.com",
+    ]);
     expect(sites.every((s) => s.expired === false)).toBe(true);
   });
 
@@ -48,7 +71,9 @@ describe("auth manager (generic)", () => {
       openBrowser: async () => {},
       cookiesPath: () => "/cookies/auth.txt",
       writeFile: () => {},
-      removeFile: (p) => { removed.push(p); },
+      removeFile: (p) => {
+        removed.push(p);
+      },
     });
     expect(await mgr.cookiesFileForUrl("https://www.youtube.com/x")).toBeNull();
     expect(removed).toEqual(["/cookies/auth.txt"]); // no lingering session tokens on disk

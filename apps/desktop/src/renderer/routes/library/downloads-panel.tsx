@@ -1,15 +1,29 @@
 import { Download, FolderOpen, RotateCcw } from "lucide-react";
 import { LOCAL_FORMAT_ID } from "@sift/core";
-import type { DownloadProgress, DownloadRecord, MediaDetail } from "@sift/ipc-contract";
+import type {
+  DownloadProgress,
+  DownloadRecord,
+  MediaDetail,
+} from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 // Downloads is one section of the Files tab, so it renders the Files tab's row — imported, not
 // re-typed. The two lists had drifted into different paddings, different leading chips and
 // different orderings of the same two parts while claiming to be one list.
-import { Caption, EMPTY_CHIP, EMPTY_ROW, ROW_BOX, ROW_CHIP_BOX, ROW_SURFACE } from "./files-panel";
+import {
+  Caption,
+  EMPTY_CHIP,
+  EMPTY_ROW,
+  ROW_BOX,
+  ROW_CHIP_BOX,
+  ROW_SURFACE,
+} from "./files-panel";
 
 /** `done` is deliberately absent — see `statusLabel`. */
-const STATUS_LABEL: Record<Exclude<DownloadRecord["status"], "done">, string> = {
+const STATUS_LABEL: Record<
+  Exclude<DownloadRecord["status"], "done">,
+  string
+> = {
   downloading: "Downloading…",
   error: "Failed",
 };
@@ -21,13 +35,17 @@ const STATUS_LABEL: Record<Exclude<DownloadRecord["status"], "done">, string> = 
  * the filename needed. An *imported* local file is the one `done` that is not the default: it
  * was never fetched, and removing it won't delete it, so it keeps its word. */
 function statusLabel(d: DownloadRecord): string | null {
-  if (d.status === "done") return d.formatId === LOCAL_FORMAT_ID ? "Imported" : null;
+  if (d.status === "done")
+    return d.formatId === LOCAL_FORMAT_ID ? "Imported" : null;
   return STATUS_LABEL[d.status];
 }
 
 /** Status hue: a finished file is success, an in-flight one is a media action (amber),
  * a failure is danger. The pill always carries the word too — never colour alone. */
-const STATUS_VARIANT: Record<DownloadRecord["status"], "success" | "default" | "danger"> = {
+const STATUS_VARIANT: Record<
+  DownloadRecord["status"],
+  "success" | "default" | "danger"
+> = {
   done: "success",
   downloading: "default",
   error: "danger",
@@ -72,13 +90,17 @@ export function DownloadsPanel({
             key={d.id}
             data-testid="media-detail-download"
             className={`${ROW_BOX} text-sm ${
-              d.status === "error" ? "border-danger/30 bg-danger/[0.07]" : ROW_SURFACE
+              d.status === "error"
+                ? "border-danger/30 bg-danger/[0.07]"
+                : ROW_SURFACE
             }`}
           >
             <span
               aria-hidden
               className={`${ROW_CHIP_BOX} ${
-                d.status === "error" ? "bg-danger/12 text-danger" : "bg-white/[0.05] text-foreground/50"
+                d.status === "error"
+                  ? "bg-danger/12 text-danger"
+                  : "bg-white/[0.05] text-foreground/50"
               }`}
             >
               <Download />
@@ -114,7 +136,9 @@ export function DownloadsPanel({
                       variant="ghost"
                       className={GHOST_BUTTON}
                       data-testid="media-detail-download-reveal"
-                      onClick={() => void window.sift.library.reveal(d.filePath!)}
+                      onClick={() =>
+                        void window.sift.library.reveal(d.filePath!)
+                      }
                     >
                       <FolderOpen className="h-3.5 w-3.5" aria-hidden />
                       Open
@@ -156,7 +180,10 @@ export function DownloadsPanel({
                   </Badge>
                 )}
                 {status && (
-                  <Badge variant={STATUS_VARIANT[d.status]} className="flex-none">
+                  <Badge
+                    variant={STATUS_VARIANT[d.status]}
+                    className="flex-none"
+                  >
                     {status}
                   </Badge>
                 )}
@@ -191,7 +218,9 @@ export function DownloadsPanel({
       {downloadingFormat && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
           <div className="mb-2 flex items-baseline justify-between gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">Downloading</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">
+              Downloading
+            </span>
             <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
               {pct === null ? "Starting…" : `${pct}%`}
             </span>

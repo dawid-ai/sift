@@ -55,7 +55,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function SelectShell({ className, children }: { className?: string; children: ReactNode }) {
+function SelectShell({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <div className={`relative ${className ?? ""}`}>
       {children}
@@ -121,7 +127,11 @@ function OpToggle({
 
 /** The format-preference + op-toggle controls shared by the Queue page and Channel detail.
  * Calls `onChange` with the current QueueSpec whenever a control changes. */
-export function QueueSpecControls({ onChange }: { onChange: (spec: QueueSpec) => void }) {
+export function QueueSpecControls({
+  onChange,
+}: {
+  onChange: (spec: QueueSpec) => void;
+}) {
   const [formatKind, setFormatKind] = useState<"best" | "audio">("best");
   const [maxRes, setMaxRes] = useState("");
   const [wantTranscript, setWantTranscript] = useState(false);
@@ -131,20 +141,35 @@ export function QueueSpecControls({ onChange }: { onChange: (spec: QueueSpec) =>
   const ai = useAiPickers();
 
   useEffect(() => {
-    window.sift.tags.listAll().then((rows) => setAllTags(rows.map((r) => r.name)));
+    window.sift.tags
+      .listAll()
+      .then((rows) => setAllTags(rows.map((r) => r.name)));
   }, []);
 
   // Tag suggestions: existing tags matching the text after the last comma, minus ones already typed.
-  const enteredTags = tagsInput.split(",").map((s) => s.trim()).filter(Boolean);
+  const enteredTags = tagsInput
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const lastToken = tagsInput.slice(tagsInput.lastIndexOf(",") + 1).trim();
   // Display-only: everything before the final comma is "committed" and renders as a chip, so
   // the token you're still typing stays in the caret's line instead of doubling up as a chip.
   const commaAt = tagsInput.lastIndexOf(",");
   const committedTags =
-    commaAt >= 0 ? tagsInput.slice(0, commaAt).split(",").map((s) => s.trim()).filter(Boolean) : [];
+    commaAt >= 0
+      ? tagsInput
+          .slice(0, commaAt)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
   const tagSuggestions = lastToken
     ? allTags
-        .filter((n) => n.toLowerCase().includes(lastToken.toLowerCase()) && !enteredTags.some((t) => t.toLowerCase() === n.toLowerCase()))
+        .filter(
+          (n) =>
+            n.toLowerCase().includes(lastToken.toLowerCase()) &&
+            !enteredTags.some((t) => t.toLowerCase() === n.toLowerCase()),
+        )
         .slice(0, 6)
     : [];
   function pickTag(name: string) {
@@ -155,21 +180,42 @@ export function QueueSpecControls({ onChange }: { onChange: (spec: QueueSpec) =>
 
   useEffect(() => {
     const summarize: QueueSpec["summarize"] =
-      wantSummarize && ai.selectedProviderId && ai.selectedModel && ai.selectedPromptId !== ""
-        ? { providerId: ai.selectedProviderId, model: ai.selectedModel, promptId: Number(ai.selectedPromptId) }
+      wantSummarize &&
+      ai.selectedProviderId &&
+      ai.selectedModel &&
+      ai.selectedPromptId !== ""
+        ? {
+            providerId: ai.selectedProviderId,
+            model: ai.selectedModel,
+            promptId: Number(ai.selectedPromptId),
+          }
         : null;
     const tags = tagsInput
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
     onChange({
-      format: { kind: formatKind === "audio" ? "audio" : "video", maxHeight: maxRes ? Number(maxRes) : null, mp4: true },
+      format: {
+        kind: formatKind === "audio" ? "audio" : "video",
+        maxHeight: maxRes ? Number(maxRes) : null,
+        mp4: true,
+      },
       download: true,
       transcript: wantTranscript,
       summarize,
       tags,
     });
-  }, [formatKind, maxRes, wantTranscript, wantSummarize, tagsInput, ai.selectedProviderId, ai.selectedModel, ai.selectedPromptId, onChange]);
+  }, [
+    formatKind,
+    maxRes,
+    wantTranscript,
+    wantSummarize,
+    tagsInput,
+    ai.selectedProviderId,
+    ai.selectedModel,
+    ai.selectedPromptId,
+    onChange,
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -183,7 +229,9 @@ export function QueueSpecControls({ onChange }: { onChange: (spec: QueueSpec) =>
               data-testid="queue-format"
               className={SELECT}
               value={formatKind}
-              onChange={(e) => setFormatKind(e.target.value as "best" | "audio")}
+              onChange={(e) =>
+                setFormatKind(e.target.value as "best" | "audio")
+              }
             >
               <option value="best">Video &amp; Audio</option>
               <option value="audio">Audio only</option>
@@ -285,22 +333,50 @@ export function QueueSpecControls({ onChange }: { onChange: (spec: QueueSpec) =>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Provider">
               <SelectShell>
-                <select className={SELECT} value={ai.selectedProviderId} onChange={(e) => ai.setSelectedProviderId(e.target.value)}>
-                  {ai.providers.map((p) => (<option key={p.id} value={p.id}>{p.label}</option>))}
+                <select
+                  className={SELECT}
+                  value={ai.selectedProviderId}
+                  onChange={(e) => ai.setSelectedProviderId(e.target.value)}
+                >
+                  {ai.providers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
                 </select>
               </SelectShell>
             </Field>
             <Field label="Model">
               <SelectShell>
-                <select className={SELECT} value={ai.selectedModel} onChange={(e) => ai.setSelectedModel(e.target.value)}>
-                  {ai.models.map((m) => (<option key={m.id} value={m.id}>{m.label}</option>))}
+                <select
+                  className={SELECT}
+                  value={ai.selectedModel}
+                  onChange={(e) => ai.setSelectedModel(e.target.value)}
+                >
+                  {ai.models.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
                 </select>
               </SelectShell>
             </Field>
             <Field label="Prompt">
               <SelectShell>
-                <select className={SELECT} value={ai.selectedPromptId} onChange={(e) => ai.setSelectedPromptId(e.target.value === "" ? "" : Number(e.target.value))}>
-                  {ai.prompts.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+                <select
+                  className={SELECT}
+                  value={ai.selectedPromptId}
+                  onChange={(e) =>
+                    ai.setSelectedPromptId(
+                      e.target.value === "" ? "" : Number(e.target.value),
+                    )
+                  }
+                >
+                  {ai.prompts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
                 </select>
               </SelectShell>
             </Field>

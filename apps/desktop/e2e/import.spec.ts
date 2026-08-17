@@ -44,10 +44,12 @@ test("importing a local file lands it in the library with a transcript", async (
     // "transcript-panel"/"transcript-segment" only exist on the Home page's transcript
     // flow (see transcript.spec.ts); this view has no wrapping panel testid and names
     // each row "media-detail-transcript-segment" (routes/library/transcript-panel.tsx).
-    await expect(window.getByTestId("media-detail-get-transcript")).toBeVisible();
-    await expect(window.getByTestId("media-detail-transcript-segment").first()).toContainText(
-      "Fixture whisper line one",
-    );
+    await expect(
+      window.getByTestId("media-detail-get-transcript"),
+    ).toBeVisible();
+    await expect(
+      window.getByTestId("media-detail-transcript-segment").first(),
+    ).toContainText("Fixture whisper line one");
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });

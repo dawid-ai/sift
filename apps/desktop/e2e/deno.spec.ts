@@ -23,11 +23,15 @@ test("Settings → Binaries: Deno offline install flips the card to Installed", 
 
     const denoRow = window.getByTestId("binary-deno");
     await expect(denoRow).toBeVisible();
-    await expect(window.getByTestId("binary-deno-version")).toHaveText("Not installed");
+    await expect(window.getByTestId("binary-deno-version")).toHaveText(
+      "Not installed",
+    );
 
     await denoRow.getByRole("button", { name: "Install" }).click();
 
-    await expect(window.getByTestId("binary-deno-version")).toHaveText("Installed: 9.9.9");
+    await expect(window.getByTestId("binary-deno-version")).toHaveText(
+      "Installed: 9.9.9",
+    );
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });

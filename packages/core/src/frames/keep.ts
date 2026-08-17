@@ -15,7 +15,10 @@ export interface KeepFrameOptions {
 // upgrade path is a VLM classifier behind the same boolean when OCR proves too shallow.
 export const KEEP_FRAME_DEFAULTS = { minWords: 5, minConfidence: 60 } as const;
 
-export function isDataFrame(ocr: FrameOcr, opts: KeepFrameOptions = {}): boolean {
+export function isDataFrame(
+  ocr: FrameOcr,
+  opts: KeepFrameOptions = {},
+): boolean {
   const minWords = opts.minWords ?? KEEP_FRAME_DEFAULTS.minWords;
   const minConfidence = opts.minConfidence ?? KEEP_FRAME_DEFAULTS.minConfidence;
   return ocr.wordCount >= minWords && ocr.meanConfidence >= minConfidence;

@@ -20,12 +20,12 @@ const YTDLP_SUMS =
 function fakeYtdlpFetch(): typeof fetch {
   return (async (url: string | URL, init?: RequestInit) => {
     const u = String(url);
-    expect((init?.headers as Record<string, string> | undefined)?.["User-Agent"]).toBe(
-      "sift-app",
-    );
-    expect((init?.headers as Record<string, string> | undefined)?.["Accept"]).toBe(
-      "application/vnd.github+json",
-    );
+    expect(
+      (init?.headers as Record<string, string> | undefined)?.["User-Agent"],
+    ).toBe("sift-app");
+    expect(
+      (init?.headers as Record<string, string> | undefined)?.["Accept"],
+    ).toBe("application/vnd.github+json");
     if (u.includes("releases/latest")) {
       return new Response(JSON.stringify(YTDLP_RELEASE), { status: 200 });
     }
@@ -87,9 +87,9 @@ const FFMPEG_CHECKSUMS =
 function fakeFfmpegFetch(): typeof fetch {
   return (async (url: string | URL, init?: RequestInit) => {
     const u = String(url);
-    expect((init?.headers as Record<string, string> | undefined)?.["User-Agent"]).toBe(
-      "sift-app",
-    );
+    expect(
+      (init?.headers as Record<string, string> | undefined)?.["User-Agent"],
+    ).toBe("sift-app");
     if (u.includes("releases/latest")) {
       return new Response(JSON.stringify(FFMPEG_RELEASE), { status: 200 });
     }
@@ -122,18 +122,33 @@ describe("ffmpegSource.resolveLatest", () => {
       published_at: "2024-09-01T12:49:00Z",
       assets: [
         ...FFMPEG_RELEASE.assets,
-        { name: "ffmpeg-n7.1-latest-win64-gpl-7.1.zip", browser_download_url: "https://gh/n7.zip" },
-        { name: "ffmpeg-n8.1-latest-win64-gpl-8.1.zip", browser_download_url: "https://gh/n8.zip" },
+        {
+          name: "ffmpeg-n7.1-latest-win64-gpl-7.1.zip",
+          browser_download_url: "https://gh/n7.zip",
+        },
+        {
+          name: "ffmpeg-n8.1-latest-win64-gpl-8.1.zip",
+          browser_download_url: "https://gh/n8.zip",
+        },
         // shared/lgpl variants must not win
-        { name: "ffmpeg-n8.1-latest-win64-gpl-shared-8.1.zip", browser_download_url: "https://gh/x" },
-        { name: "ffmpeg-n9.0-latest-win64-lgpl-9.0.zip", browser_download_url: "https://gh/x" },
+        {
+          name: "ffmpeg-n8.1-latest-win64-gpl-shared-8.1.zip",
+          browser_download_url: "https://gh/x",
+        },
+        {
+          name: "ffmpeg-n9.0-latest-win64-lgpl-9.0.zip",
+          browser_download_url: "https://gh/x",
+        },
       ],
     };
     const doFetch = (async (url: string | URL) => {
       const u = String(url);
-      if (u.includes("releases/latest")) return new Response(JSON.stringify(release), { status: 200 });
+      if (u.includes("releases/latest"))
+        return new Response(JSON.stringify(release), { status: 200 });
       if (u.includes("checksums.sha256")) {
-        return new Response("999zzz  ffmpeg-n8.1-latest-win64-gpl-8.1.zip\n", { status: 200 });
+        return new Response("999zzz  ffmpeg-n8.1-latest-win64-gpl-8.1.zip\n", {
+          status: 200,
+        });
       }
       throw new Error(`unexpected url ${u}`);
     }) as unknown as typeof fetch;

@@ -52,9 +52,11 @@ const api: SiftApi = {
     onUpdateEvent: (cb: (e: BinaryUpdateEvent) => void) => {
       const listener = (_: unknown, e: BinaryUpdateEvent) => cb(e);
       ipcRenderer.on(IPC.binariesUpdateEvent, listener);
-      return () => ipcRenderer.removeListener(IPC.binariesUpdateEvent, listener);
+      return () =>
+        ipcRenderer.removeListener(IPC.binariesUpdateEvent, listener);
     },
-    currentUpdateEvents: () => ipcRenderer.invoke(IPC.binariesCurrentUpdateEvent),
+    currentUpdateEvents: () =>
+      ipcRenderer.invoke(IPC.binariesCurrentUpdateEvent),
   },
   whisper: {
     status: () => ipcRenderer.invoke(IPC.whisperStatus),
@@ -90,25 +92,33 @@ const api: SiftApi = {
     listPage: (filter: MediaFilter, page: number, pageSize: number) =>
       ipcRenderer.invoke(IPC.libraryListPage, filter, page, pageSize),
     facets: () => ipcRenderer.invoke(IPC.libraryFacets),
-    listIds: (filter: MediaFilter) => ipcRenderer.invoke(IPC.libraryListIds, filter),
+    listIds: (filter: MediaFilter) =>
+      ipcRenderer.invoke(IPC.libraryListIds, filter),
     reveal: (path: string) => ipcRenderer.invoke(IPC.libraryReveal, path),
     remove: (id: number) => ipcRenderer.invoke(IPC.libraryRemove, id),
     detail: (id: number) => ipcRenderer.invoke(IPC.libraryDetail, id),
-    removeDownload: (id: number) => ipcRenderer.invoke(IPC.libraryRemoveDownload, id),
-    removeTranscript: (id: number) => ipcRenderer.invoke(IPC.libraryRemoveTranscript, id),
-    removeSummary: (id: number) => ipcRenderer.invoke(IPC.libraryRemoveSummary, id),
-    openExternal: (url: string) => ipcRenderer.invoke(IPC.libraryOpenExternal, url),
+    removeDownload: (id: number) =>
+      ipcRenderer.invoke(IPC.libraryRemoveDownload, id),
+    removeTranscript: (id: number) =>
+      ipcRenderer.invoke(IPC.libraryRemoveTranscript, id),
+    removeSummary: (id: number) =>
+      ipcRenderer.invoke(IPC.libraryRemoveSummary, id),
+    openExternal: (url: string) =>
+      ipcRenderer.invoke(IPC.libraryOpenExternal, url),
     search: (query: string) => ipcRenderer.invoke(IPC.librarySearch, query),
     exportPlaylist: (mediaIds: number[], name: string) =>
       ipcRenderer.invoke(IPC.libraryExportPlaylist, mediaIds, name),
   },
   tags: {
-    add: (mediaId: number, name: string) => ipcRenderer.invoke(IPC.tagsAdd, mediaId, name),
-    remove: (mediaId: number, name: string) => ipcRenderer.invoke(IPC.tagsRemove, mediaId, name),
+    add: (mediaId: number, name: string) =>
+      ipcRenderer.invoke(IPC.tagsAdd, mediaId, name),
+    remove: (mediaId: number, name: string) =>
+      ipcRenderer.invoke(IPC.tagsRemove, mediaId, name),
     listAll: () => ipcRenderer.invoke(IPC.tagsListAll),
   },
   settings: {
-    getTranscriptLanguages: () => ipcRenderer.invoke(IPC.settingsGetTranscriptLanguages),
+    getTranscriptLanguages: () =>
+      ipcRenderer.invoke(IPC.settingsGetTranscriptLanguages),
     setTranscriptLanguages: (langs: string[]) =>
       ipcRenderer.invoke(IPC.settingsSetTranscriptLanguages, langs),
   },
@@ -120,20 +130,24 @@ const api: SiftApi = {
   auth: {
     openBrowser: () => ipcRenderer.invoke(IPC.authOpenBrowser),
     listSites: () => ipcRenderer.invoke(IPC.authListSites),
-    removeSite: (domain: string) => ipcRenderer.invoke(IPC.authRemoveSite, domain),
+    removeSite: (domain: string) =>
+      ipcRenderer.invoke(IPC.authRemoveSite, domain),
   },
   queue: {
-    add: (urls: string[], spec: QueueSpec) => ipcRenderer.invoke(IPC.queueAdd, urls, spec),
+    add: (urls: string[], spec: QueueSpec) =>
+      ipcRenderer.invoke(IPC.queueAdd, urls, spec),
     list: () => ipcRenderer.invoke(IPC.queueList),
     remove: (id: number) => ipcRenderer.invoke(IPC.queueRemove, id),
-    reorder: (id: number, dir: "up" | "down") => ipcRenderer.invoke(IPC.queueReorder, id, dir),
+    reorder: (id: number, dir: "up" | "down") =>
+      ipcRenderer.invoke(IPC.queueReorder, id, dir),
     retry: (id: number) => ipcRenderer.invoke(IPC.queueRetry, id),
     cancel: (id: number) => ipcRenderer.invoke(IPC.queueCancel, id),
     pause: () => ipcRenderer.invoke(IPC.queuePause),
     resume: () => ipcRenderer.invoke(IPC.queueResume),
     isPaused: () => ipcRenderer.invoke(IPC.queueIsPaused),
     onUpdate: (cb: (items: QueueItem[]) => void) => {
-      const listener = (_event: IpcRendererEvent, items: QueueItem[]) => cb(items);
+      const listener = (_event: IpcRendererEvent, items: QueueItem[]) =>
+        cb(items);
       ipcRenderer.on(IPC.queueUpdate, listener);
       return () => ipcRenderer.removeListener(IPC.queueUpdate, listener);
     },
@@ -146,9 +160,12 @@ const api: SiftApi = {
     refreshAll: () => ipcRenderer.invoke(IPC.channelRefreshAll),
     listVideos: (id: number, query: ChannelVideosQuery) =>
       ipcRenderer.invoke(IPC.channelListVideos, id, query),
-    openForMedia: (mediaId: number) => ipcRenderer.invoke(IPC.channelOpenForMedia, mediaId),
-    videoStatuses: (urls: string[]) => ipcRenderer.invoke(IPC.channelVideoStatuses, urls),
-    downloadedMedia: (channelId: string) => ipcRenderer.invoke(IPC.channelDownloadedMedia, channelId),
+    openForMedia: (mediaId: number) =>
+      ipcRenderer.invoke(IPC.channelOpenForMedia, mediaId),
+    videoStatuses: (urls: string[]) =>
+      ipcRenderer.invoke(IPC.channelVideoStatuses, urls),
+    downloadedMedia: (channelId: string) =>
+      ipcRenderer.invoke(IPC.channelDownloadedMedia, channelId),
   },
   subscriptions: {
     list: () => ipcRenderer.invoke(IPC.subscriptionList),
@@ -157,15 +174,18 @@ const api: SiftApi = {
   transcript: {
     get: (input) => ipcRenderer.invoke(IPC.transcriptGet, input),
     onProgress: (cb: (p: TranscriptProgress) => void) => {
-      const listener = (_event: IpcRendererEvent, p: TranscriptProgress) => cb(p);
+      const listener = (_event: IpcRendererEvent, p: TranscriptProgress) =>
+        cb(p);
       ipcRenderer.on(IPC.transcriptProgress, listener);
       return () => ipcRenderer.removeListener(IPC.transcriptProgress, listener);
     },
     getMethod: () => ipcRenderer.invoke(IPC.transcriptGetMethod),
     setMethod: (m) => ipcRenderer.invoke(IPC.transcriptSetMethod, m),
     getAutoDownload: () => ipcRenderer.invoke(IPC.transcriptGetAutoDownload),
-    setAutoDownload: (enabled: boolean) => ipcRenderer.invoke(IPC.transcriptSetAutoDownload, enabled),
-    exportSrt: (transcriptId: number) => ipcRenderer.invoke(IPC.transcriptExportSrt, transcriptId),
+    setAutoDownload: (enabled: boolean) =>
+      ipcRenderer.invoke(IPC.transcriptSetAutoDownload, enabled),
+    exportSrt: (transcriptId: number) =>
+      ipcRenderer.invoke(IPC.transcriptExportSrt, transcriptId),
   },
   summarize: {
     start: (input) => ipcRenderer.invoke(IPC.summarizeStart, input),
@@ -178,27 +198,37 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.summarizeExport, summaryId),
   },
   frames: {
-    extract: (mediaId: number, opts?: { classifierModel?: string; fullScreenOnly?: boolean }) =>
-      ipcRenderer.invoke(IPC.framesExtract, mediaId, opts),
+    extract: (
+      mediaId: number,
+      opts?: { classifierModel?: string; fullScreenOnly?: boolean },
+    ) => ipcRenderer.invoke(IPC.framesExtract, mediaId, opts),
     list: (mediaId: number) => ipcRenderer.invoke(IPC.framesList, mediaId),
-    capture: (mediaId: number, tsMs: number) => ipcRenderer.invoke(IPC.framesCapture, mediaId, tsMs),
+    capture: (mediaId: number, tsMs: number) =>
+      ipcRenderer.invoke(IPC.framesCapture, mediaId, tsMs),
     setIncluded: (frameId: number, included: boolean) =>
       ipcRenderer.invoke(IPC.framesSetIncluded, frameId, included),
-    getCrop: (mediaId: number) => ipcRenderer.invoke(IPC.framesGetCrop, mediaId),
+    getCrop: (mediaId: number) =>
+      ipcRenderer.invoke(IPC.framesGetCrop, mediaId),
     setCrop: (mediaId: number, crop: FrameCrop | null) =>
       ipcRenderer.invoke(IPC.framesSetCrop, mediaId, crop),
-    export: (mediaId: number, format: "md" | "pdf", polish?: { providerId: string; model: string }) =>
-      ipcRenderer.invoke(IPC.framesExport, mediaId, format, polish),
-    saveSelected: (mediaId: number) => ipcRenderer.invoke(IPC.framesSaveSelected, mediaId),
+    export: (
+      mediaId: number,
+      format: "md" | "pdf",
+      polish?: { providerId: string; model: string },
+    ) => ipcRenderer.invoke(IPC.framesExport, mediaId, format, polish),
+    saveSelected: (mediaId: number) =>
+      ipcRenderer.invoke(IPC.framesSaveSelected, mediaId),
     onProgress: (cb: (p: FrameProgress) => void) => {
       const listener = (_event: IpcRendererEvent, p: FrameProgress) => cb(p);
       ipcRenderer.on(IPC.framesProgress, listener);
       return () => ipcRenderer.removeListener(IPC.framesProgress, listener);
     },
     onExportProgress: (cb: (p: FrameExportProgress) => void) => {
-      const listener = (_event: IpcRendererEvent, p: FrameExportProgress) => cb(p);
+      const listener = (_event: IpcRendererEvent, p: FrameExportProgress) =>
+        cb(p);
       ipcRenderer.on(IPC.framesExportProgress, listener);
-      return () => ipcRenderer.removeListener(IPC.framesExportProgress, listener);
+      return () =>
+        ipcRenderer.removeListener(IPC.framesExportProgress, listener);
     },
   },
   prompts: {

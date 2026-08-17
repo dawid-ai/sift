@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   CalendarRange,
   ChevronDown,
@@ -84,7 +90,10 @@ function LibraryHeader({ meta }: { meta?: ReactNode }) {
 function HeaderStat({ value, label }: { value: number; label: string }) {
   return (
     <span className="whitespace-nowrap">
-      <span className="font-semibold tabular-nums text-foreground">{value}</span> {label}
+      <span className="font-semibold tabular-nums text-foreground">
+        {value}
+      </span>{" "}
+      {label}
     </span>
   );
 }
@@ -154,7 +163,10 @@ function gridGhosts(count: number): string[] {
   const most = Math.max(0, ...GRID_STEPS.map((s) => needed(s.cols)));
   return Array.from({ length: most }, (_, i) =>
     // Base is one column, which never needs a filler.
-    ["hidden", ...GRID_STEPS.map((s) => (needed(s.cols) > i ? s.on : s.off))].join(" "),
+    [
+      "hidden",
+      ...GRID_STEPS.map((s) => (needed(s.cols) > i ? s.on : s.off)),
+    ].join(" "),
   );
 }
 
@@ -213,8 +225,10 @@ function parseDay(iso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-const dayLabel = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-const monthLabel = (d: Date) => d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+const dayLabel = (d: Date) =>
+  d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const monthLabel = (d: Date) =>
+  d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
 const WEEKDAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -258,7 +272,9 @@ function DateRangeFilter({
   onTo: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(() => startOfMonth(parseDay(from) || new Date()));
+  const [month, setMonth] = useState(() =>
+    startOfMonth(parseDay(from) || new Date()),
+  );
 
   const start = parseDay(from);
   const end = parseDay(to);
@@ -284,10 +300,17 @@ function DateRangeFilter({
   }
 
   const lead = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
-  const length = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const length = new Date(
+    month.getFullYear(),
+    month.getMonth() + 1,
+    0,
+  ).getDate();
   const cells: (Date | null)[] = [
     ...Array.from({ length: lead }, () => null),
-    ...Array.from({ length }, (_, i) => new Date(month.getFullYear(), month.getMonth(), i + 1)),
+    ...Array.from(
+      { length },
+      (_, i) => new Date(month.getFullYear(), month.getMonth(), i + 1),
+    ),
   ];
   const today = isoDay(new Date());
   const isEdge = (d: Date) => isoDay(d) === from || isoDay(d) === to;
@@ -298,7 +321,8 @@ function DateRangeFilter({
       className="relative shrink-0"
       // Mirrors FilterSelect: focus-out and Escape close it, no outside-click listener.
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+          setOpen(false);
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") setOpen(false);
@@ -328,7 +352,10 @@ function DateRangeFilter({
         </span>
         <ChevronDown
           aria-hidden
-          className={cn("h-3.5 w-3.5 shrink-0 opacity-60 transition-transform duration-150", open && "rotate-180")}
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 opacity-60 transition-transform duration-150",
+            open && "rotate-180",
+          )}
         />
       </button>
 
@@ -342,16 +369,22 @@ function DateRangeFilter({
             <button
               type="button"
               aria-label="Previous month"
-              onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+              onClick={() =>
+                setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
+              }
               className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
               <ChevronLeft aria-hidden className="h-4 w-4" />
             </button>
-            <p className="text-[13px] font-medium text-foreground">{monthLabel(month)}</p>
+            <p className="text-[13px] font-medium text-foreground">
+              {monthLabel(month)}
+            </p>
             <button
               type="button"
               aria-label="Next month"
-              onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+              onClick={() =>
+                setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
+              }
               className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
               <ChevronRight aria-hidden className="h-4 w-4" />
@@ -386,7 +419,9 @@ function DateRangeFilter({
                       : isWithin(d)
                         ? "bg-primary/12 text-foreground"
                         : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
-                    !isEdge(d) && isoDay(d) === today && "ring-1 ring-inset ring-border-strong",
+                    !isEdge(d) &&
+                      isoDay(d) === today &&
+                      "ring-1 ring-inset ring-border-strong",
                   )}
                 >
                   {d.getDate()}
@@ -436,7 +471,12 @@ function DateRangeFilter({
             >
               Clear
             </button>
-            <Button size="sm" variant="outline" className="h-7 px-3 text-[12px]" onClick={() => setOpen(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-3 text-[12px]"
+              onClick={() => setOpen(false)}
+            >
               Close
             </Button>
           </div>
@@ -517,14 +557,25 @@ export interface LibraryPageProps {
   homeSignal?: number;
 }
 
-export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, homeSignal }: LibraryPageProps) {
+export function LibraryPage({
+  onOpenChannel,
+  focusMediaId,
+  onFocusMediaHandled,
+  homeSignal,
+}: LibraryPageProps) {
   const [items, setItems] = useState<MediaListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSizeState] = useState(getPageSize());
   const [jump, setJump] = useState(""); // jump-to-page input value
-  const [facets, setFacets] = useState<LibraryFacets>({ channels: [], platforms: [], tags: [] });
-  const [selectedId, setSelectedId] = useState<number | null>(focusMediaId ?? null);
+  const [facets, setFacets] = useState<LibraryFacets>({
+    channels: [],
+    platforms: [],
+    tags: [],
+  });
+  const [selectedId, setSelectedId] = useState<number | null>(
+    focusMediaId ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<LibraryView>(getLibraryView());
   // Tag filters. Positive tags AND together (each click narrows); right-clicking a tag
@@ -532,13 +583,17 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [excludedTags, setExcludedTags] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [searchHits, setSearchHits] = useState<Map<number, SearchHit> | null>(null);
+  const [searchHits, setSearchHits] = useState<Map<number, SearchHit> | null>(
+    null,
+  );
   const [channel, setChannel] = useState<string | null>(null);
   const [platform, setPlatform] = useState<string | null>(null);
   const [from, setFrom] = useState<string>(""); // yyyy-mm-dd
   const [to, setTo] = useState<string>("");
   const [reloadKey, setReloadKey] = useState(0); // bump to force a refetch after a mutation
-  const [exportResult, setExportResult] = useState<PlaylistExportResult | null>(null);
+  const [exportResult, setExportResult] = useState<PlaylistExportResult | null>(
+    null,
+  );
   const [exportError, setExportError] = useState<string | null>(null);
   // Presentation only: the tag filter is clipped to one row until asked to open. A 20-chip
   // filter that wraps to two rows was costing ~90px of a view whose job is showing rows.
@@ -558,7 +613,13 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
   };
 
   const anyFilter = !!(
-    activeTags.length || excludedTags.length || channel || platform || from || to || searchHits
+    activeTags.length ||
+    excludedTags.length ||
+    channel ||
+    platform ||
+    from ||
+    to ||
+    searchHits
   );
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
@@ -570,7 +631,8 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
     (a, b) => Number(isLocalTag(b.name)) - Number(isLocalTag(a.name)),
   );
 
-  const has = (list: string[], name: string) => list.some((t) => t.toLowerCase() === name.toLowerCase());
+  const has = (list: string[], name: string) =>
+    list.some((t) => t.toLowerCase() === name.toLowerCase());
   const without = (list: string[], name: string) =>
     list.filter((t) => t.toLowerCase() !== name.toLowerCase());
   const toggle = (list: string[], name: string) =>
@@ -627,7 +689,10 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
   // Facets span the whole library, so they only change when rows are added/removed —
   // refetch on mount and after any mutation (reloadKey), not on every filter change.
   useEffect(() => {
-    void window.sift.library.facets().then(setFacets).catch((e) => setError(String(e)));
+    void window.sift.library
+      .facets()
+      .then(setFacets)
+      .catch((e) => setError(String(e)));
   }, [reloadKey]);
 
   // Consumed the cross-route focus (selectedId was seeded from it) — clear it in the parent so
@@ -668,7 +733,9 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
   useEffect(() => {
     const live = new Set(facets.tags.map((t) => t.name.toLowerCase()));
     const prune = (prev: string[]) =>
-      prev.every((t) => live.has(t.toLowerCase())) ? prev : prev.filter((t) => live.has(t.toLowerCase()));
+      prev.every((t) => live.has(t.toLowerCase()))
+        ? prev
+        : prev.filter((t) => live.has(t.toLowerCase()));
     setActiveTags(prune);
     setExcludedTags(prune);
   }, [facets.tags]);
@@ -695,7 +762,18 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
       .catch((e) => setError(String(e)));
     // filter is rebuilt each render; depend on its primitive parts instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTags, excludedTags, channel, platform, from, to, searchHits, page, pageSize, reloadKey]);
+  }, [
+    activeTags,
+    excludedTags,
+    channel,
+    platform,
+    from,
+    to,
+    searchHits,
+    page,
+    pageSize,
+    reloadKey,
+  ]);
 
   if (selectedId != null) {
     return (
@@ -733,8 +811,12 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
             )}
           >
             <EmptyBlock icon={<Inbox />} headline="Your library is empty.">
-              <p data-testid="library-empty" className="text-sm text-muted-foreground">
-                No downloads yet — paste a URL on the Home tab to add your first video.
+              <p
+                data-testid="library-empty"
+                className="text-sm text-muted-foreground"
+              >
+                No downloads yet — paste a URL on the Home tab to add your first
+                video.
               </p>
             </EmptyBlock>
           </div>
@@ -780,7 +862,10 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
         <LibraryHeader
           meta={
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-5 text-muted-foreground">
-              <HeaderStat value={total} label={anyFilter ? "in view" : "entries"} />
+              <HeaderStat
+                value={total}
+                label={anyFilter ? "in view" : "entries"}
+              />
               <MetaDot />
               <HeaderStat value={facets.channels.length} label="channels" />
               <MetaDot />
@@ -872,18 +957,29 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                   value={platform}
                   onChange={setPlatform}
                   className="shrink-0"
-                  options={facets.platforms.map((p) => ({ value: p, label: platformLabel(p) }))}
+                  options={facets.platforms.map((p) => ({
+                    value: p,
+                    label: platformLabel(p),
+                  }))}
                 />
               )}
               {/* One trigger, same shell as its two neighbours — the range is written out in
                   the label instead of a caps tag sitting inside the field. */}
-              <DateRangeFilter from={from} to={to} onFrom={setFrom} onTo={setTo} />
+              <DateRangeFilter
+                from={from}
+                to={to}
+                onFrom={setFrom}
+                onTo={setTo}
+              />
               {/* Export is not a fourth filter. It wears the same 36px outline shell as the
                   three dropdowns and sat at the same 8px gap after them, so it read as one more
                   thing that narrows the view — but filters change what you see and this one
                   writes a file. A hairline is the cheapest way to say "different group" without
                   giving the command a different shell. */}
-              <span aria-hidden className="mx-1 h-6 w-px shrink-0 self-center bg-border/60" />
+              <span
+                aria-hidden
+                className="mx-1 h-6 w-px shrink-0 self-center bg-border/60"
+              />
               <Button
                 size="sm"
                 variant="outline"
@@ -951,7 +1047,9 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                             −
                           </span>
                         )}
-                        {excluded && <span className="sr-only"> (excluded)</span>}
+                        {excluded && (
+                          <span className="sr-only"> (excluded)</span>
+                        )}
                       </button>
                     );
                   })}
@@ -983,7 +1081,10 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                       {tagsOpen ? "Fewer" : `+${tagsHidden} more`}
                       <ChevronDown
                         aria-hidden
-                        className={cn("h-3 w-3 transition-transform duration-150", tagsOpen && "rotate-180")}
+                        className={cn(
+                          "h-3 w-3 transition-transform duration-150",
+                          tagsOpen && "rotate-180",
+                        )}
                       />
                     </button>
                   )}
@@ -1004,12 +1105,17 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                 data-testid="playlist-export-result"
                 className="flex flex-wrap items-center gap-2 rounded-xl border border-success/25 bg-success/12 px-3.5 py-2.5 text-sm text-success"
               >
-                Exported {exportResult.included} video{exportResult.included === 1 ? "" : "s"}
-                {exportResult.skipped > 0 ? ` (${exportResult.skipped} skipped)` : ""}
+                Exported {exportResult.included} video
+                {exportResult.included === 1 ? "" : "s"}
+                {exportResult.skipped > 0
+                  ? ` (${exportResult.skipped} skipped)`
+                  : ""}
                 <button
                   type="button"
                   className="font-semibold underline underline-offset-4 hover:no-underline"
-                  onClick={() => void window.sift.library.reveal(exportResult.path)}
+                  onClick={() =>
+                    void window.sift.library.reveal(exportResult.path)
+                  }
                 >
                   Open
                 </button>
@@ -1028,8 +1134,10 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
           <div
             className="flex min-h-0 flex-1 flex-col"
             style={{
-              WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 28px), transparent)",
-              maskImage: "linear-gradient(to bottom, #000 calc(100% - 28px), transparent)",
+              WebkitMaskImage:
+                "linear-gradient(to bottom, #000 calc(100% - 28px), transparent)",
+              maskImage:
+                "linear-gradient(to bottom, #000 calc(100% - 28px), transparent)",
             }}
           >
             {/* `scrollbar-gutter: stable` is the other half of the toolbar's `pr-[26px]`: the
@@ -1048,8 +1156,8 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                 >
                   <EmptyBlock icon={<SearchX />} headline="No matches">
                     <p className="text-sm text-muted-foreground">
-                      Nothing here fits the current search, tags or date range. Widen the range or
-                      clear a filter to bring rows back.
+                      Nothing here fits the current search, tags or date range.
+                      Widen the range or clear a filter to bring rows back.
                     </p>
                   </EmptyBlock>
                 </div>
@@ -1116,7 +1224,8 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                   beside it. Now both sit on one baseline. */}
               <div className="flex items-baseline gap-3 text-[12.5px] text-muted-foreground">
                 <p data-testid="library-result-count" className="tabular-nums">
-                  Showing {page * pageSize + 1}–{Math.min(total, (page + 1) * pageSize)} of {total}
+                  Showing {page * pageSize + 1}–
+                  {Math.min(total, (page + 1) * pageSize)} of {total}
                 </p>
                 {/* 32px, matching the pager buttons it shares this strip with — not the 36px
                     filters in the toolbar band two surfaces above. This control was previously
@@ -1181,7 +1290,11 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                   </Button>
                   {pageWindow(page + 1, pageCount).map((tok, i) =>
                     tok === "…" ? (
-                      <span key={`gap-${i}`} className="px-1 text-fg-disabled" aria-hidden>
+                      <span
+                        key={`gap-${i}`}
+                        className="px-1 text-fg-disabled"
+                        aria-hidden
+                      >
                         …
                       </span>
                     ) : (
@@ -1214,7 +1327,9 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                     className="h-8 gap-1 px-2.5"
                     data-testid="library-page-next"
                     disabled={page >= pageCount - 1}
-                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                    onClick={() =>
+                      setPage((p) => Math.min(pageCount - 1, p + 1))
+                    }
                   >
                     Next
                     <ChevronRight aria-hidden className="h-3.5 w-3.5" />
@@ -1231,7 +1346,10 @@ export function LibraryPage({ onOpenChannel, focusMediaId, onFocusMediaHandled, 
                     <ChevronsRight aria-hidden className="h-3.5 w-3.5" />
                   </Button>
                   {pageCount > 5 && (
-                    <form onSubmit={handleJump} className="ml-2 flex items-center gap-1.5">
+                    <form
+                      onSubmit={handleJump}
+                      className="ml-2 flex items-center gap-1.5"
+                    >
                       <label
                         htmlFor="library-jump"
                         className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-subtle"

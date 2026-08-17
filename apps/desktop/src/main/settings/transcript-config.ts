@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 import { baseLangCode } from "@sift/core";
 
@@ -19,7 +25,11 @@ export interface TranscriptConfigDeps {
 }
 
 const defaultFs: NonNullable<TranscriptConfigDeps["fs"]> = {
-  existsSync, readFileSync, writeFileSync, rmSync, mkdirSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  mkdirSync,
 };
 
 /** Base-code, dedup, drop empties; `["en"]` if nothing usable remains. */
@@ -30,7 +40,10 @@ function normalize(langs: unknown): string[] {
   for (const raw of langs) {
     if (typeof raw !== "string") continue;
     const code = baseLangCode(raw);
-    if (code && !seen.has(code)) { seen.add(code); out.push(code); }
+    if (code && !seen.has(code)) {
+      seen.add(code);
+      out.push(code);
+    }
   }
   return out.length > 0 ? out : [...DEFAULT];
 }
@@ -46,17 +59,24 @@ export function createTranscriptConfigStore(deps: TranscriptConfigDeps): {
     get(): string[] {
       if (!fs.existsSync(filePath)) return [...DEFAULT];
       try {
-        const parsed: unknown = JSON.parse(fs.readFileSync(filePath).toString("utf8"));
+        const parsed: unknown = JSON.parse(
+          fs.readFileSync(filePath).toString("utf8"),
+        );
         const langs = (parsed as { languages?: unknown } | null)?.languages;
         return normalize(langs);
       } catch {
-        console.warn("Stored transcript-language config could not be parsed; using default.");
+        console.warn(
+          "Stored transcript-language config could not be parsed; using default.",
+        );
         return [...DEFAULT];
       }
     },
     set(langs: string[]): void {
       fs.mkdirSync(dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, Buffer.from(JSON.stringify({ languages: normalize(langs) }), "utf8"));
+      fs.writeFileSync(
+        filePath,
+        Buffer.from(JSON.stringify({ languages: normalize(langs) }), "utf8"),
+      );
     },
   };
 }

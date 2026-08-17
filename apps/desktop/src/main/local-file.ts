@@ -35,8 +35,11 @@ export function filePathFromUrl(url: string): string {
  * the thumbnail on re-import, which hurts recognition. Unknown duration falls back to
  * the floor.
  */
-export function posterSeekSeconds(durationSec: number | null | undefined): number {
-  if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0) return 5;
+export function posterSeekSeconds(
+  durationSec: number | null | undefined,
+): number {
+  if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0)
+    return 5;
   return Math.min(120, Math.max(5, durationSec * 0.1));
 }
 
@@ -54,7 +57,9 @@ export function posterSeekSeconds(durationSec: number | null | undefined): numbe
  *
  * Anamorphic video (SAR ≠ 1) reports coded, not display, height. Accepted: it is a label.
  */
-export function jpegSize(buf: Buffer): { width: number; height: number } | null {
+export function jpegSize(
+  buf: Buffer,
+): { width: number; height: number } | null {
   if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
   let i = 2;
   while (i + 9 < buf.length) {
@@ -64,14 +69,27 @@ export function jpegSize(buf: Buffer): { width: number; height: number } | null 
     }
     const marker = buf[i + 1]!;
     // Standalone markers (padding, RSTn, SOI/EOI) carry no length field.
-    if (marker === 0xff || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd9)) {
+    if (
+      marker === 0xff ||
+      marker === 0x01 ||
+      (marker >= 0xd0 && marker <= 0xd9)
+    ) {
       i += 2;
       continue;
     }
     // SOF0–SOF15 hold the frame size; DHT/JPGA/DAC share the range but aren't SOFs.
-    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc
+    ) {
       if (i + 9 > buf.length) return null;
-      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+      return {
+        height: buf.readUInt16BE(i + 5),
+        width: buf.readUInt16BE(i + 7),
+      };
     }
     const segment = buf.readUInt16BE(i + 2);
     if (segment < 2) return null; // malformed: would loop forever

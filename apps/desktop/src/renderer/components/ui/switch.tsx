@@ -47,7 +47,9 @@ export function Switch({
         className={cn(
           "inline-block h-[18px] w-[18px] transform rounded-full shadow-[0_1px_2px_0_hsl(0_0%_0%/0.45)]",
           "transition-transform duration-150 ease-out",
-          checked ? "translate-x-[22px] bg-white" : "translate-x-[2px] bg-foreground/60",
+          checked
+            ? "translate-x-[22px] bg-white"
+            : "translate-x-[2px] bg-foreground/60",
         )}
       />
     </button>

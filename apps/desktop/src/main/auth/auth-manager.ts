@@ -75,8 +75,12 @@ export function createAuthManager(deps: AuthManagerDeps): AuthManager {
         return null;
       }
       const input: NetscapeCookieInput[] = cookies.map((c) => ({
-        domain: c.domain, path: c.path, secure: c.secure,
-        expirationDate: c.expirationDate, name: c.name, value: c.value,
+        domain: c.domain,
+        path: c.path,
+        secure: c.secure,
+        expirationDate: c.expirationDate,
+        name: c.name,
+        value: c.value,
       }));
       const path = deps.cookiesPath();
       deps.writeFile(path, toNetscapeCookies(input));

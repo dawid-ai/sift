@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, ArrowUpCircle, CheckCircle2, DownloadCloud, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpCircle,
+  CheckCircle2,
+  DownloadCloud,
+  RefreshCw,
+} from "lucide-react";
 import type { UpdateState } from "@/lib/update-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -48,7 +54,8 @@ export const TOAST_PANEL = [
  * filled CTA plus one outline dismiss. Both buttons share a shell so the pair reads as one
  * group instead of a button next to a piece of bare text.
  */
-export const TOAST_ACTIONS = "-mx-5 mt-4 flex items-center gap-2 border-t border-border/70 px-5 pt-3.5";
+export const TOAST_ACTIONS =
+  "-mx-5 mt-4 flex items-center gap-2 border-t border-border/70 px-5 pt-3.5";
 
 /**
  * Icon chip · eyebrow · headline — the reference's "eyebrow + big numeral" block, shrunk to
@@ -125,17 +132,35 @@ export function ToastProgress({
 
 /** Bottom-right non-blocking update prompt. Morphs across the update lifecycle.
  * Renders nothing for idle/checking/not-available (those surface in Settings). */
-export function UpdateToast({ state, onDismiss }: { state: UpdateState; onDismiss: () => void }) {
-  if (state.kind === "idle" || state.kind === "checking" || state.kind === "not-available") {
+export function UpdateToast({
+  state,
+  onDismiss,
+}: {
+  state: UpdateState;
+  onDismiss: () => void;
+}) {
+  if (
+    state.kind === "idle" ||
+    state.kind === "checking" ||
+    state.kind === "not-available"
+  ) {
     return null;
   }
   // Presentation only — which of the three accents this card is allowed to use.
   const tone: ToastTone =
-    state.kind === "downloaded" ? "success" : state.kind === "error" ? "danger" : "primary";
+    state.kind === "downloaded"
+      ? "success"
+      : state.kind === "error"
+        ? "danger"
+        : "primary";
   return (
     <div
       data-testid="update-toast"
-      className={cn("fixed bottom-4 right-4 z-50 w-[22rem]", TOAST_PANEL, PANEL_TONE[tone])}
+      className={cn(
+        "fixed bottom-4 right-4 z-50 w-[22rem]",
+        TOAST_PANEL,
+        PANEL_TONE[tone],
+      )}
     >
       {state.kind === "available" && (
         <>
@@ -155,11 +180,20 @@ export function UpdateToast({ state, onDismiss }: { state: UpdateState; onDismis
             </div>
           )}
           <div className={TOAST_ACTIONS}>
-            <Button size="sm" data-testid="update-toast-now" onClick={() => void window.sift.updates.download()}>
+            <Button
+              size="sm"
+              data-testid="update-toast-now"
+              onClick={() => void window.sift.updates.download()}
+            >
               <DownloadCloud className="h-3.5 w-3.5" aria-hidden />
               Update now
             </Button>
-            <Button size="sm" variant="outline" data-testid="update-toast-later" onClick={onDismiss}>
+            <Button
+              size="sm"
+              variant="outline"
+              data-testid="update-toast-later"
+              onClick={onDismiss}
+            >
               Later
             </Button>
           </div>
@@ -173,7 +207,10 @@ export function UpdateToast({ state, onDismiss }: { state: UpdateState; onDismis
           >
             <ToastNumber>{Math.round(state.percent)}%</ToastNumber>
           </ToastHead>
-          <ToastProgress percent={Math.round(state.percent)} testId="update-toast-progress" />
+          <ToastProgress
+            percent={Math.round(state.percent)}
+            testId="update-toast-progress"
+          />
         </>
       )}
       {state.kind === "downloaded" && (
@@ -189,7 +226,11 @@ export function UpdateToast({ state, onDismiss }: { state: UpdateState; onDismis
             The update installs when the app restarts.
           </p>
           <div className={TOAST_ACTIONS}>
-            <Button size="sm" data-testid="update-toast-restart" onClick={() => void window.sift.updates.install()}>
+            <Button
+              size="sm"
+              data-testid="update-toast-restart"
+              onClick={() => void window.sift.updates.install()}
+            >
               Restart now
             </Button>
             <Button size="sm" variant="outline" onClick={onDismiss}>
@@ -205,7 +246,9 @@ export function UpdateToast({ state, onDismiss }: { state: UpdateState; onDismis
             label="Update failed"
             icon={<AlertTriangle className="h-[18px] w-[18px]" aria-hidden />}
           >
-            <p className="text-[13px] leading-relaxed text-muted-foreground">{state.message}</p>
+            <p className="text-[13px] leading-relaxed text-muted-foreground">
+              {state.message}
+            </p>
           </ToastHead>
           <div className={TOAST_ACTIONS}>
             <Button size="sm" onClick={() => void window.sift.updates.check()}>

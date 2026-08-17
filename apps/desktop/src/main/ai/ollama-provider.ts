@@ -16,7 +16,9 @@ export const OLLAMA_MODELS: AiModelInfo[] = [
  * ignored. A trailing partial line (no terminating `\n`) is NOT parsed — the caller
  * is responsible for carrying it into the next read and re-parsing once complete.
  */
-export function parseOllamaChunks(text: string): { content: string; done: boolean }[] {
+export function parseOllamaChunks(
+  text: string,
+): { content: string; done: boolean }[] {
   const endsWithNewline = text.endsWith("\n");
   const lines = text.split("\n");
   if (!endsWithNewline) lines.pop(); // drop trailing partial line
@@ -25,8 +27,14 @@ export function parseOllamaChunks(text: string): { content: string; done: boolea
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    const parsed = JSON.parse(trimmed) as { message?: { content?: string }; done?: boolean };
-    results.push({ content: parsed.message?.content ?? "", done: parsed.done === true });
+    const parsed = JSON.parse(trimmed) as {
+      message?: { content?: string };
+      done?: boolean;
+    };
+    results.push({
+      content: parsed.message?.content ?? "",
+      done: parsed.done === true,
+    });
   }
   return results;
 }
@@ -43,7 +51,8 @@ export function createOllamaProvider(deps: {
   const baseUrl = deps.baseUrl ?? DEFAULT_OLLAMA_BASE_URL;
   const fetchImpl = deps.fetchImpl ?? fetch;
   const models = deps.models ?? OLLAMA_MODELS;
-  const unreachableError = () => new Error(`Could not reach Ollama at ${baseUrl}. Is it running?`);
+  const unreachableError = () =>
+    new Error(`Could not reach Ollama at ${baseUrl}. Is it running?`);
 
   return {
     id: OLLAMA_ID,
@@ -82,7 +91,9 @@ export function createOllamaProvider(deps: {
       let buffer = "";
       let acc = "";
 
-      const consume = (parsedChunks: { content: string; done: boolean }[]): boolean => {
+      const consume = (
+        parsedChunks: { content: string; done: boolean }[],
+      ): boolean => {
         for (const chunk of parsedChunks) {
           if (chunk.content) {
             onToken(chunk.content);
@@ -93,7 +104,11 @@ export function createOllamaProvider(deps: {
         return false;
       };
 
-      for (let read = await reader.read(); !read.done; read = await reader.read()) {
+      for (
+        let read = await reader.read();
+        !read.done;
+        read = await reader.read()
+      ) {
         buffer += decoder.decode(read.value, { stream: true });
         const lastNewline = buffer.lastIndexOf("\n");
         if (lastNewline === -1) continue; // no complete line yet; keep buffering

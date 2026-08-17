@@ -55,7 +55,12 @@ export function openSignInBrowser(): Promise<void> {
     height: 850,
     autoHideMenuBar: true,
     title: "Sign in",
-    webPreferences: { webviewTag: true, contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: {
+      webviewTag: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
   });
   // The <webview> hosts arbitrary sites the user logs into. Keep real login popups
   // working (some OAuth flows use them) but constrain any window the guest opens to
@@ -73,6 +78,8 @@ export function openSignInBrowser(): Promise<void> {
       resolve();
     });
   });
-  void win.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(toolbarHtml()));
+  void win.loadURL(
+    "data:text/html;charset=utf-8," + encodeURIComponent(toolbarHtml()),
+  );
   return currentClose;
 }

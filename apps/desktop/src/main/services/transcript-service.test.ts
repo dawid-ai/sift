@@ -37,7 +37,10 @@ const metadata: MediaMetadata = {
 };
 
 /** A fake provider that always handles `ctx` and counts `transcribe` invocations. */
-function makeFakeProvider(): { provider: TranscriptProvider; calls: () => number } {
+function makeFakeProvider(): {
+  provider: TranscriptProvider;
+  calls: () => number;
+} {
   let calls = 0;
   const provider: TranscriptProvider = {
     id: "fake",
@@ -96,7 +99,13 @@ function makeCapturingProvider() {
     canHandle: () => true,
     transcribe: async (ctx) => {
       lastCtx = ctx;
-      return { providerId: "cap", language: ctx.language, text: "x", segments: [], model: null };
+      return {
+        providerId: "cap",
+        language: ctx.language,
+        text: "x",
+        segments: [],
+        model: null,
+      };
     },
   };
   return { provider, ctx: () => lastCtx };
@@ -150,7 +159,10 @@ describe("TranscriptService", () => {
       getPreferredLanguages: () => ["en"],
       getMethod: () => "auto",
     });
-    const [a, b] = await Promise.all([service.get({ metadata }), service.get({ metadata })]);
+    const [a, b] = await Promise.all([
+      service.get({ metadata }),
+      service.get({ metadata }),
+    ]);
 
     const media = getMediaBySourceUrl(db, metadata.sourceUrl);
     expect(getTranscriptsByMediaId(db, media!.id)).toHaveLength(1);
@@ -232,7 +244,13 @@ describe("TranscriptService", () => {
       canHandle: () => true,
       async transcribe(ctx) {
         seen = ctx.language;
-        return { providerId: "fake", language: ctx.language, text: "t", segments: [], model: null };
+        return {
+          providerId: "fake",
+          language: ctx.language,
+          text: "t",
+          segments: [],
+          model: null,
+        };
       },
     });
     const service = new TranscriptService({
@@ -244,11 +262,23 @@ describe("TranscriptService", () => {
     });
     await service.get({
       metadata: {
-        sourceUrl: "https://x/1", platform: { id: "youtube", label: "YouTube", tier: "tested" },
-        externalId: "1", title: "t", uploader: null, uploaderUrl: null, channelId: null, durationSec: null,
-        thumbnailUrl: null, viewCount: null, likeCount: null, uploadDate: null,
-        hasCaptions: true, language: "de", captionLanguages: ["de", "en"],
-        formats: [], raw: {},
+        sourceUrl: "https://x/1",
+        platform: { id: "youtube", label: "YouTube", tier: "tested" },
+        externalId: "1",
+        title: "t",
+        uploader: null,
+        uploaderUrl: null,
+        channelId: null,
+        durationSec: null,
+        thumbnailUrl: null,
+        viewCount: null,
+        likeCount: null,
+        uploadDate: null,
+        hasCaptions: true,
+        language: "de",
+        captionLanguages: ["de", "en"],
+        formats: [],
+        raw: {},
       },
     });
     expect(seen).toBe("de");
@@ -265,7 +295,13 @@ describe("TranscriptService", () => {
       canHandle: () => true,
       async transcribe(ctx) {
         seen = ctx.cookiesFile;
-        return { providerId: "fake", language: ctx.language, text: "t", segments: [], model: null };
+        return {
+          providerId: "fake",
+          language: ctx.language,
+          text: "t",
+          segments: [],
+          model: null,
+        };
       },
     });
     const service = new TranscriptService({
@@ -280,10 +316,21 @@ describe("TranscriptService", () => {
       metadata: {
         sourceUrl: "https://www.youtube.com/watch?v=abc123",
         platform: { id: "youtube", label: "YouTube", tier: "tested" },
-        externalId: "abc123", title: "t", uploader: null, uploaderUrl: null, channelId: null, durationSec: null,
-        thumbnailUrl: null, viewCount: null, likeCount: null, uploadDate: null,
-        hasCaptions: true, language: null, captionLanguages: ["en"],
-        formats: [], raw: {},
+        externalId: "abc123",
+        title: "t",
+        uploader: null,
+        uploaderUrl: null,
+        channelId: null,
+        durationSec: null,
+        thumbnailUrl: null,
+        viewCount: null,
+        likeCount: null,
+        uploadDate: null,
+        hasCaptions: true,
+        language: null,
+        captionLanguages: ["en"],
+        formats: [],
+        raw: {},
       },
     });
     expect(seen).toBe("/c/youtube.txt");
@@ -295,21 +342,41 @@ describe("TranscriptService", () => {
     const db = await openTestDatabase();
     runMigrations(db);
     const media = insertMedia(db, {
-      source_url: metadata.sourceUrl, platform_id: "youtube", external_id: "abc123",
-      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
-      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
-      metadata_json: "{}", download_status: "done",
+      source_url: metadata.sourceUrl,
+      platform_id: "youtube",
+      external_id: "abc123",
+      title: "Vid",
+      uploader: "Chan",
+      uploader_url: null,
+      duration_s: 120,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "done",
     });
     insertDownload(db, {
-      media_id: media.id, format_id: "137", label: "1080p", ext: "mp4", height: 1080,
-      file_path: "/downloads/video.mp4", file_size: 10, status: "done", error: null,
+      media_id: media.id,
+      format_id: "137",
+      label: "1080p",
+      ext: "mp4",
+      height: 1080,
+      file_path: "/downloads/video.mp4",
+      file_size: 10,
+      status: "done",
+      error: null,
     });
 
     const registry = new TranscriptRegistry();
     const { provider, ctx } = makeCapturingProvider();
     registry.register(provider);
     const svc = new TranscriptService({
-      db, registry, downloadsDir: () => tmpdir(), getPreferredLanguages: () => ["en"], getMethod: () => "auto",
+      db,
+      registry,
+      downloadsDir: () => tmpdir(),
+      getPreferredLanguages: () => ["en"],
+      getMethod: () => "auto",
     });
     await svc.get({ metadata: { ...metadata, hasCaptions: false } });
     expect(ctx()?.audioPath).toBe("/downloads/video.mp4");
@@ -324,7 +391,11 @@ describe("TranscriptService", () => {
     const { provider, ctx } = makeCapturingProvider();
     registry.register(provider);
     const svc = new TranscriptService({
-      db, registry, downloadsDir: () => tmpdir(), getPreferredLanguages: () => ["en"], getMethod: () => "auto",
+      db,
+      registry,
+      downloadsDir: () => tmpdir(),
+      getPreferredLanguages: () => ["en"],
+      getMethod: () => "auto",
     });
     await svc.get({ metadata: { ...metadata, hasCaptions: false } });
     expect(ctx()?.audioPath).toBeNull();
@@ -342,7 +413,13 @@ describe("TranscriptService", () => {
       canHandle: () => true,
       async transcribe(ctx, onProgress) {
         onProgress({ stage: "transcribing", ratio: null });
-        return { providerId: "fake", language: ctx.language, text: "t", segments: [], model: null };
+        return {
+          providerId: "fake",
+          language: ctx.language,
+          text: "t",
+          segments: [],
+          model: null,
+        };
       },
     });
     const service = new TranscriptService({
@@ -377,9 +454,9 @@ describe("TranscriptService", () => {
 
     // No captions-capable (non-local) provider is registered, so captions_only must
     // reject even though the local (whisper) provider could handle it.
-    await expect(service.get({ metadata: { ...metadata, hasCaptions: false } })).rejects.toThrow(
-      /no captions/i,
-    );
+    await expect(
+      service.get({ metadata: { ...metadata, hasCaptions: false } }),
+    ).rejects.toThrow(/no captions/i);
     expect(calls()).toBe(0);
 
     db.close();
@@ -389,14 +466,27 @@ describe("TranscriptService", () => {
     const db = await openTestDatabase();
     runMigrations(db);
     const media = insertMedia(db, {
-      source_url: metadata.sourceUrl, platform_id: "youtube", external_id: "abc123",
-      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
-      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
-      metadata_json: "{}", download_status: "none",
+      source_url: metadata.sourceUrl,
+      platform_id: "youtube",
+      external_id: "abc123",
+      title: "Vid",
+      uploader: "Chan",
+      uploader_url: null,
+      duration_s: 120,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "none",
     });
     const existingRow = insertTranscript(db, {
-      media_id: media.id, provider_id: "ytdlp-subs", language: "en",
-      text: "cached text", segments_json: "[]", model: null,
+      media_id: media.id,
+      provider_id: "ytdlp-subs",
+      language: "en",
+      text: "cached text",
+      segments_json: "[]",
+      model: null,
     });
 
     const { provider, calls } = makeFakeProvider();
@@ -422,18 +512,33 @@ describe("TranscriptService", () => {
     const db = await openTestDatabase();
     runMigrations(db);
     const media = insertMedia(db, {
-      source_url: metadata.sourceUrl, platform_id: "youtube", external_id: "abc123",
-      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
-      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
-      metadata_json: "{}", download_status: "none",
+      source_url: metadata.sourceUrl,
+      platform_id: "youtube",
+      external_id: "abc123",
+      title: "Vid",
+      uploader: "Chan",
+      uploader_url: null,
+      duration_s: 120,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "none",
     });
     const oldRow = insertTranscript(db, {
-      media_id: media.id, provider_id: "ytdlp-subs", language: "en",
-      text: "old captions text", segments_json: "[]", model: null,
+      media_id: media.id,
+      provider_id: "ytdlp-subs",
+      language: "en",
+      text: "old captions text",
+      segments_json: "[]",
+      model: null,
     });
 
-    const { provider: captionsProvider, calls: captionsCalls } = makeFakeProvider();
-    const { provider: localProvider, calls: localCalls } = makeFakeLocalProvider();
+    const { provider: captionsProvider, calls: captionsCalls } =
+      makeFakeProvider();
+    const { provider: localProvider, calls: localCalls } =
+      makeFakeLocalProvider();
     const registry = new TranscriptRegistry();
     registry.register(captionsProvider);
     registry.register(localProvider);
@@ -464,17 +569,32 @@ describe("TranscriptService", () => {
     const db = await openTestDatabase();
     runMigrations(db);
     const media = insertMedia(db, {
-      source_url: metadata.sourceUrl, platform_id: "youtube", external_id: "abc123",
-      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
-      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
-      metadata_json: "{}", download_status: "none",
+      source_url: metadata.sourceUrl,
+      platform_id: "youtube",
+      external_id: "abc123",
+      title: "Vid",
+      uploader: "Chan",
+      uploader_url: null,
+      duration_s: 120,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "none",
     });
     const oldRow = insertTranscript(db, {
-      media_id: media.id, provider_id: "ytdlp-subs", language: "en",
-      text: "old captions text", segments_json: "[]", model: null,
+      media_id: media.id,
+      provider_id: "ytdlp-subs",
+      language: "en",
+      text: "old captions text",
+      segments_json: "[]",
+      model: null,
     });
 
-    const { provider: localProvider } = makeFakeLocalProvider({ failOnce: true });
+    const { provider: localProvider } = makeFakeLocalProvider({
+      failOnce: true,
+    });
     const registry = new TranscriptRegistry();
     registry.register(localProvider);
     const service = new TranscriptService({
@@ -485,7 +605,9 @@ describe("TranscriptService", () => {
       getMethod: () => "auto",
     });
 
-    await expect(service.get({ metadata, force: "whisper" })).rejects.toThrow(/whisper crashed/);
+    await expect(service.get({ metadata, force: "whisper" })).rejects.toThrow(
+      /whisper crashed/,
+    );
 
     const rows = getTranscriptsByMediaId(db, media.id);
     expect(rows).toHaveLength(1);
@@ -499,23 +621,38 @@ describe("TranscriptService", () => {
     const db = await openTestDatabase();
     runMigrations(db);
     const media = insertMedia(db, {
-      source_url: metadata.sourceUrl, platform_id: "youtube", external_id: "abc123",
-      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
-      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
-      metadata_json: "{}", download_status: "none",
+      source_url: metadata.sourceUrl,
+      platform_id: "youtube",
+      external_id: "abc123",
+      title: "Vid",
+      uploader: "Chan",
+      uploader_url: null,
+      duration_s: 120,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "none",
     });
     const oldRow = insertTranscript(db, {
-      media_id: media.id, provider_id: "ytdlp-subs", language: "en",
-      text: "old captions text", segments_json: "[]", model: null,
+      media_id: media.id,
+      provider_id: "ytdlp-subs",
+      language: "en",
+      text: "old captions text",
+      segments_json: "[]",
+      model: null,
     });
 
     // Whisper is registered but can't handle this video (e.g. not installed / not
     // downloaded); a captions provider IS registered and could easily serve the
     // request via "prefer_whisper"'s fallback — the strict force path must not take it.
-    const { provider: localProvider, calls: localCalls } = makeFakeLocalProvider({
-      canHandle: () => false,
-    });
-    const { provider: captionsProvider, calls: captionsCalls } = makeFakeProvider();
+    const { provider: localProvider, calls: localCalls } =
+      makeFakeLocalProvider({
+        canHandle: () => false,
+      });
+    const { provider: captionsProvider, calls: captionsCalls } =
+      makeFakeProvider();
     const registry = new TranscriptRegistry();
     registry.register(localProvider);
     registry.register(captionsProvider);
@@ -554,24 +691,37 @@ describe("TranscriptService", () => {
       getMethod: () => "auto",
     });
     const media = insertMedia(db, {
-      source_url: "https://example.com/srt-1", platform_id: "youtube", external_id: "srt1",
-      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
-      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
-      metadata_json: "{}", download_status: "none",
+      source_url: "https://example.com/srt-1",
+      platform_id: "youtube",
+      external_id: "srt1",
+      title: "Vid",
+      uploader: "Chan",
+      uploader_url: null,
+      duration_s: 120,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "none",
     });
     const t = insertTranscript(db, {
       media_id: media.id,
       provider_id: "whisper",
       language: "en",
       text: "Hello there",
-      segments_json: JSON.stringify([{ start: 0, end: 2, text: "Hello there" }]),
+      segments_json: JSON.stringify([
+        { start: 0, end: 2, text: "Hello there" },
+      ]),
       model: "ggml-small",
     });
 
     const path = await service.exportSrt(t.id);
 
     expect(path.endsWith(".srt")).toBe(true);
-    expect(readFileSync(path, "utf8")).toBe("1\n00:00:00,000 --> 00:00:02,000\nHello there\n");
+    expect(readFileSync(path, "utf8")).toBe(
+      "1\n00:00:00,000 --> 00:00:02,000\nHello there\n",
+    );
 
     db.close();
   });
@@ -589,14 +739,27 @@ describe("TranscriptService", () => {
       getMethod: () => "auto",
     });
     const media = insertMedia(db, {
-      source_url: "https://example.com/srt-2", platform_id: "youtube", external_id: "srt2",
-      title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 120,
-      thumbnail_path: null, view_count: null, like_count: null, published_at: null,
-      metadata_json: "{}", download_status: "none",
+      source_url: "https://example.com/srt-2",
+      platform_id: "youtube",
+      external_id: "srt2",
+      title: "Vid",
+      uploader: "Chan",
+      uploader_url: null,
+      duration_s: 120,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      download_status: "none",
     });
     const t = insertTranscript(db, {
-      media_id: media.id, provider_id: "captions", language: "en",
-      text: "no timings", segments_json: null, model: null,
+      media_id: media.id,
+      provider_id: "captions",
+      language: "en",
+      text: "no timings",
+      segments_json: null,
+      model: null,
     });
 
     await expect(service.exportSrt(t.id)).rejects.toThrow(/no timestamps/);

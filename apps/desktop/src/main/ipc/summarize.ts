@@ -28,7 +28,12 @@ import { getDb } from "../index";
 import { parsePromptPack } from "./prompt-pack";
 
 function toPromptInfo(row: PromptRow): PromptInfo {
-  return { id: row.id, name: row.name, body: row.body, isBuiltin: row.is_builtin === 1 };
+  return {
+    id: row.id,
+    name: row.name,
+    body: row.body,
+    isBuiltin: row.is_builtin === 1,
+  };
 }
 
 /**
@@ -50,26 +55,44 @@ export function registerSummarizeIpc(
     IPC.summarizeStart,
     (
       event,
-      input: { metadata: MediaMetadata; providerId: string; model: string; promptId: number; requestId: string },
+      input: {
+        metadata: MediaMetadata;
+        providerId: string;
+        model: string;
+        promptId: number;
+        requestId: string;
+      },
     ) =>
       service
         .start(input, (delta) => {
-          const t: SummaryToken = { requestId: input.requestId, delta, done: false };
+          const t: SummaryToken = {
+            requestId: input.requestId,
+            delta,
+            done: false,
+          };
           event.sender.send(IPC.summarizeToken, t);
         })
         .then((record) => {
-          const t: SummaryToken = { requestId: input.requestId, delta: "", done: true };
+          const t: SummaryToken = {
+            requestId: input.requestId,
+            delta: "",
+            done: true,
+          };
           event.sender.send(IPC.summarizeToken, t);
           return record;
         }),
   );
 
-  ipcMain.handle(IPC.summarizeExport, (_event, summaryId: number) => service.export(summaryId));
+  ipcMain.handle(IPC.summarizeExport, (_event, summaryId: number) =>
+    service.export(summaryId),
+  );
 
   ipcMain.handle(IPC.promptsList, () => listPrompts(getDb()).map(toPromptInfo));
 
-  ipcMain.handle(IPC.promptsCreate, (_event, input: { name: string; body: string }) =>
-    toPromptInfo(createPrompt(getDb(), input)),
+  ipcMain.handle(
+    IPC.promptsCreate,
+    (_event, input: { name: string; body: string }) =>
+      toPromptInfo(createPrompt(getDb(), input)),
   );
 
   ipcMain.handle(
@@ -78,7 +101,9 @@ export function registerSummarizeIpc(
       toPromptInfo(updatePrompt(getDb(), id, input)),
   );
 
-  ipcMain.handle(IPC.promptsDelete, (_event, id: number) => deletePrompt(getDb(), id));
+  ipcMain.handle(IPC.promptsDelete, (_event, id: number) =>
+    deletePrompt(getDb(), id),
+  );
 
   ipcMain.handle(IPC.promptsExport, async () => {
     const pack: PromptPackEntry[] = listPrompts(getDb())
@@ -109,7 +134,8 @@ export function registerSummarizeIpc(
       ? await dialog.showOpenDialog(win, dialogOpts)
       : await dialog.showOpenDialog(dialogOpts);
     const file = filePaths[0];
-    if (canceled || !file) return { imported: 0, skipped: 0, created: 0, replaced: 0 };
+    if (canceled || !file)
+      return { imported: 0, skipped: 0, created: 0, replaced: 0 };
     const { entries, skipped } = parsePromptPack(readFileSync(file, "utf8"));
     if (entries.length === 0) {
       throw new Error(
@@ -136,7 +162,10 @@ export function registerSummarizeIpc(
     let replaced = 0;
     try {
       for (const e of entries) {
-        const result = upsertPromptByName(db, { name: e.name.trim(), body: e.body });
+        const result = upsertPromptByName(db, {
+          name: e.name.trim(),
+          body: e.body,
+        });
         if (result.created) created++;
         else replaced++;
         imported++;

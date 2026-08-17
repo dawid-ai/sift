@@ -32,14 +32,18 @@ const defaultExec: ClaudeCliExec = (args, input) =>
     proc.stdout.on("data", (d) => (stdout += d.toString()));
     proc.stderr.on("data", (d) => (stderr += d.toString()));
     proc.on("error", reject); // ENOENT etc.
-    proc.on("close", (code) => resolve({ stdout, stderr, exitCode: code ?? 0 }));
+    proc.on("close", (code) =>
+      resolve({ stdout, stderr, exitCode: code ?? 0 }),
+    );
     proc.stdin.write(input);
     proc.stdin.end();
   });
 
 /** Whether the `claude` CLI is present and runnable (`claude --version` exits 0). Feeds the
  * Settings availability badge — not a login check (that only surfaces at call time). */
-export async function isClaudeCliAvailable(exec: ClaudeCliExec = defaultExec): Promise<boolean> {
+export async function isClaudeCliAvailable(
+  exec: ClaudeCliExec = defaultExec,
+): Promise<boolean> {
   try {
     return (await exec(["--version"], "")).exitCode === 0;
   } catch {
@@ -53,7 +57,9 @@ export async function isClaudeCliAvailable(exec: ClaudeCliExec = defaultExec): P
  * time (a missing/logged-out `claude` throws). ponytail: v1 is non-streaming — `onToken`
  * fires once with the full text; `--output-format stream-json` is the upgrade path.
  */
-export function createClaudeCliProvider(deps: { exec?: ClaudeCliExec } = {}): AiProvider {
+export function createClaudeCliProvider(
+  deps: { exec?: ClaudeCliExec } = {},
+): AiProvider {
   const exec = deps.exec ?? defaultExec;
   return {
     id: CLAUDE_CLI_ID,
@@ -66,13 +72,20 @@ export function createClaudeCliProvider(deps: { exec?: ClaudeCliExec } = {}): Ai
       const prompt = `${input.systemPrompt}\n\n${input.content}`;
       let res;
       try {
-        res = await exec(["-p", "--model", mapClaudeModel(input.model)], prompt);
+        res = await exec(
+          ["-p", "--model", mapClaudeModel(input.model)],
+          prompt,
+        );
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        throw new Error(`Could not run the \`claude\` CLI. Is Claude Code installed and logged in? (${msg})`);
+        throw new Error(
+          `Could not run the \`claude\` CLI. Is Claude Code installed and logged in? (${msg})`,
+        );
       }
       if (res.exitCode !== 0) {
-        throw new Error(`\`claude\` exited with code ${res.exitCode}: ${res.stderr.trim() || "no output"}`);
+        throw new Error(
+          `\`claude\` exited with code ${res.exitCode}: ${res.stderr.trim() || "no output"}`,
+        );
       }
       const text = res.stdout.trim();
       if (text) onToken(text);

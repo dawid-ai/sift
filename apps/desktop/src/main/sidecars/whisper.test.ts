@@ -37,12 +37,15 @@ function fakeSpawn(opts: { stderr?: string[]; code?: number } = {}) {
     const handlers: Record<string, ((arg: unknown) => void)[]> = {};
     const stderrCbs: ((c: string) => void)[] = [];
     queueMicrotask(() => {
-      for (const chunk of opts.stderr ?? []) stderrCbs.forEach((cb) => cb(chunk));
+      for (const chunk of opts.stderr ?? [])
+        stderrCbs.forEach((cb) => cb(chunk));
       (handlers.close ?? []).forEach((cb) => cb(opts.code ?? 0));
     });
     return {
       stdout: { on: () => {} },
-      stderr: { on: (_e: "data", cb: (c: string) => void) => void stderrCbs.push(cb) },
+      stderr: {
+        on: (_e: "data", cb: (c: string) => void) => void stderrCbs.push(cb),
+      },
       on: (e: string, cb: (arg: unknown) => void) => {
         (handlers[e] ??= []).push(cb);
       },
@@ -60,7 +63,10 @@ describe("createWhisperRunner", () => {
       spawn,
       readJson: () => SAMPLE,
     });
-    const { segments } = await r.transcribe({ wavPath: "/a.wav", language: "en" });
+    const { segments } = await r.transcribe({
+      wavPath: "/a.wav",
+      language: "en",
+    });
     expect(segments).toHaveLength(2);
     const [file, args] = spawn.mock.calls[0]!;
     expect(file).toBe("/bin/whisper-cli");
@@ -89,18 +95,32 @@ describe("createWhisperRunner", () => {
       readJson: () => SAMPLE,
     });
     const seen: number[] = [];
-    await r.transcribe({ wavPath: "/a.wav", language: "en" }, (ratio) => seen.push(ratio));
+    await r.transcribe({ wavPath: "/a.wav", language: "en" }, (ratio) =>
+      seen.push(ratio),
+    );
     expect(seen).toEqual([0.1, 0.55]);
   });
 
   it("rejects on a non-zero exit code", async () => {
     const spawn = fakeSpawn({ code: 1 });
-    const r = createWhisperRunner({ getBinaryPath: () => "/b", getModelPath: () => "/m", spawn, readJson: () => SAMPLE });
-    await expect(r.transcribe({ wavPath: "/a.wav", language: "en" })).rejects.toThrow(/whisper failed/i);
+    const r = createWhisperRunner({
+      getBinaryPath: () => "/b",
+      getModelPath: () => "/m",
+      spawn,
+      readJson: () => SAMPLE,
+    });
+    await expect(
+      r.transcribe({ wavPath: "/a.wav", language: "en" }),
+    ).rejects.toThrow(/whisper failed/i);
   });
 
   it("throws when the binary or model is missing", () => {
-    const r = createWhisperRunner({ getBinaryPath: () => null, getModelPath: () => "/m" });
-    expect(() => r.transcribe({ wavPath: "/a.wav", language: "en" })).toThrow(/whisper/i);
+    const r = createWhisperRunner({
+      getBinaryPath: () => null,
+      getModelPath: () => "/m",
+    });
+    expect(() => r.transcribe({ wavPath: "/a.wav", language: "en" })).toThrow(
+      /whisper/i,
+    );
   });
 });

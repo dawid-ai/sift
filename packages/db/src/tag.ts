@@ -15,7 +15,11 @@ export function addTag(db: SiftDatabase, mediaId: number, name: string): void {
  * Exists so local files imported before auto-tagging shipped still appear under the filter.
  * Constants come from the caller: `@sift/db` deliberately doesn't depend on `@sift/core`.
  */
-export function backfillPlatformTag(db: SiftDatabase, platformId: string, tag: string): void {
+export function backfillPlatformTag(
+  db: SiftDatabase,
+  platformId: string,
+  tag: string,
+): void {
   db.prepare(
     `INSERT OR IGNORE INTO media_tag (media_id, name)
      SELECT id, @tag FROM media WHERE platform_id = @platformId`,
@@ -23,7 +27,11 @@ export function backfillPlatformTag(db: SiftDatabase, platformId: string, tag: s
 }
 
 /** Removes a tag from a media row (case-insensitive via column collation). */
-export function removeTag(db: SiftDatabase, mediaId: number, name: string): void {
+export function removeTag(
+  db: SiftDatabase,
+  mediaId: number,
+  name: string,
+): void {
   db.prepare(
     "DELETE FROM media_tag WHERE media_id = @mediaId AND name = @name",
   ).run({ mediaId, name: name.trim() });

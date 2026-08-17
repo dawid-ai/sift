@@ -82,7 +82,8 @@ export function backfillMediaChannelIds(db: SiftDatabase): void {
     let cid: string | null = null;
     try {
       const raw = JSON.parse(row.metadata_json) as Record<string, unknown>;
-      if (typeof raw.channel_id === "string" && raw.channel_id) cid = raw.channel_id;
+      if (typeof raw.channel_id === "string" && raw.channel_id)
+        cid = raw.channel_id;
     } catch {
       /* malformed json — leave channel_id null */
     }
@@ -92,7 +93,10 @@ export function backfillMediaChannelIds(db: SiftDatabase): void {
 
 /** Media downloaded/transcribed from a given source channel, newest first. Powers the
  * channel detail's "Downloaded from this channel" list. */
-export function listMediaByChannelId(db: SiftDatabase, channelId: string): MediaRow[] {
+export function listMediaByChannelId(
+  db: SiftDatabase,
+  channelId: string,
+): MediaRow[] {
   return db
     .prepare<MediaRow>(
       "SELECT * FROM media WHERE channel_id = @channelId ORDER BY created_at DESC, id DESC",
@@ -100,7 +104,10 @@ export function listMediaByChannelId(db: SiftDatabase, channelId: string): Media
     .all({ channelId });
 }
 
-export function getMediaById(db: SiftDatabase, id: number): MediaRow | undefined {
+export function getMediaById(
+  db: SiftDatabase,
+  id: number,
+): MediaRow | undefined {
   return db.prepare<MediaRow>("SELECT * FROM media WHERE id = ?").get(id);
 }
 
@@ -109,7 +116,9 @@ export function deleteMedia(db: SiftDatabase, id: number): void {
 }
 
 export function listMedia(db: SiftDatabase): MediaRow[] {
-  return db.prepare<MediaRow>("SELECT * FROM media ORDER BY created_at DESC, id DESC").all();
+  return db
+    .prepare<MediaRow>("SELECT * FROM media ORDER BY created_at DESC, id DESC")
+    .all();
 }
 
 /** Filters for the paged library list. All optional; omitted/null fields don't constrain.
@@ -125,7 +134,10 @@ export interface MediaFilter {
 }
 
 /** Builds a WHERE clause + named params from a MediaFilter. Empty string when nothing is set. */
-function mediaWhere(f: MediaFilter): { where: string; params: Record<string, unknown> } {
+function mediaWhere(f: MediaFilter): {
+  where: string;
+  params: Record<string, unknown>;
+} {
   const clauses: string[] = [];
   const params: Record<string, unknown> = {};
   // Multi-tag is AND (narrowing): one EXISTS per tag, so a row must carry every one.
@@ -175,7 +187,10 @@ function mediaWhere(f: MediaFilter): { where: string; params: Record<string, unk
       clauses.push(`m.id IN (${ph})`);
     }
   }
-  return { where: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "", params };
+  return {
+    where: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "",
+    params,
+  };
 }
 
 /** One page of media matching `filter`, newest first, plus the total match count (for the pager). */
@@ -186,7 +201,9 @@ export function listMediaPage(
   offset: number,
 ): { rows: MediaRow[]; total: number } {
   const { where, params } = mediaWhere(filter);
-  const countStmt = db.prepare<{ n: number }>(`SELECT COUNT(*) AS n FROM media m ${where}`);
+  const countStmt = db.prepare<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM media m ${where}`,
+  );
   const total = (where ? countStmt.get(params) : countStmt.get())!.n;
   const rows = db
     .prepare<MediaRow>(
@@ -226,26 +243,38 @@ export function listMediaPlatforms(db: SiftDatabase): string[] {
 }
 
 /** Points a media row at a locally-stored poster/thumbnail image. */
-export function setMediaThumbnail(db: SiftDatabase, id: number, path: string | null): void {
-  db.prepare("UPDATE media SET thumbnail_path = ?, updated_at = ? WHERE id = ?").run(
-    path,
-    Date.now(),
-    id,
-  );
+export function setMediaThumbnail(
+  db: SiftDatabase,
+  id: number,
+  path: string | null,
+): void {
+  db.prepare(
+    "UPDATE media SET thumbnail_path = ?, updated_at = ? WHERE id = ?",
+  ).run(path, Date.now(), id);
 }
 
 /** Whether any media row references this exact thumbnail path — the allowlist gate for the
  * sift-poster:// protocol handler, mirroring `downloadExistsByFilePath` for sift-media://. */
-export function mediaExistsByThumbnailPath(db: SiftDatabase, path: string): boolean {
+export function mediaExistsByThumbnailPath(
+  db: SiftDatabase,
+  path: string,
+): boolean {
   return (
     db
-      .prepare<{ id: number }>("SELECT id FROM media WHERE thumbnail_path = @path LIMIT 1")
+      .prepare<{ id: number }>(
+        "SELECT id FROM media WHERE thumbnail_path = @path LIMIT 1",
+      )
       .get({ path }) !== undefined
   );
 }
 
-export function getMediaBySourceUrl(db: SiftDatabase, sourceUrl: string): MediaRow | undefined {
+export function getMediaBySourceUrl(
+  db: SiftDatabase,
+  sourceUrl: string,
+): MediaRow | undefined {
   return db
-    .prepare<MediaRow>("SELECT * FROM media WHERE source_url = @sourceUrl ORDER BY id DESC LIMIT 1")
+    .prepare<MediaRow>(
+      "SELECT * FROM media WHERE source_url = @sourceUrl ORDER BY id DESC LIMIT 1",
+    )
     .get({ sourceUrl });
 }

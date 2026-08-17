@@ -1,5 +1,10 @@
 import { ipcMain, type BrowserWindow } from "electron";
-import { IPC, type MediaMetadata, type TranscriptMethod, type TranscriptProgress } from "@sift/ipc-contract";
+import {
+  IPC,
+  type MediaMetadata,
+  type TranscriptMethod,
+  type TranscriptProgress,
+} from "@sift/ipc-contract";
 import type { TranscriptService } from "../services/transcript-service";
 
 /**
@@ -19,11 +24,14 @@ export function registerTranscriptIpc(
     IPC.transcriptGet,
     (_event, input: { metadata: MediaMetadata; force?: "whisper" }) =>
       service.get(input, (p: TranscriptProgress) => {
-        for (const win of getWindows()) win.webContents.send(IPC.transcriptProgress, p);
+        for (const win of getWindows())
+          win.webContents.send(IPC.transcriptProgress, p);
       }),
   );
   ipcMain.handle(IPC.transcriptGetMethod, () => methodStore.get());
-  ipcMain.handle(IPC.transcriptSetMethod, (_event, m: TranscriptMethod) => methodStore.set(m));
+  ipcMain.handle(IPC.transcriptSetMethod, (_event, m: TranscriptMethod) =>
+    methodStore.set(m),
+  );
   ipcMain.handle(IPC.transcriptGetAutoDownload, () => autoDownloadStore.get());
   ipcMain.handle(IPC.transcriptSetAutoDownload, (_event, enabled: boolean) =>
     autoDownloadStore.set(enabled),

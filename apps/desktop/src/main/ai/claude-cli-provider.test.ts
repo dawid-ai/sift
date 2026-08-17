@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createClaudeCliProvider, mapClaudeModel, type ClaudeCliExec } from "./claude-cli-provider";
+import {
+  createClaudeCliProvider,
+  mapClaudeModel,
+  type ClaudeCliExec,
+} from "./claude-cli-provider";
 
 describe("mapClaudeModel", () => {
   it("passes short aliases through and maps unknowns to themselves", () => {
@@ -10,7 +14,11 @@ describe("mapClaudeModel", () => {
 
 describe("createClaudeCliProvider", () => {
   it("spawns claude -p with the model and pipes the prompt on stdin", async () => {
-    const exec = vi.fn<ClaudeCliExec>(async () => ({ stdout: "polished text\n", stderr: "", exitCode: 0 }));
+    const exec = vi.fn<ClaudeCliExec>(async () => ({
+      stdout: "polished text\n",
+      stderr: "",
+      exitCode: 0,
+    }));
     const provider = createClaudeCliProvider({ exec });
 
     const tokens: string[] = [];
@@ -28,10 +36,17 @@ describe("createClaudeCliProvider", () => {
   });
 
   it("rejects with a claude-naming message on a non-zero exit", async () => {
-    const exec = vi.fn(async () => ({ stdout: "", stderr: "not logged in", exitCode: 1 }));
+    const exec = vi.fn(async () => ({
+      stdout: "",
+      stderr: "not logged in",
+      exitCode: 1,
+    }));
     const provider = createClaudeCliProvider({ exec });
     await expect(
-      provider.summarize({ model: "opus", systemPrompt: "s", content: "c", maxTokens: 10 }, () => {}),
+      provider.summarize(
+        { model: "opus", systemPrompt: "s", content: "c", maxTokens: 10 },
+        () => {},
+      ),
     ).rejects.toThrow(/claude/i);
   });
 
@@ -41,7 +56,10 @@ describe("createClaudeCliProvider", () => {
     });
     const provider = createClaudeCliProvider({ exec });
     await expect(
-      provider.summarize({ model: "opus", systemPrompt: "s", content: "c", maxTokens: 10 }, () => {}),
+      provider.summarize(
+        { model: "opus", systemPrompt: "s", content: "c", maxTokens: 10 },
+        () => {},
+      ),
     ).rejects.toThrow(/claude/i);
   });
 });

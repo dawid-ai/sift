@@ -16,7 +16,10 @@ export function appendTimeParam(url: string, sec: number): string {
 
 /** Index of the last segment whose start is <= t (segments are ascending by start),
  * or -1 when none qualify. Drives the synced transcript's active-line highlight. */
-export function activeSegmentIndex(segments: { start: number }[], t: number): number {
+export function activeSegmentIndex(
+  segments: { start: number }[],
+  t: number,
+): number {
   let idx = -1;
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]!;

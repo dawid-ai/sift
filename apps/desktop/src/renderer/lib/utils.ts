@@ -23,19 +23,23 @@ export function thumbUrl(url: string | null | undefined): string | undefined {
 // Hosts the sift-thumb cache handler (thumbnail-cache.ts) is allowed to fetch. Kept in sync
 // with ALLOWED_HOST there — the renderer must not route a non-cacheable host through the
 // protocol (it would 404), so those fall back to loading the raw URL directly.
-const CACHEABLE_THUMB_HOST = /(^|\.)(googleusercontent\.com|ggpht\.com|ytimg\.com)$/;
+const CACHEABLE_THUMB_HOST =
+  /(^|\.)(googleusercontent\.com|ggpht\.com|ytimg\.com)$/;
 
 /** Thumbnail src for a VIDEO: YouTube-CDN thumbnails go through the sift-thumb:// disk cache
  * (fetched once by the main process, not the renderer — avoids bursts of remote HTTP/2 requests
  * that the CDN refuses when a whole page of thumbnails loads at once). Non-cacheable hosts fall
  * back to the raw https URL so other platforms' thumbnails still load. */
-export function videoThumbUrl(url: string | null | undefined): string | undefined {
+export function videoThumbUrl(
+  url: string | null | undefined,
+): string | undefined {
   const https = httpsUrl(url);
   if (!https) return undefined;
   // `media.thumbnail_path` holds a remote URL for downloaded videos but an absolute local
   // path for imported files (see the poster grab in main/ipc/import.ts) — route those
   // through sift-poster://, which gates on that column before touching disk.
-  if (!/^https?:/i.test(https)) return `sift-poster://file/${encodeURIComponent(https)}`;
+  if (!/^https?:/i.test(https))
+    return `sift-poster://file/${encodeURIComponent(https)}`;
   try {
     return CACHEABLE_THUMB_HOST.test(new URL(https).hostname)
       ? `sift-thumb://img/${encodeURIComponent(https)}`

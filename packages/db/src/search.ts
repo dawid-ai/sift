@@ -55,11 +55,22 @@ export function searchMedia(db: SiftDatabase, query: string): SearchHit[] {
 }
 
 function toHit(r: Row, lq: string): SearchHit {
-  if (r.title.toLowerCase().includes(lq)) return { mediaId: r.mediaId, field: "title", snippet: null };
+  if (r.title.toLowerCase().includes(lq))
+    return { mediaId: r.mediaId, field: "title", snippet: null };
   if (r.uploader && r.uploader.toLowerCase().includes(lq))
     return { mediaId: r.mediaId, field: "uploader", snippet: null };
-  if (r.t_snip != null) return { mediaId: r.mediaId, field: "transcript", snippet: ellipsize(r.t_snip) };
-  if (r.s_snip != null) return { mediaId: r.mediaId, field: "summary", snippet: ellipsize(r.s_snip) };
+  if (r.t_snip != null)
+    return {
+      mediaId: r.mediaId,
+      field: "transcript",
+      snippet: ellipsize(r.t_snip),
+    };
+  if (r.s_snip != null)
+    return {
+      mediaId: r.mediaId,
+      field: "summary",
+      snippet: ellipsize(r.s_snip),
+    };
   // WHERE guarantees a match; unreachable, but keep the return total.
   return { mediaId: r.mediaId, field: "title", snippet: null };
 }

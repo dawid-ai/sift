@@ -134,7 +134,10 @@ export function useFileImport(onDone: () => void): FileImportState {
   const running = useRef(false);
 
   const runImports = useCallback(
-    async (entries: { path: string; file?: File; name: string }[], notice: string | null = null) => {
+    async (
+      entries: { path: string; file?: File; name: string }[],
+      notice: string | null = null,
+    ) => {
       running.current = true;
       const failures: string[] = [];
       // `landed` (not "imported"): `import.local` already committed the media + download
@@ -146,10 +149,19 @@ export function useFileImport(onDone: () => void): FileImportState {
         for (const [i, entry] of entries.entries()) {
           // Stage/ratio reset per file — they arrive from the shared transcript:progress
           // subscription below and would otherwise carry over from the previous file.
-          setBusy({ name: entry.name, index: i + 1, total: entries.length, stage: null, ratio: null });
+          setBusy({
+            name: entry.name,
+            index: i + 1,
+            total: entries.length,
+            stage: null,
+            ratio: null,
+          });
           try {
             const probed = entry.file ? await probeMedia(entry.file) : UNPROBED;
-            const record = await window.sift.import.local({ path: entry.path, ...probed });
+            const record = await window.sift.import.local({
+              path: entry.path,
+              ...probed,
+            });
             landed += 1;
             // Short-circuits to synthesized metadata for file: URLs — no yt-dlp round trip.
             const metadata = await window.sift.metadata.fetch(record.sourceUrl);
@@ -157,7 +169,9 @@ export function useFileImport(onDone: () => void): FileImportState {
           } catch (e) {
             // Report and keep going: one undecodable file shouldn't abort the rest of the
             // batch. The row is already in the library even when the transcribe fails.
-            failures.push(`${entry.name}: ${e instanceof Error ? e.message : String(e)}`);
+            failures.push(
+              `${entry.name}: ${e instanceof Error ? e.message : String(e)}`,
+            );
           }
         }
       } finally {
@@ -222,7 +236,9 @@ export function useFileImport(onDone: () => void): FileImportState {
   useEffect(
     () =>
       window.sift.transcript.onProgress((p) =>
-        setBusy((prev) => (prev ? { ...prev, stage: p.stage, ratio: p.ratio } : prev)),
+        setBusy((prev) =>
+          prev ? { ...prev, stage: p.stage, ratio: p.ratio } : prev,
+        ),
       ),
     [],
   );
@@ -269,8 +285,13 @@ export function useFileImport(onDone: () => void): FileImportState {
       // (isMediaFile && path) condition partitionDropped applies, so re-filtering here
       // and zipping by position re-pairs each entry with its File without dragging the
       // DOM into the pure classification function above.
-      const accepted = files.filter((file) => isMediaFile(file.name) && droppedPath(file) !== null);
-      void runImports(entries.map((entry, i) => ({ ...entry, file: accepted[i] })), notice);
+      const accepted = files.filter(
+        (file) => isMediaFile(file.name) && droppedPath(file) !== null,
+      );
+      void runImports(
+        entries.map((entry, i) => ({ ...entry, file: accepted[i] })),
+        notice,
+      );
     };
 
     window.addEventListener("dragover", onDragOver);

@@ -6,7 +6,10 @@ import type { RgbaImage } from "./dhash";
  * a wide lecture-room shot — dark hall, the slide only a small projected rectangle — runs ~0.35.
  * So it cleanly separates "grab the full-screen slide" from "skip the camera-of-the-screen".
  */
-export function brightPixelFraction(img: RgbaImage, lumaThreshold = 180): number {
+export function brightPixelFraction(
+  img: RgbaImage,
+  lumaThreshold = 180,
+): number {
   const { width, height, data } = img;
   if (width === 0 || height === 0) return 0;
   const cols = Math.min(width, 80);
@@ -17,7 +20,8 @@ export function brightPixelFraction(img: RgbaImage, lumaThreshold = 180): number
       const x = Math.floor((cx / cols) * width);
       const y = Math.floor((ry / rows) * height);
       const i = (y * width + x) * 4;
-      const luma = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
+      const luma =
+        0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
       if (luma > lumaThreshold) bright++;
     }
   }

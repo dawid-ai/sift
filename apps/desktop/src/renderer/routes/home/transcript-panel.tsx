@@ -26,7 +26,10 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
     // one rung up. A transcript arriving is the state change here, so this is the one surface
     // with a warm rim and an outer glow: the terminal state is legible before a single word is
     // read. The rim is the ladder's masked radial, not a line drawn across the top edge.
-    <CardLit data-testid="transcript-panel" className={cn("w-full", RAISED_CARD_LIT)}>
+    <CardLit
+      data-testid="transcript-panel"
+      className={cn("w-full", RAISED_CARD_LIT)}
+    >
       <header
         className={cn(
           SECTION_PAD,
@@ -40,7 +43,9 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
           {/* A row count is a caption, not a title: it is set below the object title's weight
               and size, and it doesn't take a full stop. */}
           <p className="mt-2 text-[13px] leading-none tabular-nums text-muted-foreground">
-            {count > 0 ? `${count} timed segment${count === 1 ? "" : "s"}` : "Full text, untimed"}
+            {count > 0
+              ? `${count} timed segment${count === 1 ? "" : "s"}`
+              : "Full text, untimed"}
           </p>
         </div>
         {/* One chip shell for every pill on this route, at readable contrast — metadata, not
@@ -48,11 +53,19 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
             id, nor a path, so neither is monospace. */}
         <div className="flex flex-wrap items-center gap-1.5">
           {transcript.language && (
-            <span className={cn(CHIP_SHELL, CHIP_STRONG, "uppercase tracking-[0.08em]")}>
+            <span
+              className={cn(
+                CHIP_SHELL,
+                CHIP_STRONG,
+                "uppercase tracking-[0.08em]",
+              )}
+            >
               {transcript.language}
             </span>
           )}
-          <span className={cn(CHIP_SHELL, CHIP_STRONG)}>{transcript.providerId}</span>
+          <span className={cn(CHIP_SHELL, CHIP_STRONG)}>
+            {transcript.providerId}
+          </span>
         </div>
       </header>
 
@@ -66,7 +79,10 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
         <div className="relative">
           <div
             ref={wellRef}
-            className={cn(WELL, "max-h-80 overflow-y-auto p-1.5 [scrollbar-gutter:stable]")}
+            className={cn(
+              WELL,
+              "max-h-80 overflow-y-auto p-1.5 [scrollbar-gutter:stable]",
+            )}
           >
             {count > 0 ? (
               <div className="flex flex-col">

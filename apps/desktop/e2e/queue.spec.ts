@@ -14,17 +14,23 @@ test("Queue → add with download+transcript succeeds, auto-clears, and appears 
     await window.getByRole("button", { name: "Queue" }).click();
     await expect(window.getByTestId("queue-page")).toBeVisible();
 
-    await window.getByTestId("queue-urls").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("queue-urls")
+      .fill("https://www.youtube.com/watch?v=fixture");
     await window.getByTestId("queue-op-transcript").check();
     await window.getByTestId("queue-add").click();
 
     // Fixture download + transcript both succeed with no errors → the item auto-clears.
-    await expect(window.getByTestId("queue-item")).toHaveCount(0, { timeout: 15000 });
+    await expect(window.getByTestId("queue-item")).toHaveCount(0, {
+      timeout: 15000,
+    });
 
     // The processed video is now in the Library.
     await window.getByRole("button", { name: "Library" }).click();
     await expect(window.getByTestId("library-table")).toBeVisible();
-    await expect(window.getByTestId("library-row").first()).toContainText("Fixture Video Title");
+    await expect(window.getByTestId("library-row").first()).toContainText(
+      "Fixture Video Title",
+    );
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });

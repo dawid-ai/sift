@@ -1,6 +1,21 @@
 import { useEffect, useRef } from "react";
-import { Camera, Check, ChevronDown, Crop, FileDown, FolderOpen, Layers, Sparkles, X } from "lucide-react";
-import type { AiProviderInfo, FrameExportProgress, FrameProgress, FrameRecord } from "@sift/ipc-contract";
+import {
+  Camera,
+  Check,
+  ChevronDown,
+  Crop,
+  FileDown,
+  FolderOpen,
+  Layers,
+  Sparkles,
+  X,
+} from "lucide-react";
+import type {
+  AiProviderInfo,
+  FrameExportProgress,
+  FrameProgress,
+  FrameRecord,
+} from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +33,8 @@ function formatTs(ms: number): string {
 function stageLabel(stage: FrameProgress | null): string {
   if (!stage) return "Working…";
   if (stage.stage === "extracting") return "Scanning video…";
-  if (stage.stage === "reading") return `Reading slides… ${stage.processed}/${stage.total}`;
+  if (stage.stage === "reading")
+    return `Reading slides… ${stage.processed}/${stage.total}`;
   return "Finishing…";
 }
 
@@ -26,7 +42,8 @@ function stageLabel(stage: FrameProgress | null): string {
 function stageFraction(stage: FrameProgress | null): number | null {
   if (!stage) return null;
   if (stage.stage === "extracting") return stage.ratio; // may be null (unknown duration)
-  if (stage.stage === "reading") return stage.total > 0 ? stage.processed / stage.total : null;
+  if (stage.stage === "reading")
+    return stage.total > 0 ? stage.processed / stage.total : null;
   return 1;
 }
 
@@ -40,17 +57,24 @@ const GHOST_BUTTON =
 /** Empty states are not drop targets, so they don't wear the dashed drop-zone idiom. */
 const EMPTY_BOX =
   "flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-9 text-center";
-const EMPTY_CHIP = "grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] text-foreground/50";
+const EMPTY_CHIP =
+  "grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] text-foreground/50";
 
 /** Nested-surface heading: a small caps label with a hairline running out to the edge. */
 function BlockHead({ title, note }: { title: string; note?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">{title}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">
+          {title}
+        </p>
         <span className="h-px flex-1 bg-white/[0.06]" aria-hidden />
       </div>
-      {note && <p className="text-[13px] leading-relaxed text-muted-foreground">{note}</p>}
+      {note && (
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          {note}
+        </p>
+      )}
     </div>
   );
 }
@@ -107,11 +131,32 @@ export interface SlidesPanelProps {
 const VISION_MODELS = ["qwen2.5vl:7b", "minicpm-v", "gemma3:12b"];
 
 export function SlidesPanel({
-  frames, canExtract, extracting, capturing, stage, autoplay, hasCrop, cropEditing,
-  classifierModel, onChangeClassifier, fullScreenOnly, onToggleFullScreenOnly,
-  canExport, exporting, documentPath, polish,
-  onExtract, onCapture, onToggleAutoplay, onToggleInclude, onToggleCropEditing, onClearCrop, onSeek,
-  onExport, onRevealDocument, onSaveSlides,
+  frames,
+  canExtract,
+  extracting,
+  capturing,
+  stage,
+  autoplay,
+  hasCrop,
+  cropEditing,
+  classifierModel,
+  onChangeClassifier,
+  fullScreenOnly,
+  onToggleFullScreenOnly,
+  canExport,
+  exporting,
+  documentPath,
+  polish,
+  onExtract,
+  onCapture,
+  onToggleAutoplay,
+  onToggleInclude,
+  onToggleCropEditing,
+  onClearCrop,
+  onSeek,
+  onExport,
+  onRevealDocument,
+  onSaveSlides,
 }: SlidesPanelProps) {
   const includedCount = frames.filter((f) => f.included).length;
   const stripRef = useRef<HTMLDivElement>(null);
@@ -158,7 +203,11 @@ export function SlidesPanel({
             onClick={onExtract}
           >
             <Layers className="h-4 w-4" aria-hidden />
-            {extracting ? stageLabel(stage) : frames.length > 0 ? "Re-extract slides" : "Extract slides"}
+            {extracting
+              ? stageLabel(stage)
+              : frames.length > 0
+                ? "Re-extract slides"
+                : "Extract slides"}
           </Button>
           <Button
             size="sm"
@@ -213,7 +262,11 @@ export function SlidesPanel({
               onClick={onToggleCropEditing}
             >
               <Crop className="h-3.5 w-3.5" aria-hidden />
-              {cropEditing ? "Done" : hasCrop ? "Edit slide region" : "Set slide region"}
+              {cropEditing
+                ? "Done"
+                : hasCrop
+                  ? "Edit slide region"
+                  : "Set slide region"}
             </Button>
             {hasCrop && !cropEditing && (
               <Button
@@ -228,9 +281,15 @@ export function SlidesPanel({
               </Button>
             )}
             {hasCrop && !cropEditing && (
-              <span className="text-muted-foreground">Extraction limited to the marked region.</span>
+              <span className="text-muted-foreground">
+                Extraction limited to the marked region.
+              </span>
             )}
-            {cropEditing && <span className="text-primary">Drag a box over the slide on the video.</span>}
+            {cropEditing && (
+              <span className="text-primary">
+                Drag a box over the slide on the video.
+              </span>
+            )}
           </div>
 
           {/* AI slide detection: an Ollama vision model rejects talking heads / rooms / charts-in-a-room
@@ -249,11 +308,16 @@ export function SlidesPanel({
                 data-testid="media-detail-classifier"
                 value={classifierModel}
                 onChange={(e) => onChangeClassifier(e.target.value)}
-                className={cn(SELECT_CLASS, classifierModel && "border-primary/35 text-primary")}
+                className={cn(
+                  SELECT_CLASS,
+                  classifierModel && "border-primary/35 text-primary",
+                )}
               >
                 <option value="">Off</option>
                 {VISION_MODELS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
                 ))}
               </select>
               <ChevronDown
@@ -262,13 +326,18 @@ export function SlidesPanel({
               />
             </span>
             {classifierModel && (
-              <span className="text-muted-foreground">via Ollama — must be pulled; slower.</span>
+              <span className="text-muted-foreground">
+                via Ollama — must be pulled; slower.
+              </span>
             )}
           </div>
         </div>
 
         {extracting && (
-          <div data-testid="media-detail-frames-progress" className="flex flex-col gap-1.5">
+          <div
+            data-testid="media-detail-frames-progress"
+            className="flex flex-col gap-1.5"
+          >
             <div className="h-[3px] w-full overflow-hidden rounded-full bg-white/10">
               {(() => {
                 const frac = stageFraction(stage);
@@ -283,7 +352,9 @@ export function SlidesPanel({
               })()}
             </div>
             {stage?.stage === "reading" && stage.kept > 0 && (
-              <p className="text-xs tabular-nums text-muted-foreground">{stage.kept} slides kept so far</p>
+              <p className="text-xs tabular-nums text-muted-foreground">
+                {stage.kept} slides kept so far
+              </p>
             )}
           </div>
         )}
@@ -294,7 +365,9 @@ export function SlidesPanel({
           <span className={EMPTY_CHIP} aria-hidden>
             <Layers className="h-4 w-4" />
           </span>
-          <p className="text-[13px] font-semibold text-foreground">No slides yet.</p>
+          <p className="text-[13px] font-semibold text-foreground">
+            No slides yet.
+          </p>
           <p className="max-w-[40ch] text-[13px] leading-relaxed text-muted-foreground">
             Extract to find data-bearing frames, or capture one from the player.
           </p>
@@ -303,9 +376,13 @@ export function SlidesPanel({
         <>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xs text-muted-foreground">
-              <span className="font-semibold tabular-nums text-primary">{includedCount}</span>
+              <span className="font-semibold tabular-nums text-primary">
+                {includedCount}
+              </span>
               {" of "}
-              <span className="tabular-nums text-foreground/70">{frames.length}</span>
+              <span className="tabular-nums text-foreground/70">
+                {frames.length}
+              </span>
               {" selected for the document"}
             </p>
             <Button
@@ -326,7 +403,10 @@ export function SlidesPanel({
           {/* snap-proximity, not mandatory: mandatory fights the incremental scrollLeft the
               wheel handler applies, snapping back mid-gesture. */}
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-            <div ref={stripRef} className="flex snap-x snap-proximity gap-3 overflow-x-auto pb-2">
+            <div
+              ref={stripRef}
+              className="flex snap-x snap-proximity gap-3 overflow-x-auto pb-2"
+            >
               {frames.map((f) => (
                 <div
                   key={f.id}
@@ -357,7 +437,9 @@ export function SlidesPanel({
                     {/* Timestamp chip, like a duration badge on a video thumbnail. */}
                     <span className="pointer-events-none absolute bottom-1.5 left-1.5 inline-flex items-center rounded-md bg-background/85 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-primary">
                       {formatTs(f.tsMs)}
-                      {f.kind === "manual" && <span className="text-foreground/45"> · manual</span>}
+                      {f.kind === "manual" && (
+                        <span className="text-foreground/45"> · manual</span>
+                      )}
                     </span>
                     {/* State marker — shape + glyph, not colour alone. */}
                     <span
@@ -368,7 +450,11 @@ export function SlidesPanel({
                           : "bg-background/85 text-foreground/45 ring-1 ring-inset ring-white/15"
                       }`}
                     >
-                      {f.included ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                      {f.included ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <X className="h-3 w-3" />
+                      )}
                     </span>
                   </div>
                   <div className="flex items-start gap-2 border-t border-white/[0.06] p-2.5">
@@ -389,7 +475,9 @@ export function SlidesPanel({
                         {f.included ? "Included" : "Excluded"}
                       </span>
                       {f.ocrText && (
-                        <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">{f.ocrText}</span>
+                        <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                          {f.ocrText}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -429,14 +517,22 @@ export function SlidesPanel({
                   value={polish.providerId}
                   disabled={exporting}
                   onChange={(e) => polish.setProviderId(e.target.value)}
-                  className={cn(SELECT_CLASS, polish.providerId && "border-primary/35 text-primary")}
+                  className={cn(
+                    SELECT_CLASS,
+                    polish.providerId && "border-primary/35 text-primary",
+                  )}
                 >
                   <option value="">No AI (raw)</option>
                   {polish.providers.map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
                   ))}
                 </select>
-                <ChevronDown aria-hidden className="pointer-events-none absolute right-2 h-3 w-3 text-foreground/40" />
+                <ChevronDown
+                  aria-hidden
+                  className="pointer-events-none absolute right-2 h-3 w-3 text-foreground/40"
+                />
               </span>
               {polish.providerId && (
                 <span className="relative inline-flex items-center">
@@ -445,13 +541,21 @@ export function SlidesPanel({
                     value={polish.model}
                     disabled={exporting || polish.models.length === 0}
                     onChange={(e) => polish.setModel(e.target.value)}
-                    className={cn(SELECT_CLASS, "border-primary/35 text-primary")}
+                    className={cn(
+                      SELECT_CLASS,
+                      "border-primary/35 text-primary",
+                    )}
                   >
                     {polish.models.map((m) => (
-                      <option key={m.id} value={m.id}>{m.label}</option>
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
                     ))}
                   </select>
-                  <ChevronDown aria-hidden className="pointer-events-none absolute right-2 h-3 w-3 text-primary/60" />
+                  <ChevronDown
+                    aria-hidden
+                    className="pointer-events-none absolute right-2 h-3 w-3 text-primary/60"
+                  />
                 </span>
               )}
             </div>
@@ -481,7 +585,10 @@ export function SlidesPanel({
                 data-testid="media-detail-export-progress"
                 className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2 text-xs text-muted-foreground"
               >
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                <Sparkles
+                  className="h-3.5 w-3.5 shrink-0 text-primary"
+                  aria-hidden
+                />
                 Distilling the transcript with AI — this can take a while…
               </p>
             )}
@@ -494,7 +601,9 @@ export function SlidesPanel({
                 title={documentPath}
               >
                 <FolderOpen className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="truncate">Saved to {documentPath} — reveal</span>
+                <span className="truncate">
+                  Saved to {documentPath} — reveal
+                </span>
               </button>
             )}
           </div>

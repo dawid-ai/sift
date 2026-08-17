@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Info, Search } from "lucide-react";
 import { listTestedPlatforms } from "@sift/core";
 import { Input } from "@/components/ui/input";
-import { CountTag, FIELD, GroupLabel, NESTED_SURFACE, SettingsHint } from "./settings-page";
+import {
+  CountTag,
+  FIELD,
+  GroupLabel,
+  NESTED_SURFACE,
+  SettingsHint,
+} from "./settings-page";
 import { cn } from "@/lib/utils";
 
 const MAX_VISIBLE_EXTRACTORS = 300;
@@ -50,7 +56,10 @@ const CHIP_TESTED_GLYPH = "text-accent-muted";
  * printing of the name on this page ("YouTube"). Route every name through the tested-platform
  * labels so a platform is spelled exactly one way. */
 const CANONICAL = new Map(
-  TESTED_PLATFORMS.map((p) => [p.label.toLowerCase().replace(/[^a-z0-9]/g, ""), p.label]),
+  TESTED_PLATFORMS.map((p) => [
+    p.label.toLowerCase().replace(/[^a-z0-9]/g, ""),
+    p.label,
+  ]),
 );
 const normalise = (raw: string) => raw.toLowerCase().replace(/[^a-z0-9]/g, "");
 const displayName = (raw: string) => CANONICAL.get(normalise(raw)) ?? raw;
@@ -92,7 +101,9 @@ export function PlatformsSection() {
        instead of two the ten names this card is actually about ("YouTube", "Vimeo", …) fell
        past MAX_VISIBLE_EXTRACTORS and off the screen. Tested names lead the cloud; `sort` is
        stable, so everything else keeps yt-dlp's own order. */
-    return [...matches].sort((a, b) => Number(isTested(b)) - Number(isTested(a)));
+    return [...matches].sort(
+      (a, b) => Number(isTested(b)) - Number(isTested(a)),
+    );
   }, [extractors, query]);
 
   const visible = filtered.slice(0, MAX_VISIBLE_EXTRACTORS);
@@ -160,7 +171,10 @@ export function PlatformsSection() {
                     data-testid={tested ? "tested-platform" : undefined}
                   >
                     {tested && (
-                      <Check aria-hidden className={cn("h-3 w-3 shrink-0", CHIP_TESTED_GLYPH)} />
+                      <Check
+                        aria-hidden
+                        className={cn("h-3 w-3 shrink-0", CHIP_TESTED_GLYPH)}
+                      />
                     )}
                     {displayName(name)}
                   </span>

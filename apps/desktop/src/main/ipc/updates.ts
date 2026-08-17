@@ -22,13 +22,26 @@ export function registerUpdatesIpc(getWindows: () => BrowserWindow[]): void {
     if (userInitiated) send({ type: "checking" });
   });
   autoUpdater.on("update-available", (info) =>
-    send({ type: "available", version: info.version, releaseNotes: notesToText(info.releaseNotes) }),
+    send({
+      type: "available",
+      version: info.version,
+      releaseNotes: notesToText(info.releaseNotes),
+    }),
   );
   autoUpdater.on("update-not-available", () => send({ type: "not-available" }));
-  autoUpdater.on("download-progress", (p) => send({ type: "downloading", percent: p.percent }));
-  autoUpdater.on("update-downloaded", (info) => send({ type: "downloaded", version: info.version }));
+  autoUpdater.on("download-progress", (p) =>
+    send({ type: "downloading", percent: p.percent }),
+  );
+  autoUpdater.on("update-downloaded", (info) =>
+    send({ type: "downloaded", version: info.version }),
+  );
   autoUpdater.on("error", (err) => {
-    if (userInitiated) send({ type: "error", message: err == null ? "Unknown update error" : err.message ?? String(err) });
+    if (userInitiated)
+      send({
+        type: "error",
+        message:
+          err == null ? "Unknown update error" : (err.message ?? String(err)),
+      });
   });
 
   ipcMain.handle(IPC.updateCheck, async () => {
@@ -36,7 +49,10 @@ export function registerUpdatesIpc(getWindows: () => BrowserWindow[]): void {
     try {
       await autoUpdater.checkForUpdates();
     } catch (err) {
-      send({ type: "error", message: err instanceof Error ? err.message : String(err) });
+      send({
+        type: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   });
   ipcMain.handle(IPC.updateDownload, async () => {
@@ -44,7 +60,10 @@ export function registerUpdatesIpc(getWindows: () => BrowserWindow[]): void {
     try {
       await autoUpdater.downloadUpdate();
     } catch (err) {
-      send({ type: "error", message: err instanceof Error ? err.message : String(err) });
+      send({
+        type: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   });
   ipcMain.handle(IPC.updateInstall, () => {

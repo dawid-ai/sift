@@ -16,7 +16,10 @@ export interface ByteRange {
  * element never sends multi-range requests. Supported forms: `bytes=start-end`,
  * `bytes=start-` (to EOF), `bytes=-suffix` (last N bytes).
  */
-export function parseRange(header: string | null, size: number): ByteRange | "unsatisfiable" | null {
+export function parseRange(
+  header: string | null,
+  size: number,
+): ByteRange | "unsatisfiable" | null {
   if (!header) return null;
   const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
   if (!m) return null;
@@ -57,5 +60,7 @@ const MEDIA_TYPES: Record<string, string> = {
 /** Maps a downloaded file's extension to a media MIME type so the `<video>`
  * element gets a real `Content-Type` (defaults to a generic binary type). */
 export function mediaContentType(filePath: string): string {
-  return MEDIA_TYPES[extname(filePath).toLowerCase()] ?? "application/octet-stream";
+  return (
+    MEDIA_TYPES[extname(filePath).toLowerCase()] ?? "application/octet-stream"
+  );
 }

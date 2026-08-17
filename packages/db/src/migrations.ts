@@ -60,10 +60,9 @@ export function runMigrations(
     db.exec("BEGIN");
     try {
       db.exec(m.sql);
-      db.prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)").run(
-        m.version,
-        Date.now(),
-      );
+      db.prepare(
+        "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)",
+      ).run(m.version, Date.now());
       db.exec("COMMIT");
     } catch (e) {
       db.exec("ROLLBACK");

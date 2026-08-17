@@ -32,11 +32,17 @@ describe("renderMarkdownDocument", () => {
 
 describe("toMarkeredTranscript", () => {
   it("serialises blocks to numbered [[SLIDE n]] markers and returns slides in order", () => {
-    const blocks = buildDocumentBlocks(segments, [{ tsMs: 5000, src: "a" }, { tsMs: 8000, src: "b" }]);
+    const blocks = buildDocumentBlocks(segments, [
+      { tsMs: 5000, src: "a" },
+      { tsMs: 8000, src: "b" },
+    ]);
     const { text, slides } = toMarkeredTranscript(blocks);
     expect(text).toContain("[[SLIDE 1]]");
     expect(text).toContain("[[SLIDE 2]]");
-    expect(slides.map((s) => (s.kind === "frame" ? s.src : ""))).toEqual(["a", "b"]);
+    expect(slides.map((s) => (s.kind === "frame" ? s.src : ""))).toEqual([
+      "a",
+      "b",
+    ]);
   });
 });
 
@@ -48,7 +54,10 @@ describe("fromMarkeredOutput", () => {
 
   it("splices slide images back at their markers, ignoring surrounding whitespace", () => {
     const one: Block[] = [{ kind: "frame", src: "a", tsMs: 1 }];
-    const out = fromMarkeredOutput("## Topic\n\n[[SLIDE 1]]\n\nMore text.", one);
+    const out = fromMarkeredOutput(
+      "## Topic\n\n[[SLIDE 1]]\n\nMore text.",
+      one,
+    );
     expect(out).toEqual([
       { kind: "text", text: "## Topic" },
       one[0],
@@ -57,15 +66,23 @@ describe("fromMarkeredOutput", () => {
   });
 
   it("appends slides the model never referenced so no image is lost, and dedupes repeats", () => {
-    const out = fromMarkeredOutput("Only [[SLIDE 1]] and [[SLIDE 1]] again.", slides);
+    const out = fromMarkeredOutput(
+      "Only [[SLIDE 1]] and [[SLIDE 1]] again.",
+      slides,
+    );
     // slide 1 used once inline; slide 2 (unreferenced) appended at the end.
-    expect(out.filter((b) => b.kind === "frame")).toEqual([slides[0], slides[1]]);
+    expect(out.filter((b) => b.kind === "frame")).toEqual([
+      slides[0],
+      slides[1],
+    ]);
   });
 });
 
 describe("markdownToHtml", () => {
   it("renders headers, bullets, paragraphs and inline emphasis", () => {
-    const html = markdownToHtml("## Findings\n\n- one **bold**\n- two\n\nA paragraph with `code`.");
+    const html = markdownToHtml(
+      "## Findings\n\n- one **bold**\n- two\n\nA paragraph with `code`.",
+    );
     expect(html).toContain("<h2>Findings</h2>");
     expect(html).toContain("<li>one <strong>bold</strong></li>");
     expect(html).toContain("<ul>");
@@ -79,7 +96,11 @@ describe("markdownToHtml", () => {
 
 describe("renderHtmlDocument", () => {
   it("escapes the title and embeds the image src", () => {
-    const html = renderHtmlDocument("A & B", [{ start: 0, text: "1 < 2" }], frames);
+    const html = renderHtmlDocument(
+      "A & B",
+      [{ start: 0, text: "1 < 2" }],
+      frames,
+    );
     expect(html).toContain("<h1>A &amp; B</h1>");
     expect(html).toContain("<p>1 &lt; 2</p>");
     expect(html).toContain('<img src="file:///slide.jpg"');

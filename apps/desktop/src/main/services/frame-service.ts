@@ -24,7 +24,10 @@ import type { FrameClassifier } from "./frame-classifier";
  * so tests exercise dedup without real JPEGs. */
 function defaultHashFrame(imagePath: string): string | null {
   try {
-    const decoded = jpeg.decode(readFileSync(imagePath), { useTArray: true, maxMemoryUsageInMB: 512 });
+    const decoded = jpeg.decode(readFileSync(imagePath), {
+      useTArray: true,
+      maxMemoryUsageInMB: 512,
+    });
     return computeDHash(decoded);
   } catch {
     return null;
@@ -34,7 +37,10 @@ function defaultHashFrame(imagePath: string): string | null {
 /** Bright-pixel fraction of a frame (decodes the JPEG). Undecodable → null (don't drop). */
 function defaultBrightFraction(imagePath: string): number | null {
   try {
-    const decoded = jpeg.decode(readFileSync(imagePath), { useTArray: true, maxMemoryUsageInMB: 512 });
+    const decoded = jpeg.decode(readFileSync(imagePath), {
+      useTArray: true,
+      maxMemoryUsageInMB: 512,
+    });
     return brightPixelFraction(decoded);
   } catch {
     return null;
@@ -67,7 +73,10 @@ export interface FrameProgress {
  * content (not a fade/transition) and matches whatever frame the player lands on when the
  * thumbnail is clicked. A synthetic 0 is prepended so the opening segment is captured.
  */
-export function settledGrabTimes(sceneTimes: number[], endSec: number): number[] {
+export function settledGrabTimes(
+  sceneTimes: number[],
+  endSec: number,
+): number[] {
   const bounds = [0, ...sceneTimes];
   return bounds.map((t, i) => {
     const next = i + 1 < bounds.length ? bounds[i + 1]! : endSec;
@@ -107,14 +116,27 @@ export class FrameService {
     deleteAutoFramesByMediaId(db, input.mediaId); // keep the user's manual captures
 
     // Phase 1: scan for scene-change times (one decode pass; progress by scan position).
-    const duration = input.durationSec && input.durationSec > 0 ? input.durationSec : null;
-    onProgress?.({ stage: "extracting", ratio: 0, processed: 0, total: 0, kept: 0 });
+    const duration =
+      input.durationSec && input.durationSec > 0 ? input.durationSec : null;
+    onProgress?.({
+      stage: "extracting",
+      ratio: 0,
+      processed: 0,
+      total: 0,
+      kept: 0,
+    });
     const sceneTimes = await ffmpeg.detectSceneTimes({
       inputPath: input.videoPath,
       sceneThreshold: this.opts.sceneThreshold,
       onProgress: (seconds) => {
         const ratio = duration ? Math.min(1, seconds / duration) : null;
-        onProgress?.({ stage: "extracting", ratio, processed: 0, total: 0, kept: 0 });
+        onProgress?.({
+          stage: "extracting",
+          ratio,
+          processed: 0,
+          total: 0,
+          kept: 0,
+        });
       },
     });
     // Last segment needs an end; use the known duration, else a short tail past the last cut.
@@ -128,9 +150,18 @@ export class FrameService {
     try {
       for (let i = 0; i < grabTimes.length; i++) {
         const tsMs = Math.round(grabTimes[i]! * 1000);
-        onProgress?.({ stage: "reading", ratio: null, processed: i, total: grabTimes.length, kept: kept.length });
+        onProgress?.({
+          stage: "reading",
+          ratio: null,
+          processed: i,
+          total: grabTimes.length,
+          kept: kept.length,
+        });
 
-        const imagePath = join(dir, `frame-${String(i + 1).padStart(4, "0")}.jpg`);
+        const imagePath = join(
+          dir,
+          `frame-${String(i + 1).padStart(4, "0")}.jpg`,
+        );
         await ffmpeg.extractFrameAt({
           inputPath: input.videoPath,
           outputPath: imagePath,
@@ -184,7 +215,13 @@ export class FrameService {
       await ocr.close();
     }
 
-    onProgress?.({ stage: "done", ratio: 1, processed: grabTimes.length, total: grabTimes.length, kept: kept.length });
+    onProgress?.({
+      stage: "done",
+      ratio: 1,
+      processed: grabTimes.length,
+      total: grabTimes.length,
+      kept: kept.length,
+    });
     return kept;
   }
 

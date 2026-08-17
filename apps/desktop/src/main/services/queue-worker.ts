@@ -66,7 +66,10 @@ function safeParse<T>(json: string | null, fallback: T): T {
 }
 
 function toItem(row: QueueItemRow, progress: number | null): QueueItem {
-  const spec = safeParse<QueueSpec>(row.spec_json, null as unknown as QueueSpec);
+  const spec = safeParse<QueueSpec>(
+    row.spec_json,
+    null as unknown as QueueSpec,
+  );
   // Guarantee `tags` exists on rows persisted before the field was added.
   if (spec && !Array.isArray(spec.tags)) spec.tags = [];
   return {
@@ -74,7 +77,10 @@ function toItem(row: QueueItemRow, progress: number | null): QueueItem {
     sourceUrl: row.source_url,
     spec,
     status: row.status as QueueItem["status"],
-    ops: row.ops_json === null ? null : safeParse<QueueOps | null>(row.ops_json, null),
+    ops:
+      row.ops_json === null
+        ? null
+        : safeParse<QueueOps | null>(row.ops_json, null),
     mediaId: row.media_id,
     queueOrder: row.queue_order,
     error: row.error,
@@ -100,8 +106,12 @@ export class QueueWorker {
     // "running" in ops_json. Normalize it back to "pending" (mirroring how retry() resets
     // "error" ops) so process()'s `=== "pending"` guard actually re-runs it — otherwise the
     // op is skipped and the item finishes "done" with the work never done.
-    for (const row of listQueueItems(this.deps.db).filter((r) => r.status === "running")) {
-      const ops: QueueOps = row.ops_json ? JSON.parse(row.ops_json) : initialOps(JSON.parse(row.spec_json));
+    for (const row of listQueueItems(this.deps.db).filter(
+      (r) => r.status === "running",
+    )) {
+      const ops: QueueOps = row.ops_json
+        ? JSON.parse(row.ops_json)
+        : initialOps(JSON.parse(row.spec_json));
       for (const k of OP_KEYS) if (ops[k] === "running") ops[k] = "pending";
       updateQueueItem(this.deps.db, row.id, { ops_json: JSON.stringify(ops) });
     }
@@ -155,9 +165,15 @@ export class QueueWorker {
   retry(id: number): void {
     const row = getQueueItem(this.deps.db, id);
     if (!row) return;
-    const ops: QueueOps = row.ops_json ? JSON.parse(row.ops_json) : initialOps(JSON.parse(row.spec_json));
+    const ops: QueueOps = row.ops_json
+      ? JSON.parse(row.ops_json)
+      : initialOps(JSON.parse(row.spec_json));
     for (const k of OP_KEYS) if (ops[k] === "error") ops[k] = "pending";
-    updateQueueItem(this.deps.db, id, { status: "queued", ops_json: JSON.stringify(ops), error: null });
+    updateQueueItem(this.deps.db, id, {
+      status: "queued",
+      ops_json: JSON.stringify(ops),
+      error: null,
+    });
     this.emit();
     void this.tick();
   }
@@ -196,7 +212,9 @@ export class QueueWorker {
 
   private async tick(): Promise<void> {
     if (this.processing || this.paused) return;
-    const next = listQueueItems(this.deps.db).find((r) => r.status === "queued");
+    const next = listQueueItems(this.deps.db).find(
+      (r) => r.status === "queued",
+    );
     if (!next) return;
     this.processing = true;
     this.runningId = next.id;
@@ -228,11 +246,19 @@ export class QueueWorker {
       if (!row) return;
       let ops: QueueOps;
       try {
-        ops = row.ops_json ? JSON.parse(row.ops_json) : initialOps(JSON.parse(row.spec_json));
+        ops = row.ops_json
+          ? JSON.parse(row.ops_json)
+          : initialOps(JSON.parse(row.spec_json));
       } catch {
-        ops = { download: "error", transcript: "error", summarize: "error", messages: {} };
+        ops = {
+          download: "error",
+          transcript: "error",
+          summarize: "error",
+          messages: {},
+        };
       }
-      for (const k of OP_KEYS) if (ops[k] === "pending" || ops[k] === "running") ops[k] = "error";
+      for (const k of OP_KEYS)
+        if (ops[k] === "pending" || ops[k] === "running") ops[k] = "error";
       updateQueueItem(this.deps.db, id, {
         status: "done",
         ops_json: JSON.stringify(ops),
@@ -249,7 +275,9 @@ export class QueueWorker {
     const row = getQueueItem(db, id);
     if (!row) return;
     const spec: QueueSpec = JSON.parse(row.spec_json);
-    const ops: QueueOps = row.ops_json ? JSON.parse(row.ops_json) : initialOps(spec);
+    const ops: QueueOps = row.ops_json
+      ? JSON.parse(row.ops_json)
+      : initialOps(spec);
     ops.messages ??= {};
     updateQueueItem(db, id, { status: "running" });
     this.emit();
@@ -258,8 +286,13 @@ export class QueueWorker {
     try {
       meta = await metadata.fetch(row.source_url);
     } catch (err) {
-      for (const k of OP_KEYS) if (ops[k] === "pending" || ops[k] === "running") ops[k] = "error";
-      updateQueueItem(db, id, { status: "done", ops_json: JSON.stringify(ops), error: msgOf(err) });
+      for (const k of OP_KEYS)
+        if (ops[k] === "pending" || ops[k] === "running") ops[k] = "error";
+      updateQueueItem(db, id, {
+        status: "done",
+        ops_json: JSON.stringify(ops),
+        error: msgOf(err),
+      });
       this.emit();
       return;
     }
@@ -272,9 +305,14 @@ export class QueueWorker {
       updateQueueItem(db, id, { ops_json: JSON.stringify(ops) });
       this.emit();
       try {
-        const option = resolveQueueFormat(computeDownloadOptions(meta.raw), spec.format);
+        const option = resolveQueueFormat(
+          computeDownloadOptions(meta.raw),
+          spec.format,
+        );
         const rec = await download.start({ metadata: meta, option }, (p) => {
-          this.runningProgress = p.total ? Math.round((p.received / p.total) * 100) : 0;
+          this.runningProgress = p.total
+            ? Math.round((p.received / p.total) * 100)
+            : 0;
           this.emit();
         });
         this.runningProgress = null;
@@ -285,7 +323,10 @@ export class QueueWorker {
         ops.download = "error";
         ops.messages.download = msgOf(err);
       }
-      updateQueueItem(db, id, { ops_json: JSON.stringify(ops), media_id: mediaId });
+      updateQueueItem(db, id, {
+        ops_json: JSON.stringify(ops),
+        media_id: mediaId,
+      });
       this.emit();
     }
 
@@ -302,7 +343,10 @@ export class QueueWorker {
         ops.transcript = "error";
         ops.messages.transcript = msgOf(err);
       }
-      updateQueueItem(db, id, { ops_json: JSON.stringify(ops), media_id: mediaId });
+      updateQueueItem(db, id, {
+        ops_json: JSON.stringify(ops),
+        media_id: mediaId,
+      });
       this.emit();
     }
 
@@ -318,7 +362,10 @@ export class QueueWorker {
         updateQueueItem(db, id, { ops_json: JSON.stringify(ops) });
         this.emit();
         try {
-          const s = await summarize.start({ metadata: meta, ...spec.summarize });
+          const s = await summarize.start({
+            metadata: meta,
+            ...spec.summarize,
+          });
           mediaId = s.mediaId;
           ops.summarize = "done";
         } catch (err) {
@@ -342,7 +389,11 @@ export class QueueWorker {
     if (!canceled && OP_KEYS.every((k) => ops[k] !== "error")) {
       deleteQueueItem(db, id);
     } else {
-      updateQueueItem(db, id, { status: canceled ? "canceled" : "done", ops_json: JSON.stringify(ops), media_id: mediaId });
+      updateQueueItem(db, id, {
+        status: canceled ? "canceled" : "done",
+        ops_json: JSON.stringify(ops),
+        media_id: mediaId,
+      });
     }
     this.emit();
   }

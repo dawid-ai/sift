@@ -9,16 +9,24 @@ test("Home → summarize with Ollama (not running) shows the start/recheck panel
   const fixtureDir = await mkdtemp(join(tmpdir(), "sift-e2e-fixture-"));
   const app = await electron.launch({
     args: [join(__dirname, "..", "out", "main", "index.js")],
-    env: { ...process.env, SIFT_E2E_FIXTURE_DIR: fixtureDir, SIFT_E2E_OLLAMA_DOWN: "1" },
+    env: {
+      ...process.env,
+      SIFT_E2E_FIXTURE_DIR: fixtureDir,
+      SIFT_E2E_OLLAMA_DOWN: "1",
+    },
   });
   try {
     const window = await app.firstWindow();
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
     await expect(window.getByTestId("preview-card")).toBeVisible();
 
     await window.getByTestId("summary-provider").selectOption("ollama");
     await window.getByTestId("transcript-button").click();
-    await expect(window.getByTestId("summarize-button")).toBeEnabled({ timeout: 15000 });
+    await expect(window.getByTestId("summarize-button")).toBeEnabled({
+      timeout: 15000,
+    });
 
     await window.getByTestId("summarize-button").click();
     await expect(window.getByTestId("ollama-down-panel")).toBeVisible();

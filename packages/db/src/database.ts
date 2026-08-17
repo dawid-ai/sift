@@ -3,7 +3,10 @@ import BetterSqlite3 from "better-sqlite3";
 export interface Statement<T> {
   get(...params: unknown[]): T | undefined;
   all(...params: unknown[]): T[];
-  run(...params: unknown[]): { changes: number; lastInsertRowid: number | bigint };
+  run(...params: unknown[]): {
+    changes: number;
+    lastInsertRowid: number | bigint;
+  };
 }
 
 export interface SiftDatabase {

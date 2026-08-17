@@ -1,5 +1,11 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Check,
   ChevronDown,
@@ -177,7 +183,8 @@ export const SECTION_RULE = "border-t border-foreground/[0.07]";
  * a real step off the surface, and text at near-full strength. Layered onto `CHIP_SHELL` so
  * the box metrics still match every other pill in the app.
  */
-export const CHIP_STRONG = "border-foreground/[0.14] bg-foreground/[0.08] text-foreground/90";
+export const CHIP_STRONG =
+  "border-foreground/[0.14] bg-foreground/[0.08] text-foreground/90";
 
 /**
  * Status pill: a finished, on-disk fact. Together with `CHIP_STRONG` this is the whole pill
@@ -204,12 +211,15 @@ export function formatBytes(bytes: number | null): string {
 /** Builds the option's dropdown label, e.g. "1080p · MP4 · ~339 MB". */
 function optionLabel(o: DownloadOption): string {
   const size = formatBytes(o.approxBytes);
-  return [o.label, o.detail, size ? `~${size}` : ""].filter(Boolean).join(" · ");
+  return [o.label, o.detail, size ? `~${size}` : ""]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** Human-readable transfer rate, e.g. "1.2 MB/s"; `null`/non-finite renders "". */
 export function formatSpeed(bytesPerSec: number | null): string {
-  if (bytesPerSec === null || !Number.isFinite(bytesPerSec) || bytesPerSec <= 0) return "";
+  if (bytesPerSec === null || !Number.isFinite(bytesPerSec) || bytesPerSec <= 0)
+    return "";
   const units = ["B/s", "KB/s", "MB/s", "GB/s"];
   let value = bytesPerSec;
   let i = 0;
@@ -306,7 +316,10 @@ const SELECT_CLASS = cn(
  * fill: 3.56:1, the one placeholder on the route under the floor while every other one cleared
  * it. An instruction you have to read is body copy, not chrome.
  */
-const TAG_INPUT_CLASS = cn(CONTROL_BASE, "pl-9 pr-3.5 placeholder:text-placeholder");
+const TAG_INPUT_CLASS = cn(
+  CONTROL_BASE,
+  "pl-9 pr-3.5 placeholder:text-placeholder",
+);
 
 /**
  * Disabled primary. A greyed-out gradient reads as a colour-management error, so the
@@ -318,7 +331,13 @@ const DISABLED_PRIMARY = [
 ].join(" ");
 
 /** Wraps a native <select> so it can carry a chevron the OS one can't be styled into. */
-function SelectShell({ className, children }: { className?: string; children: ReactNode }) {
+function SelectShell({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <div className={cn("relative flex min-w-0 items-center", className)}>
       {children}
@@ -426,8 +445,12 @@ export function PreviewCard({
   const options = metadata.formats;
   const [selectedId, setSelectedId] = useState<string>(options[0]?.id ?? "");
   const selected = options.find((o) => o.id === selectedId) ?? options[0];
-  const doneFormats = existing ? existing.formats.filter((f) => f.status === "done") : [];
-  const existingMatch = selected ? doneFormats.find((f) => f.id === selected.id) : undefined;
+  const doneFormats = existing
+    ? existing.formats.filter((f) => f.status === "done")
+    : [];
+  const existingMatch = selected
+    ? doneFormats.find((f) => f.id === selected.id)
+    : undefined;
   const transcriptCount = existing?.transcriptCount ?? 0;
   const summaryCount = existing?.summaryCount ?? 0;
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -465,11 +488,15 @@ export function PreviewCard({
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [ollamaState, setOllamaState] = useState<"idle" | "checking" | "down" | "not-installed">("idle");
+  const [ollamaState, setOllamaState] = useState<
+    "idle" | "checking" | "down" | "not-installed"
+  >("idle");
 
   // Existing tags across the library, for autosuggest while typing.
   useEffect(() => {
-    void window.sift.tags.listAll().then((rows) => setAllTags(rows.map((r) => r.name)));
+    void window.sift.tags
+      .listAll()
+      .then((rows) => setAllTags(rows.map((r) => r.name)));
   }, []);
 
   const tagSuggestions = tagDraft.trim()
@@ -482,7 +509,8 @@ export function PreviewCard({
 
   function addTag(raw: string) {
     const t = raw.trim();
-    if (t && !tags.some((x) => x.toLowerCase() === t.toLowerCase())) setTags((prev) => [...prev, t]);
+    if (t && !tags.some((x) => x.toLowerCase() === t.toLowerCase()))
+      setTags((prev) => [...prev, t]);
   }
 
   function doSummarize() {
@@ -529,7 +557,8 @@ export function PreviewCard({
     }
   }
 
-  const models = providers.find((p) => p.id === selectedProviderId)?.models ?? NO_MODELS;
+  const models =
+    providers.find((p) => p.id === selectedProviderId)?.models ?? NO_MODELS;
   const noProviderReady = defaultProviderId === null;
 
   // Pick the default provider once it resolves; keep the current pick if still valid.
@@ -655,9 +684,14 @@ export function PreviewCard({
                 {metadata.platform.tier !== "unknown" && (
                   <span className={cn(CHIP_SHELL, CHIP_STRONG)}>
                     {metadata.platform.tier === "tested" && (
-                      <ChipDot color="hsl(var(--success))" halo="hsl(var(--success) / 0.22)" />
+                      <ChipDot
+                        color="hsl(var(--success))"
+                        halo="hsl(var(--success) / 0.22)"
+                      />
                     )}
-                    {metadata.platform.tier === "tested" ? "Tested" : "Supported"}
+                    {metadata.platform.tier === "tested"
+                      ? "Tested"
+                      : "Supported"}
                   </span>
                 )}
               </div>
@@ -676,7 +710,10 @@ export function PreviewCard({
 
             {metadata.uploader && (
               <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground">
-                <User aria-hidden className="h-3.5 w-3.5 shrink-0 text-foreground/35" />
+                <User
+                  aria-hidden
+                  className="h-3.5 w-3.5 shrink-0 text-foreground/35"
+                />
                 <span className="truncate">{metadata.uploader}</span>
               </p>
             )}
@@ -710,8 +747,13 @@ export function PreviewCard({
               />
             </div>
 
-            {(doneFormats.length > 0 || transcriptCount > 0 || summaryCount > 0) && (
-              <div data-testid="already-captured" className={cn(WELL, "mt-2.5 px-3.5 py-3")}>
+            {(doneFormats.length > 0 ||
+              transcriptCount > 0 ||
+              summaryCount > 0) && (
+              <div
+                data-testid="already-captured"
+                className={cn(WELL, "mt-2.5 px-3.5 py-3")}
+              >
                 <p className={FIELD_LABEL}>Already in your library</p>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {doneFormats.map((f) => (
@@ -720,7 +762,10 @@ export function PreviewCard({
                       data-testid="captured-video"
                       className={cn(CHIP_SHELL, CHIP_STRONG)}
                     >
-                      <ChipDot color="hsl(var(--primary))" halo="hsl(var(--primary) / 0.24)" />
+                      <ChipDot
+                        color="hsl(var(--primary))"
+                        halo="hsl(var(--primary) / 0.24)"
+                      />
                       {f.label}
                     </span>
                   ))}
@@ -729,15 +774,27 @@ export function PreviewCard({
                       data-testid="captured-transcript"
                       className={cn(CHIP_SHELL, CHIP_STRONG)}
                     >
-                      <FileText aria-hidden className="h-3 w-3 text-foreground/55" />
+                      <FileText
+                        aria-hidden
+                        className="h-3 w-3 text-foreground/55"
+                      />
                       Transcript
-                      {existing?.transcriptLanguage ? ` · ${existing.transcriptLanguage}` : ""}
+                      {existing?.transcriptLanguage
+                        ? ` · ${existing.transcriptLanguage}`
+                        : ""}
                     </span>
                   )}
                   {summaryCount > 0 && (
-                    <span data-testid="captured-summary" className={cn(CHIP_SHELL, CHIP_STRONG)}>
-                      <Sparkles aria-hidden className="h-3 w-3 text-foreground/55" />
-                      {summaryCount} {summaryCount === 1 ? "summary" : "summaries"}
+                    <span
+                      data-testid="captured-summary"
+                      className={cn(CHIP_SHELL, CHIP_STRONG)}
+                    >
+                      <Sparkles
+                        aria-hidden
+                        className="h-3 w-3 text-foreground/55"
+                      />
+                      {summaryCount}{" "}
+                      {summaryCount === 1 ? "summary" : "summaries"}
                     </span>
                   )}
                 </div>
@@ -896,7 +953,13 @@ export function PreviewCard({
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {tags.map((t) => (
-                  <TagChip key={t} name={t} onRemove={() => setTags((prev) => prev.filter((x) => x !== t))} />
+                  <TagChip
+                    key={t}
+                    name={t}
+                    onRemove={() =>
+                      setTags((prev) => prev.filter((x) => x !== t))
+                    }
+                  />
                 ))}
               </div>
             )}
@@ -924,7 +987,11 @@ export function PreviewCard({
                         data-testid="download-progress"
                         className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary to-primary-lit"
                         animate={{ x: ["-100%", "300%"] }}
-                        transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1.2,
+                          ease: "linear",
+                        }}
                       />
                     )}
                   </div>
@@ -932,9 +999,14 @@ export function PreviewCard({
                     data-testid="download-status"
                     className="flex justify-between font-mono text-[11px] tabular-nums text-muted-foreground"
                   >
-                    <span>{percent !== null ? `${percent}%` : "Starting…"}</span>
                     <span>
-                      {[formatSpeed(progress?.speed ?? null), formatEta(progress?.eta ?? null)]
+                      {percent !== null ? `${percent}%` : "Starting…"}
+                    </span>
+                    <span>
+                      {[
+                        formatSpeed(progress?.speed ?? null),
+                        formatEta(progress?.eta ?? null),
+                      ]
                         .filter(Boolean)
                         .join(" · ")}
                     </span>
@@ -1058,7 +1130,9 @@ export function PreviewCard({
               onClick={() => void runSummarizeChecked()}
             >
               <Sparkles aria-hidden className="h-4 w-4" />
-              <span className="truncate">{summarizing ? "Summarizing…" : "Summarize"}</span>
+              <span className="truncate">
+                {summarizing ? "Summarizing…" : "Summarize"}
+              </span>
             </Button>
           </div>
 
@@ -1069,15 +1143,26 @@ export function PreviewCard({
             >
               <p className="flex items-center gap-2 text-sm font-medium text-warning">
                 <TriangleAlert aria-hidden className="h-4 w-4 shrink-0" />
-                {ollamaState === "not-installed" ? "Ollama isn't installed." : "Ollama isn't running."}
+                {ollamaState === "not-installed"
+                  ? "Ollama isn't installed."
+                  : "Ollama isn't running."}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {ollamaState === "down" && (
-                  <Button size="sm" data-testid="ollama-start" onClick={() => void handleStartOllama()}>
+                  <Button
+                    size="sm"
+                    data-testid="ollama-start"
+                    onClick={() => void handleStartOllama()}
+                  >
                     Start Ollama
                   </Button>
                 )}
-                <Button size="sm" variant="outline" data-testid="ollama-recheck" onClick={() => void handleRecheckOllama()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  data-testid="ollama-recheck"
+                  onClick={() => void handleRecheckOllama()}
+                >
                   Recheck
                 </Button>
                 {ollamaState === "not-installed" && (
@@ -1085,7 +1170,11 @@ export function PreviewCard({
                     type="button"
                     data-testid="ollama-install-link"
                     className="inline-flex h-9 items-center rounded-xl border border-foreground/[0.12] px-3 text-[13px] font-medium text-primary no-underline decoration-primary/30 underline-offset-4 transition-colors duration-150 ease-out hover:border-primary/35 hover:bg-primary/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    onClick={() => void window.sift.library.openExternal("https://ollama.com")}
+                    onClick={() =>
+                      void window.sift.library.openExternal(
+                        "https://ollama.com",
+                      )
+                    }
                   >
                     Get Ollama
                   </button>
@@ -1101,12 +1190,15 @@ export function PreviewCard({
         title="Re-download this video?"
         description={
           <>
-            <span className="font-medium">{selected?.label}</span> is already in your library
-            {transcriptCount > 0 ? " (with a transcript)" : ""}. Downloading again will replace the
-            existing file.
+            <span className="font-medium">{selected?.label}</span> is already in
+            your library
+            {transcriptCount > 0 ? " (with a transcript)" : ""}. Downloading
+            again will replace the existing file.
           </>
         }
-        confirmLabel={selected ? `Re-download ${selected.label}` : "Re-download"}
+        confirmLabel={
+          selected ? `Re-download ${selected.label}` : "Re-download"
+        }
         onConfirm={() => {
           setConfirmOpen(false);
           if (selected) onDownload(selected, tags);

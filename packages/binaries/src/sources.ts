@@ -10,7 +10,10 @@ export interface ResolvedRelease {
 
 export interface BinarySource {
   kind: "ytdlp" | "ffmpeg" | "deno";
-  resolveLatest(p: Platform, fetchImpl?: typeof fetch): Promise<ResolvedRelease>;
+  resolveLatest(
+    p: Platform,
+    fetchImpl?: typeof fetch,
+  ): Promise<ResolvedRelease>;
 }
 
 interface GithubAsset {
@@ -33,11 +36,16 @@ async function fetchLatestRelease(
   repo: string,
   doFetch: typeof fetch,
 ): Promise<GithubRelease> {
-  const res = await doFetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-    headers: GITHUB_HEADERS,
-  });
+  const res = await doFetch(
+    `https://api.github.com/repos/${repo}/releases/latest`,
+    {
+      headers: GITHUB_HEADERS,
+    },
+  );
   if (!res.ok) {
-    throw new Error(`Failed to fetch latest release for ${repo} (${res.status})`);
+    throw new Error(
+      `Failed to fetch latest release for ${repo} (${res.status})`,
+    );
   }
   return (await res.json()) as GithubRelease;
 }
@@ -80,7 +88,9 @@ export const ytdlpSource: BinarySource = {
     const binaryName = YTDLP_ASSET_NAME[p];
     const asset = findAsset(release, binaryName);
     const sumsAsset = findAsset(release, "SHA2-256SUMS");
-    const sumsRes = await doFetch(sumsAsset.browser_download_url, { headers: GITHUB_HEADERS });
+    const sumsRes = await doFetch(sumsAsset.browser_download_url, {
+      headers: GITHUB_HEADERS,
+    });
     if (!sumsRes.ok) {
       throw new Error(`Failed to fetch SHA2-256SUMS (${sumsRes.status})`);
     }
@@ -88,7 +98,9 @@ export const ytdlpSource: BinarySource = {
     const sums = parseShaSumsFile(sumsText);
     const sha256 = sums.get(binaryName);
     if (!sha256) {
-      throw new Error(`No sha256 entry found for "${binaryName}" in SHA2-256SUMS`);
+      throw new Error(
+        `No sha256 entry found for "${binaryName}" in SHA2-256SUMS`,
+      );
     }
     return {
       version: release.tag_name,
@@ -99,12 +111,13 @@ export const ytdlpSource: BinarySource = {
   },
 };
 
-const FFMPEG_TARGET: Partial<Record<Platform, { slug: string; ext: string }>> = {
-  "win-x64": { slug: "win64", ext: "zip" },
-  "win-arm64": { slug: "winarm64", ext: "zip" },
-  "linux-x64": { slug: "linux64", ext: "tar.xz" },
-  "linux-arm64": { slug: "linuxarm64", ext: "tar.xz" },
-};
+const FFMPEG_TARGET: Partial<Record<Platform, { slug: string; ext: string }>> =
+  {
+    "win-x64": { slug: "win64", ext: "zip" },
+    "win-arm64": { slug: "winarm64", ext: "zip" },
+    "linux-x64": { slug: "linux64", ext: "tar.xz" },
+    "linux-arm64": { slug: "linuxarm64", ext: "tar.xz" },
+  };
 
 /**
  * Highest release-branch archive (`ffmpeg-n8.1-latest-win64-gpl-8.1.zip`), or null if
@@ -161,14 +174,18 @@ export const ffmpegSource: BinarySource = {
     // BtbN publishes a single `checksums.sha256` sums file (lines of `<sha>  <name>`),
     // not a per-asset `.sha256` sidecar.
     const sumsAsset = findAsset(release, "checksums.sha256");
-    const sumsRes = await doFetch(sumsAsset.browser_download_url, { headers: GITHUB_HEADERS });
+    const sumsRes = await doFetch(sumsAsset.browser_download_url, {
+      headers: GITHUB_HEADERS,
+    });
     if (!sumsRes.ok) {
       throw new Error(`Failed to fetch checksums.sha256 (${sumsRes.status})`);
     }
     const sums = parseShaSumsFile(await sumsRes.text());
     const sha256 = sums.get(archiveName);
     if (!sha256) {
-      throw new Error(`No sha256 entry found for "${archiveName}" in checksums.sha256`);
+      throw new Error(
+        `No sha256 entry found for "${archiveName}" in checksums.sha256`,
+      );
     }
     return {
       version: picked.version,

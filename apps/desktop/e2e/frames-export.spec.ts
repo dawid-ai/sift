@@ -15,7 +15,9 @@ test("builds a no-AI document from the transcript + selected slides", async () =
     const window = await app.firstWindow();
 
     // Preview → download (gives extract a file) → transcript (the document backbone).
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();
@@ -40,10 +42,14 @@ test("builds a no-AI document from the transcript + selected slides", async () =
     await expect(savedPath).toContainText(".pdf");
 
     // AI-polished tier: pick a provider (the offline fixture Claude CLI) and re-export.
-    await window.getByTestId("media-detail-polish-provider").selectOption("claude-cli");
+    await window
+      .getByTestId("media-detail-polish-provider")
+      .selectOption("claude-cli");
     await window.getByTestId("media-detail-export-md").click();
     await expect(savedPath).toContainText(".md");
-    await expect(window.getByTestId("media-detail-action-error")).toHaveCount(0);
+    await expect(window.getByTestId("media-detail-action-error")).toHaveCount(
+      0,
+    );
 
     // Every export is tracked: the Files tab lists the generated documents + the prompt runs.
     await window.getByTestId("media-detail-tab-files").click();

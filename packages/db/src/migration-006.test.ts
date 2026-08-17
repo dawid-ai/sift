@@ -9,7 +9,13 @@ import { migration005Summary } from "./migrations/005-summary.sql";
 import { migration006 } from "./migrations/006-download.sql";
 
 function applyPre6(db: SiftDatabase) {
-  for (const sql of [migration001, migration002, migration003, migration004Prompt, migration005Summary]) {
+  for (const sql of [
+    migration001,
+    migration002,
+    migration003,
+    migration004Prompt,
+    migration005Summary,
+  ]) {
     db.exec(sql);
   }
 }
@@ -53,38 +59,74 @@ describe("migration 006", () => {
     db.exec(migration006);
 
     // One media per url now (4 urls → 4 media rows).
-    const media = db.prepare<{ id: number; source_url: string }>("SELECT id, source_url FROM media").all();
+    const media = db
+      .prepare<{ id: number; source_url: string }>(
+        "SELECT id, source_url FROM media",
+      )
+      .all();
     expect(media).toHaveLength(4);
 
     // The x/1 keeper owns the transcript, the summary, and one 'done' download.
-    const tx = db.prepare<{ c: number }>("SELECT COUNT(*) c FROM transcript WHERE media_id = @m").get({ m: keeper })!;
-    const sm = db.prepare<{ c: number }>("SELECT COUNT(*) c FROM summary WHERE media_id = @m").get({ m: keeper })!;
-    const dl = db.prepare<{ status: string; file_path: string | null }>("SELECT status, file_path FROM download WHERE media_id = @m").all({ m: keeper });
+    const tx = db
+      .prepare<{ c: number }>(
+        "SELECT COUNT(*) c FROM transcript WHERE media_id = @m",
+      )
+      .get({ m: keeper })!;
+    const sm = db
+      .prepare<{ c: number }>(
+        "SELECT COUNT(*) c FROM summary WHERE media_id = @m",
+      )
+      .get({ m: keeper })!;
+    const dl = db
+      .prepare<{ status: string; file_path: string | null }>(
+        "SELECT status, file_path FROM download WHERE media_id = @m",
+      )
+      .all({ m: keeper });
     expect(tx.c).toBe(1);
     expect(sm.c).toBe(1);
     expect(dl).toEqual([{ status: "done", file_path: "/dl/one.mp4" }]);
 
     // The stale 'downloading' row (x/3) produced no download row.
-    const x3 = db.prepare<{ id: number }>("SELECT id FROM media WHERE source_url = 'https://x/3'").get()!;
-    const x3dl = db.prepare<{ c: number }>("SELECT COUNT(*) c FROM download WHERE media_id = @m").get({ m: x3.id })!;
+    const x3 = db
+      .prepare<{ id: number }>(
+        "SELECT id FROM media WHERE source_url = 'https://x/3'",
+      )
+      .get()!;
+    const x3dl = db
+      .prepare<{ c: number }>(
+        "SELECT COUNT(*) c FROM download WHERE media_id = @m",
+      )
+      .get({ m: x3.id })!;
     expect(x3dl.c).toBe(0);
 
     // The 'error' row (x/4) produced a download row with status='error' and file_path
     // gated to NULL, even though the source media had a stale non-null download_path.
-    const x4 = db.prepare<{ id: number }>("SELECT id FROM media WHERE source_url = 'https://x/4'").get()!;
+    const x4 = db
+      .prepare<{ id: number }>(
+        "SELECT id FROM media WHERE source_url = 'https://x/4'",
+      )
+      .get()!;
     const x4dl = db
-      .prepare<{ status: string; file_path: string | null }>("SELECT status, file_path FROM download WHERE media_id = @m")
+      .prepare<{ status: string; file_path: string | null }>(
+        "SELECT status, file_path FROM download WHERE media_id = @m",
+      )
       .all({ m: x4.id });
     expect(x4dl).toEqual([{ status: "error", file_path: null }]);
 
     // The standalone x/2 download row survives the merge UPDATEs unchanged, still
     // pointing at its own (non-duplicated) media id.
-    const x2 = db.prepare<{ id: number }>("SELECT id FROM media WHERE source_url = 'https://x/2'").get()!;
+    const x2 = db
+      .prepare<{ id: number }>(
+        "SELECT id FROM media WHERE source_url = 'https://x/2'",
+      )
+      .get()!;
     const x2dl = db
       .prepare<{ status: string; file_path: string | null; media_id: number }>(
         "SELECT status, file_path, media_id FROM download WHERE media_id = @m",
       )
       .all({ m: x2.id });
-    expect(x2dl).toEqual([{ status: "done", file_path: "/dl/two.mp4", media_id: x2.id }]);
+    expect(x2dl).toEqual([
+      { status: "done", file_path: "/dl/two.mp4", media_id: x2.id },
+    ]);
   });
 });

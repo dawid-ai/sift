@@ -35,9 +35,18 @@ function sampleMedia(overrides: Partial<NewMedia> = {}): NewMedia {
 
 const sample = (over: Partial<NewQueueItem> = {}): NewQueueItem => ({
   source_url: "https://x/1",
-  spec_json: JSON.stringify({ format: { kind: "video", maxHeight: null, mp4: true }, download: true, transcript: false, summarize: null }),
+  spec_json: JSON.stringify({
+    format: { kind: "video", maxHeight: null, mp4: true },
+    download: true,
+    transcript: false,
+    summarize: null,
+  }),
   status: "queued",
-  ops_json: JSON.stringify({ download: "pending", transcript: "skipped", summarize: "skipped" }),
+  ops_json: JSON.stringify({
+    download: "pending",
+    transcript: "skipped",
+    summarize: "skipped",
+  }),
   media_id: null,
   queue_order: 1,
   error: null,
@@ -51,7 +60,10 @@ describe("queue CRUD", () => {
     insertQueueItem(db, sample({ source_url: "https://x/b", queue_order: 2 }));
     insertQueueItem(db, sample({ source_url: "https://x/a", queue_order: 1 }));
     const items = listQueueItems(db);
-    expect(items.map((i) => i.source_url)).toEqual(["https://x/a", "https://x/b"]);
+    expect(items.map((i) => i.source_url)).toEqual([
+      "https://x/a",
+      "https://x/b",
+    ]);
     expect(getQueueItem(db, items[0]!.id)!.source_url).toBe("https://x/a");
   });
 
@@ -94,7 +106,11 @@ describe("queue CRUD", () => {
     insertQueueItem(db, sample({ status: "running" }));
     insertQueueItem(db, sample({ status: "done" }));
     expect(resetRunningToQueued(db)).toBe(2);
-    expect(listQueueItems(db).filter((i) => i.status === "running")).toHaveLength(0);
-    expect(listQueueItems(db).filter((i) => i.status === "done")).toHaveLength(1);
+    expect(
+      listQueueItems(db).filter((i) => i.status === "running"),
+    ).toHaveLength(0);
+    expect(listQueueItems(db).filter((i) => i.status === "done")).toHaveLength(
+      1,
+    );
   });
 });

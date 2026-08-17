@@ -11,7 +11,12 @@ import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import electronBinaryPath from "electron";
-import { test, expect, _electron as electron, type Page } from "@playwright/test";
+import {
+  test,
+  expect,
+  _electron as electron,
+  type Page,
+} from "@playwright/test";
 
 const OUT = join(__dirname, "..", "e2e-shots");
 
@@ -45,7 +50,9 @@ test("capture every surface", async () => {
       await fn();
     } catch (err) {
       // A surface that can't be reached shouldn't kill the rest of the capture.
-      console.log(`[shots] skipped ${label}: ${(err as Error).message.split("\n")[0]}`);
+      console.log(
+        `[shots] skipped ${label}: ${(err as Error).message.split("\n")[0]}`,
+      );
     }
   };
 
@@ -55,8 +62,12 @@ test("capture every surface", async () => {
     // Seed a realistic library BEFORE capturing. Against the bare fixture every list holds
     // one row, so the shots showed empty tables and "0" stat tiles — which reads as a design
     // failure when it is really a data artifact. Seeding is out-of-process; see seed-shots.cjs.
-    await expect(window.getByTestId("db-ready")).toHaveText("db-ok", { timeout: 30_000 });
-    const userDataPath = await app.evaluate(({ app: a }) => a.getPath("userData"));
+    await expect(window.getByTestId("db-ready")).toHaveText("db-ok", {
+      timeout: 30_000,
+    });
+    const userDataPath = await app.evaluate(({ app: a }) =>
+      a.getPath("userData"),
+    );
     execFileSync(
       electronBinaryPath as unknown as string,
       [join(__dirname, "seed-shots.cjs"), join(userDataPath, "sift.db")],
@@ -66,7 +77,9 @@ test("capture every surface", async () => {
     await shot("01-home-empty");
 
     await soft("home-preview", async () => {
-      await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+      await window
+        .getByTestId("url-input")
+        .fill("https://www.youtube.com/watch?v=fixture");
       await window.getByTestId("preview-card").waitFor({ timeout: 15_000 });
       await shot("02-home-preview");
 
@@ -178,7 +191,11 @@ test("capture every surface", async () => {
  * of the page went unreviewed. Scrolling by fraction of actual travel and returning the
  * achieved offset makes that failure visible instead.
  */
-async function scrollShot(window: Page, fraction: number, name: string): Promise<number> {
+async function scrollShot(
+  window: Page,
+  fraction: number,
+  name: string,
+): Promise<number> {
   const achieved = await window.evaluate((f) => {
     const candidates = [...document.querySelectorAll<HTMLElement>("*")].filter(
       (e) => e.scrollHeight > e.clientHeight + 40 && e.clientHeight > 300,

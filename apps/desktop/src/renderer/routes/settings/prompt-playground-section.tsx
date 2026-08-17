@@ -16,8 +16,14 @@ const MONO_TEXTAREA = "min-h-[7rem] font-mono text-xs leading-relaxed";
 /** A standalone prompt playground: paste a transcript, edit the system prompt, run it through
  * any configured provider, and read the raw output. For tuning the distillation prompt. */
 export function PromptPlaygroundSection() {
-  const { providers, selectedProviderId, setSelectedProviderId, models, selectedModel, setSelectedModel } =
-    useAiPickers();
+  const {
+    providers,
+    selectedProviderId,
+    setSelectedProviderId,
+    models,
+    selectedModel,
+    setSelectedModel,
+  } = useAiPickers();
   const [systemPrompt, setSystemPrompt] = useState(POLISH_SYSTEM_PROMPT);
   const [content, setContent] = useState("");
   const [output, setOutput] = useState("");
@@ -47,7 +53,10 @@ export function PromptPlaygroundSection() {
 
   return (
     <div data-testid="prompt-playground" className="flex flex-col gap-5">
-      <SettingRow label="Run with" hint="Provider and model used for this one-off run.">
+      <SettingRow
+        label="Run with"
+        hint="Provider and model used for this one-off run."
+      >
         <SettingsSelect
           data-testid="playground-provider"
           value={selectedProviderId}
@@ -55,7 +64,9 @@ export function PromptPlaygroundSection() {
           onChange={(e) => setSelectedProviderId(e.target.value)}
         >
           {providers.map((p) => (
-            <option key={p.id} value={p.id}>{p.label}</option>
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
           ))}
         </SettingsSelect>
         <SettingsSelect
@@ -65,7 +76,9 @@ export function PromptPlaygroundSection() {
           onChange={(e) => setSelectedModel(e.target.value)}
         >
           {models.map((m) => (
-            <option key={m.id} value={m.id}>{m.label}</option>
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
           ))}
         </SettingsSelect>
       </SettingRow>
@@ -97,18 +110,24 @@ export function PromptPlaygroundSection() {
         <Button
           data-testid="playground-run"
           size="lg"
-          disabled={running || !selectedProviderId || !selectedModel || !content.trim()}
+          disabled={
+            running || !selectedProviderId || !selectedModel || !content.trim()
+          }
           onClick={() => void run()}
         >
           <Zap className="h-4 w-4" />
           {running ? "Running…" : "Run"}
         </Button>
         {running && (
-          <span className="text-[12px] text-foreground/60">Waiting for the provider…</span>
+          <span className="text-[12px] text-foreground/60">
+            Waiting for the provider…
+          </span>
         )}
       </div>
 
-      {error && <SettingsError data-testid="playground-error">{error}</SettingsError>}
+      {error && (
+        <SettingsError data-testid="playground-error">{error}</SettingsError>
+      )}
 
       {output && (
         <div className="flex flex-col gap-2">

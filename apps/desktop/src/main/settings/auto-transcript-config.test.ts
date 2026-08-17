@@ -19,7 +19,9 @@ function memFs(seed?: string) {
 describe("auto-transcript config store", () => {
   it("defaults to true when no file exists", () => {
     const { fs } = memFs();
-    expect(createAutoTranscriptStore({ filePath: "/cfg/auto.json", fs }).get()).toBe(true);
+    expect(
+      createAutoTranscriptStore({ filePath: "/cfg/auto.json", fs }).get(),
+    ).toBe(true);
   });
 
   it("round-trips a set value", () => {
@@ -32,7 +34,17 @@ describe("auto-transcript config store", () => {
   });
 
   it("falls back to true on malformed or missing-key JSON", () => {
-    expect(createAutoTranscriptStore({ filePath: "/cfg/auto.json", fs: memFs("not json").fs }).get()).toBe(true);
-    expect(createAutoTranscriptStore({ filePath: "/cfg/auto.json", fs: memFs("{}").fs }).get()).toBe(true);
+    expect(
+      createAutoTranscriptStore({
+        filePath: "/cfg/auto.json",
+        fs: memFs("not json").fs,
+      }).get(),
+    ).toBe(true);
+    expect(
+      createAutoTranscriptStore({
+        filePath: "/cfg/auto.json",
+        fs: memFs("{}").fs,
+      }).get(),
+    ).toBe(true);
   });
 });

@@ -26,7 +26,9 @@ NOTE ignore me
 
 01:02:03.250 --> 01:02:05.000 align:start position:0%
 Deep timestamp`;
-    expect(parseVtt(vtt)).toEqual([{ start: 3723.25, end: 3725, text: "Deep timestamp" }]);
+    expect(parseVtt(vtt)).toEqual([
+      { start: 3723.25, end: 3725, text: "Deep timestamp" },
+    ]);
   });
   it("collapses consecutive duplicate cue text (YouTube rolling auto-subs)", () => {
     const vtt = `WEBVTT
@@ -49,6 +51,11 @@ bar`;
 
 describe("segmentsToText", () => {
   it("joins segment text with newlines", () => {
-    expect(segmentsToText([{ start: 0, end: 1, text: "a" }, { start: 1, end: 2, text: "b" }])).toBe("a\nb");
+    expect(
+      segmentsToText([
+        { start: 0, end: 1, text: "a" },
+        { start: 1, end: 2, text: "b" },
+      ]),
+    ).toBe("a\nb");
   });
 });

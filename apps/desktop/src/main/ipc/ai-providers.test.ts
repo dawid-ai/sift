@@ -181,7 +181,13 @@ describe("registerAiProvidersIpc", () => {
       register: () => {},
       unregister: () => {},
     } as unknown as AiRegistry;
-    registerAiProvidersIpc(registry, vi.fn(), vi.fn(), fakeCustomConfigStore(), fakeAiDefaultStore());
+    registerAiProvidersIpc(
+      registry,
+      vi.fn(),
+      vi.fn(),
+      fakeCustomConfigStore(),
+      fakeAiDefaultStore(),
+    );
 
     const result = await handlers.get(IPC.aiProvidersList)?.(null);
 
@@ -199,7 +205,13 @@ describe("registerAiProvidersIpc", () => {
     const { registry } = fakeRegistry();
     const customConfigStore = fakeCustomConfigStore();
     customConfigStore.set({ baseUrl: "http://x/v1", model: "m" });
-    registerAiProvidersIpc(registry, vi.fn(), vi.fn(), customConfigStore, fakeAiDefaultStore());
+    registerAiProvidersIpc(
+      registry,
+      vi.fn(),
+      vi.fn(),
+      customConfigStore,
+      fakeAiDefaultStore(),
+    );
 
     const result = await handlers.get(IPC.aiCustomConfigGet)?.(null);
 
@@ -219,7 +231,13 @@ describe("registerAiProvidersIpc", () => {
       rebuildCalls.push({ id, key }),
     );
     const customConfigStore = fakeCustomConfigStore();
-    registerAiProvidersIpc(registry, secretsFor, rebuild, customConfigStore, fakeAiDefaultStore());
+    registerAiProvidersIpc(
+      registry,
+      secretsFor,
+      rebuild,
+      customConfigStore,
+      fakeAiDefaultStore(),
+    );
 
     await handlers.get(IPC.aiCustomConfigSet)?.(null, {
       baseUrl: "http://x/v1",
@@ -240,7 +258,13 @@ describe("registerAiProvidersIpc", () => {
     const secretsFor = vi.fn(() => customSecrets);
     const rebuild = vi.fn();
     const customConfigStore = fakeCustomConfigStore();
-    registerAiProvidersIpc(registry, secretsFor, rebuild, customConfigStore, fakeAiDefaultStore());
+    registerAiProvidersIpc(
+      registry,
+      secretsFor,
+      rebuild,
+      customConfigStore,
+      fakeAiDefaultStore(),
+    );
 
     await handlers.get(IPC.aiCustomConfigSet)?.(null, {
       baseUrl: "http://x/v1",

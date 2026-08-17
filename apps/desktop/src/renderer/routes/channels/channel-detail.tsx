@@ -1,6 +1,29 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Check, ChevronDown, Download, Film, ListVideo, Plus, Users, type LucideIcon } from "lucide-react";
-import type { ChannelRecord, ChannelVideo, ChannelVideoStatus, ChannelContentType, ChannelOrder, DownloadedVideo, QueueSpec } from "@sift/ipc-contract";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  Check,
+  ChevronDown,
+  Download,
+  Film,
+  ListVideo,
+  Plus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import type {
+  ChannelRecord,
+  ChannelVideo,
+  ChannelVideoStatus,
+  ChannelContentType,
+  ChannelOrder,
+  DownloadedVideo,
+  QueueSpec,
+} from "@sift/ipc-contract";
 import { medianViews, outlierScore, OUTLIER_THRESHOLD } from "@sift/core";
 import { Button } from "@/components/ui/button";
 import { FIELD } from "@/routes/settings/settings-page";
@@ -9,16 +32,26 @@ import { extractLinks } from "@/lib/extract-links";
 import { QueueSpecControls } from "@/components/queue-spec-controls";
 
 const ORDERS: { value: ChannelOrder; label: string }[] = [
-  { value: "latest", label: "Latest" }, { value: "oldest", label: "Oldest" }, { value: "most_viewed", label: "Most viewed" },
+  { value: "latest", label: "Latest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "most_viewed", label: "Most viewed" },
 ];
 // `ALL` is a sentinel count — yt-dlp caps at the channel's real length, so 1:100000 == every video.
 const ALL = 100000;
 const COUNTS: { value: number; label: string }[] = [
-  { value: 10, label: "10" }, { value: 25, label: "25" }, { value: 50, label: "50" },
-  { value: 100, label: "100" }, { value: 500, label: "500" }, { value: 1000, label: "1,000" },
+  { value: 10, label: "10" },
+  { value: 25, label: "25" },
+  { value: 50, label: "50" },
+  { value: 100, label: "100" },
+  { value: 500, label: "500" },
+  { value: 1000, label: "1,000" },
   { value: ALL, label: "All videos" },
 ];
-const CONTENT_TYPES: { value: ChannelContentType; label: string; testid: string }[] = [
+const CONTENT_TYPES: {
+  value: ChannelContentType;
+  label: string;
+  testid: string;
+}[] = [
   { value: "videos", label: "Videos", testid: "channel-content-videos" },
   { value: "shorts", label: "Shorts", testid: "channel-content-shorts" },
   { value: "live", label: "Live", testid: "channel-content-live" },
@@ -59,7 +92,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 /** Native <select> plus an inert chevron — `appearance-none` removes Chromium's grey wedge,
  * which is the single biggest "unstyled form" tell on a dark surface. */
-function SelectShell({ className, children }: { className?: string; children: ReactNode }) {
+function SelectShell({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <div className={`relative ${className ?? ""}`}>
       {children}
@@ -114,21 +153,35 @@ function HeroStat({
   );
 }
 
-export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: ChannelRecord; onBack: () => void; onOpenMedia?: (mediaId: number) => void }) {
+export function ChannelDetail({
+  channel,
+  onBack,
+  onOpenMedia,
+}: {
+  channel: ChannelRecord;
+  onBack: () => void;
+  onOpenMedia?: (mediaId: number) => void;
+}) {
   const [downloaded, setDownloaded] = useState<DownloadedVideo[]>([]);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const links = extractLinks(channel.description);
   useEffect(() => {
     let live = true;
-    void window.sift.channels.downloadedMedia(channel.channelId).then((d) => { if (live) setDownloaded(d); });
-    return () => { live = false; };
+    void window.sift.channels.downloadedMedia(channel.channelId).then((d) => {
+      if (live) setDownloaded(d);
+    });
+    return () => {
+      live = false;
+    };
   }, [channel.channelId]);
 
   const [contentType, setContentType] = useState<ChannelContentType>("videos");
   const [order, setOrder] = useState<ChannelOrder>("latest");
   const [count, setCount] = useState(25);
   const [videos, setVideos] = useState<ChannelVideo[]>([]);
-  const [statuses, setStatuses] = useState<Record<string, ChannelVideoStatus>>({});
+  const [statuses, setStatuses] = useState<Record<string, ChannelVideoStatus>>(
+    {},
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -138,25 +191,43 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
   const median = useMemo(() => medianViews(videos), [videos]);
 
   const getVideos = async () => {
-    setBusy(true); setError(null); setNote(null); setSelected(new Set()); setStatuses({});
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    setSelected(new Set());
+    setStatuses({});
     try {
-      const res = await window.sift.channels.listVideos(channel.id, { contentType, order, count });
+      const res = await window.sift.channels.listVideos(channel.id, {
+        contentType,
+        order,
+        count,
+      });
       setVideos(res.videos);
-      if (!res.viewCountsAvailable && order === "most_viewed") setNote("View counts unavailable for this channel — showing latest instead.");
+      if (!res.viewCountsAvailable && order === "most_viewed")
+        setNote(
+          "View counts unavailable for this channel — showing latest instead.",
+        );
       // Flag videos already queued / downloaded so we don't re-pull them.
-      setStatuses(await window.sift.channels.videoStatuses(res.videos.map((v) => v.url)));
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-    finally { setBusy(false); }
+      setStatuses(
+        await window.sift.channels.videoStatuses(res.videos.map((v) => v.url)),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   };
-  const toggle = (id: string) => setSelected((s) => {
-    const n = new Set(s);
-    if (n.has(id)) n.delete(id);
-    else n.add(id);
-    return n;
-  });
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   // Select/unselect only videos that aren't already queued or downloaded.
   const selectable = (v: ChannelVideo) => !statuses[v.url];
-  const selectAll = () => setSelected(new Set(videos.filter(selectable).map((v) => v.url)));
+  const selectAll = () =>
+    setSelected(new Set(videos.filter(selectable).map((v) => v.url)));
   const unselectAll = () => setSelected(new Set());
   const addToQueue = async () => {
     if (!spec || selected.size === 0) return;
@@ -166,9 +237,15 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
       await window.sift.queue.add(added, spec);
       // Reflect immediately: mark the just-added videos Queued and drop them from the selection
       // so their checkboxes lock and they can't be added twice.
-      setStatuses((m) => { const n = { ...m }; for (const u of added) n[u] = "queued"; return n; });
+      setStatuses((m) => {
+        const n = { ...m };
+        for (const u of added) n[u] = "queued";
+        return n;
+      });
       setSelected(new Set());
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -185,9 +262,22 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
       >
         {/* Same top rail as the media detail view: back on the left, source actions on the right. */}
         <div className="flex items-center gap-2">
-          <Button data-testid="channel-detail-back" size="sm" variant="outline" onClick={onBack}>{"← Channels"}</Button>
+          <Button
+            data-testid="channel-detail-back"
+            size="sm"
+            variant="outline"
+            onClick={onBack}
+          >
+            {"← Channels"}
+          </Button>
           <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => window.sift.library.openExternal(channel.url)}>{"Open channel ↗"}</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.sift.library.openExternal(channel.url)}
+            >
+              {"Open channel ↗"}
+            </Button>
           </div>
         </div>
 
@@ -199,11 +289,16 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                 src={thumbUrl(channel.bannerUrl)}
                 alt=""
                 referrerPolicy="no-referrer"
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
                 className="h-full w-full object-cover"
               />
               {/* Scrim so the banner dissolves into the panel instead of ending on a hard edge. */}
-              <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent" />
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent"
+              />
             </div>
           )}
 
@@ -219,22 +314,39 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                   src={thumbUrl(channel.avatarUrl)}
                   alt=""
                   referrerPolicy="no-referrer"
-                  onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                  onError={(e) => {
+                    e.currentTarget.style.visibility = "hidden";
+                  }}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               )}
             </span>
             <div className="min-w-0 flex-1">
               <p className="eyebrow">CHANNEL</p>
-              <h1 className="mt-1.5 truncate text-[26px] font-bold leading-tight tracking-tight text-foreground">{channel.title}</h1>
-              {channel.handle && <p className="mt-1 truncate text-sm text-muted-foreground">{channel.handle}</p>}
+              <h1 className="mt-1.5 truncate text-[26px] font-bold leading-tight tracking-tight text-foreground">
+                {channel.title}
+              </h1>
+              {channel.handle && (
+                <p className="mt-1 truncate text-sm text-muted-foreground">
+                  {channel.handle}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2.5 px-6 pb-6">
-            <HeroStat label="Subscribers" value={channel.followerCount} icon={Users} />
+            <HeroStat
+              label="Subscribers"
+              value={channel.followerCount}
+              icon={Users}
+            />
             <HeroStat label="Videos" value={channel.videoCount} icon={Film} />
-            <HeroStat label="Downloaded" value={downloaded.length} icon={Download} testId="channel-downloaded-count" />
+            <HeroStat
+              label="Downloaded"
+              value={downloaded.length}
+              icon={Download}
+              testId="channel-downloaded-count"
+            />
           </div>
 
           {(channel.description || links.length > 0) && (
@@ -242,7 +354,11 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
               <p className="eyebrow">About</p>
               {channel.description && (
                 <>
-                  <p className={`mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${showFullDesc ? "" : "line-clamp-3"}`}>{channel.description}</p>
+                  <p
+                    className={`mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${showFullDesc ? "" : "line-clamp-3"}`}
+                  >
+                    {channel.description}
+                  </p>
                   {channel.description.length > 180 && (
                     <button
                       type="button"
@@ -299,13 +415,19 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                       alt=""
                       loading="lazy"
                       referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                      onError={(e) => {
+                        e.currentTarget.style.visibility = "hidden";
+                      }}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   )}
                 </span>
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground/90 transition-colors group-hover:text-foreground">{d.title}</span>
-                <span className="flex-none text-xs tabular-nums text-muted-foreground">{new Date(d.createdAt).toLocaleDateString()}</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground/90 transition-colors group-hover:text-foreground">
+                  {d.title}
+                </span>
+                <span className="flex-none text-xs tabular-nums text-muted-foreground">
+                  {new Date(d.createdAt).toLocaleDateString()}
+                </span>
               </button>
             ))}
           </section>
@@ -336,19 +458,41 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
             </Field>
             <Field label="Order">
               <SelectShell className="w-[150px]">
-                <select data-testid="channel-order" className={SELECT_CLASS} value={order} onChange={(e) => setOrder(e.target.value as ChannelOrder)}>
-                  {ORDERS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                <select
+                  data-testid="channel-order"
+                  className={SELECT_CLASS}
+                  value={order}
+                  onChange={(e) => setOrder(e.target.value as ChannelOrder)}
+                >
+                  {ORDERS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </SelectShell>
             </Field>
             <Field label="How many">
               <SelectShell className="w-[130px]">
-                <select data-testid="channel-count" className={SELECT_CLASS} value={count} onChange={(e) => setCount(Number(e.target.value))}>
-                  {COUNTS.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
+                <select
+                  data-testid="channel-count"
+                  className={SELECT_CLASS}
+                  value={count}
+                  onChange={(e) => setCount(Number(e.target.value))}
+                >
+                  {COUNTS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
                 </select>
               </SelectShell>
             </Field>
-            <Button data-testid="channel-get-videos" onClick={getVideos} disabled={busy}>
+            <Button
+              data-testid="channel-get-videos"
+              onClick={getVideos}
+              disabled={busy}
+            >
               <ListVideo aria-hidden className="h-4 w-4" />
               {busy ? "Loading…" : "Get videos"}
             </Button>
@@ -356,12 +500,17 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
         </section>
 
         {note && (
-          <p data-testid="channel-mostviewed-note" className="rounded-xl border border-warning/25 bg-warning/12 px-4 py-2.5 text-xs text-warning">
+          <p
+            data-testid="channel-mostviewed-note"
+            className="rounded-xl border border-warning/25 bg-warning/12 px-4 py-2.5 text-xs text-warning"
+          >
             {note}
           </p>
         )}
         {error && (
-          <p className="rounded-xl border border-danger/25 bg-danger/12 px-4 py-3 text-sm text-danger">{error}</p>
+          <p className="rounded-xl border border-danger/25 bg-danger/12 px-4 py-3 text-sm text-danger">
+            {error}
+          </p>
         )}
 
         {videos.length > 0 && (
@@ -373,13 +522,34 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                 <div className="flex items-center gap-3">
                   <p className="eyebrow">Videos</p>
                   <span className="text-xs text-muted-foreground">
-                    <b className="font-semibold tabular-nums text-foreground/80">{selected.size}</b> selected ·{" "}
-                    <b className="font-semibold tabular-nums text-foreground/80">{videos.length}</b> shown
+                    <b className="font-semibold tabular-nums text-foreground/80">
+                      {selected.size}
+                    </b>{" "}
+                    selected ·{" "}
+                    <b className="font-semibold tabular-nums text-foreground/80">
+                      {videos.length}
+                    </b>{" "}
+                    shown
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button data-testid="channel-select-all" size="sm" variant="outline" onClick={selectAll}>Select all</Button>
-                  <Button data-testid="channel-unselect-all" size="sm" variant="outline" onClick={unselectAll} disabled={selected.size === 0}>Unselect all</Button>
+                  <Button
+                    data-testid="channel-select-all"
+                    size="sm"
+                    variant="outline"
+                    onClick={selectAll}
+                  >
+                    Select all
+                  </Button>
+                  <Button
+                    data-testid="channel-unselect-all"
+                    size="sm"
+                    variant="outline"
+                    onClick={unselectAll}
+                    disabled={selected.size === 0}
+                  >
+                    Unselect all
+                  </Button>
                 </div>
               </div>
 
@@ -387,7 +557,15 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                 const status = statuses[v.url];
                 const locked = status === "queued" || status === "downloaded";
                 const isSelected = selected.has(v.url);
-                const meta = [fmtDuration(v.durationSec), v.viewCount != null ? `${v.viewCount.toLocaleString()} views` : null, v.isShort ? "Short" : null].filter(Boolean).join(" · ");
+                const meta = [
+                  fmtDuration(v.durationSec),
+                  v.viewCount != null
+                    ? `${v.viewCount.toLocaleString()} views`
+                    : null,
+                  v.isShort ? "Short" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
                 const score = outlierScore(v.viewCount, median);
                 return (
                   <label
@@ -402,7 +580,10 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                     }`}
                   >
                     {isSelected && !locked && (
-                      <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-primary" />
+                      <span
+                        aria-hidden
+                        className="absolute inset-y-0 left-0 w-[2px] bg-primary"
+                      />
                     )}
                     {/* The real input stays visible and hit-testable; `appearance-none` just
                         swaps Chromium's grey system box for the app's own square. */}
@@ -423,7 +604,9 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate font-medium text-foreground/90">{v.title}</span>
+                        <span className="min-w-0 flex-1 truncate font-medium text-foreground/90">
+                          {v.title}
+                        </span>
                         {score != null && score >= OUTLIER_THRESHOLD && (
                           <span
                             data-testid={`channel-video-outlier-${v.externalId}`}
@@ -434,13 +617,27 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                           </span>
                         )}
                       </p>
-                      {meta && <p className="mt-0.5 truncate text-xs tabular-nums text-muted-foreground">{meta}</p>}
+                      {meta && (
+                        <p className="mt-0.5 truncate text-xs tabular-nums text-muted-foreground">
+                          {meta}
+                        </p>
+                      )}
                     </div>
                     {status === "queued" && (
-                      <span data-testid="channel-video-queued" className={`${PILL} flex-none border-warning/25 bg-warning/12 text-warning`}>Queued</span>
+                      <span
+                        data-testid="channel-video-queued"
+                        className={`${PILL} flex-none border-warning/25 bg-warning/12 text-warning`}
+                      >
+                        Queued
+                      </span>
                     )}
                     {status === "downloaded" && (
-                      <span data-testid="channel-video-downloaded" className={`${PILL} flex-none border-success/25 bg-success/12 text-success`}>Downloaded</span>
+                      <span
+                        data-testid="channel-video-downloaded"
+                        className={`${PILL} flex-none border-success/25 bg-success/12 text-success`}
+                      >
+                        Downloaded
+                      </span>
                     )}
                   </label>
                 );
@@ -451,7 +648,12 @@ export function ChannelDetail({ channel, onBack, onOpenMedia }: { channel: Chann
                 hundreds of videos listed. Opaque bg + top border keep the list from bleeding through. */}
             <div className="sticky bottom-0 -mx-10 flex flex-col gap-3.5 border-t border-border-strong bg-background px-10 py-4 shadow-[0_-20px_44px_-20px_hsl(0_0%_0%/0.9)]">
               <QueueSpecControls onChange={onSpec} />
-              <Button data-testid="channel-add-to-queue" className="h-11" onClick={addToQueue} disabled={selected.size === 0}>
+              <Button
+                data-testid="channel-add-to-queue"
+                className="h-11"
+                onClick={addToQueue}
+                disabled={selected.size === 0}
+              >
                 <Plus aria-hidden className="h-4 w-4" />
                 {`Add ${selected.size} selected to queue`}
               </Button>

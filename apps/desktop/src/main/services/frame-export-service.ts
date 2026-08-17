@@ -16,7 +16,12 @@ import {
   type DocSegment,
 } from "@sift/core";
 import type { SiftDatabase } from "@sift/db";
-import { getFramesByMediaId, getMediaById, getTranscriptsByMediaId, insertDocument } from "@sift/db";
+import {
+  getFramesByMediaId,
+  getMediaById,
+  getTranscriptsByMediaId,
+  insertDocument,
+} from "@sift/db";
 
 // Note: deliberately does NOT import `../paths` or `electron` — kept Node-loadable like
 // summarize-service. The PDF renderer (which needs a BrowserWindow) is injected.
@@ -61,20 +66,29 @@ export class FrameExportService {
     const transcript = getTranscriptsByMediaId(db, mediaId)[0];
     if (!transcript) throw new Error("Get a transcript first.");
 
-    const frames = getFramesByMediaId(db, mediaId).filter((f) => f.included === 1);
+    const frames = getFramesByMediaId(db, mediaId).filter(
+      (f) => f.included === 1,
+    );
 
     // Segments are the interleave anchors. ponytail: a provider that stored no segments
     // (segments_json null) can't be interleaved — fall back to the whole transcript as one
     // block, so frames just follow the text.
-    const parsed: DocSegment[] = transcript.segments_json ? JSON.parse(transcript.segments_json) : [];
-    const segments: DocSegment[] = parsed.length ? parsed : [{ start: 0, text: transcript.text }];
+    const parsed: DocSegment[] = transcript.segments_json
+      ? JSON.parse(transcript.segments_json)
+      : [];
+    const segments: DocSegment[] = parsed.length
+      ? parsed
+      : [{ start: 0, text: transcript.text }];
 
     // Slides are hard boundaries, so the AI polish (below) only rewrites text runs and
     // leaves slide placement untouched. Frame `src` differs by format: file:// for Markdown
     // (portable local ref), a base64 data: URI for the self-contained PDF.
     const docFrames: DocFrame[] =
       format === "md"
-        ? frames.map((f) => ({ tsMs: f.ts_ms, src: pathToFileURL(f.image_path).href }))
+        ? frames.map((f) => ({
+            tsMs: f.ts_ms,
+            src: pathToFileURL(f.image_path).href,
+          }))
         : frames.map((f) => ({
             tsMs: f.ts_ms,
             src: `data:${imageMime(f.image_path)};base64,${readFileSync(f.image_path).toString("base64")}`,
@@ -83,13 +97,20 @@ export class FrameExportService {
     let blocks: Block[] = buildDocumentBlocks(segments, docFrames);
     if (polish) blocks = await this.polish(blocks, polish, onProgress);
 
-    const base = sanitizeFilename(`${buildOutputBaseName(media.uploader, media.title)}__document`);
+    const base = sanitizeFilename(
+      `${buildOutputBaseName(media.uploader, media.title)}__document`,
+    );
     const dir = this.opts.downloadsDir();
     mkdirSync(dir, { recursive: true });
 
     const path = join(dir, `${base}.${format}`);
-    if (format === "md") writeFileSync(path, renderMarkdownBlocks(media.title, blocks), "utf8");
-    else writeFileSync(path, await this.opts.renderPdf(renderHtmlBlocks(media.title, blocks)));
+    if (format === "md")
+      writeFileSync(path, renderMarkdownBlocks(media.title, blocks), "utf8");
+    else
+      writeFileSync(
+        path,
+        await this.opts.renderPdf(renderHtmlBlocks(media.title, blocks)),
+      );
 
     // Track it so the Files tab can list every document created for this video (persistent).
     insertDocument(db, {
@@ -117,7 +138,12 @@ export class FrameExportService {
     onProgress?.({ processed: 0, total: 1 });
     try {
       const out = await provider.summarize(
-        { model: polish.model, systemPrompt: POLISH_SYSTEM_PROMPT, content: text, maxTokens: 8192 },
+        {
+          model: polish.model,
+          systemPrompt: POLISH_SYSTEM_PROMPT,
+          content: text,
+          maxTokens: 8192,
+        },
         () => {},
       );
       onProgress?.({ processed: 1, total: 1 });

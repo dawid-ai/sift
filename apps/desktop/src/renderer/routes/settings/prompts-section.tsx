@@ -21,7 +21,8 @@ import {
 
 // Shown under every prompt-body textarea so a user editing a seeded prompt (several of
 // which carry the marker) knows what it does before deleting it.
-const TIMESTAMPS_HINT = "Include {{TIMESTAMPS}} to get a timestamped transcript ([mm:ss] per line) instead of flat text — needed for chapters, clip timings, or anything that must cite times.";
+const TIMESTAMPS_HINT =
+  "Include {{TIMESTAMPS}} to get a timestamped transcript ([mm:ss] per line) instead of flat text — needed for chapters, clip timings, or anything that must cite times.";
 
 export function PromptsSection() {
   const [prompts, setPrompts] = useState<PromptInfo[]>([]);
@@ -109,7 +110,8 @@ export function PromptsSection() {
     setError(null);
     setNotice(null);
     try {
-      const { imported, skipped, replaced } = await window.sift.prompts.import();
+      const { imported, skipped, replaced } =
+        await window.sift.prompts.import();
       if (imported > 0 || skipped > 0) {
         const total = imported + skipped;
         const countPart =
@@ -174,7 +176,9 @@ export function PromptsSection() {
         </div>
       </div>
 
-      {error && <SettingsError data-testid="prompt-error">{error}</SettingsError>}
+      {error && (
+        <SettingsError data-testid="prompt-error">{error}</SettingsError>
+      )}
       {notice && (
         <p
           data-testid="prompts-notice"
@@ -195,7 +199,9 @@ export function PromptsSection() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {p.name}
+                  </p>
                   {!editing && (
                     <p className="mt-1.5 line-clamp-2 max-w-[62ch] text-[12px] leading-relaxed text-foreground/60">
                       {p.body}
@@ -204,7 +210,10 @@ export function PromptsSection() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {p.isBuiltin ? (
-                    <Badge data-testid={`prompt-builtin-${p.id}`} variant="neutral">
+                    <Badge
+                      data-testid={`prompt-builtin-${p.id}`}
+                      variant="neutral"
+                    >
                       Built-in
                     </Badge>
                   ) : (
@@ -236,7 +245,13 @@ export function PromptsSection() {
               </div>
 
               {!p.isBuiltin && editing && (
-                <div className={cn("mt-3 flex flex-col gap-2 border-t pt-3", SECTION_RULE, FULL_BLEED_SM)}>
+                <div
+                  className={cn(
+                    "mt-3 flex flex-col gap-2 border-t pt-3",
+                    SECTION_RULE,
+                    FULL_BLEED_SM,
+                  )}
+                >
                   <MicroLabel>Editing</MicroLabel>
                   <Input
                     data-testid={`prompt-edit-name-${p.id}`}

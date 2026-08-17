@@ -13,7 +13,9 @@ describe("filterOptions", () => {
     expect(filterOptions(options, "   ")).toEqual(options);
   });
   it("matches a substring anywhere in the label, case-insensitively", () => {
-    expect(filterOptions(options, "BLUE").map((o) => o.value)).toEqual(["3b1b"]);
+    expect(filterOptions(options, "BLUE").map((o) => o.value)).toEqual([
+      "3b1b",
+    ]);
     expect(filterOptions(options, "an").map((o) => o.value)).toEqual([""]);
   });
   it("matches on the label, not the value", () => {

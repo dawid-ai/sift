@@ -5,8 +5,16 @@ import type { TranscriptProvider, TranscriptContext } from "./types";
 
 function fake(id: string, can: boolean): TranscriptProvider {
   return {
-    id, label: id, canHandle: () => can,
-    transcribe: async () => ({ providerId: id, language: "en", text: "", segments: [], model: null }),
+    id,
+    label: id,
+    canHandle: () => can,
+    transcribe: async () => ({
+      providerId: id,
+      language: "en",
+      text: "",
+      segments: [],
+      model: null,
+    }),
   };
 }
 const ctx: TranscriptContext = {
@@ -50,13 +58,25 @@ describe("TranscriptRegistry", () => {
         const want = baseLangCode(c.language);
         return c.captionLanguages.some((l) => baseLangCode(l) === want);
       },
-      transcribe: async () => ({ providerId: "ytdlp-subs", language: "en", text: "", segments: [], model: null }),
+      transcribe: async () => ({
+        providerId: "ytdlp-subs",
+        language: "en",
+        text: "",
+        segments: [],
+        model: null,
+      }),
     };
     const whisperCpp: TranscriptProvider = {
       id: "whisper-cpp",
       label: "Whisper",
       canHandle: (c) => c.audioPath !== null,
-      transcribe: async () => ({ providerId: "whisper-cpp", language: "en", text: "", segments: [], model: "small" }),
+      transcribe: async () => ({
+        providerId: "whisper-cpp",
+        language: "en",
+        text: "",
+        segments: [],
+        model: "small",
+      }),
     };
     registry.register(ytdlpSubs);
     registry.register(whisperCpp);

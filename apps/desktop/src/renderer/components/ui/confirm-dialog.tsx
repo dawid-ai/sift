@@ -50,15 +50,29 @@ export function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <p className="eyebrow">CONFIRM</p>
-        <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+        <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+          {title}
+        </h3>
         {description && (
-          <div className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</div>
+          <div className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </div>
         )}
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" size="sm" data-testid="confirm-cancel" onClick={onCancel}>
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="confirm-cancel"
+            onClick={onCancel}
+          >
             {cancelLabel}
           </Button>
-          <Button size="sm" data-testid="confirm-ok" onClick={onConfirm} autoFocus>
+          <Button
+            size="sm"
+            data-testid="confirm-ok"
+            onClick={onConfirm}
+            autoFocus
+          >
             {confirmLabel}
           </Button>
         </div>

@@ -11,7 +11,11 @@ describe("toOcrResult", () => {
   });
 
   it("reports zero words for blank OCR (scenery)", () => {
-    expect(toOcrResult("   \n ", 0)).toEqual({ text: "", wordCount: 0, meanConfidence: 0 });
+    expect(toOcrResult("   \n ", 0)).toEqual({
+      text: "",
+      wordCount: 0,
+      meanConfidence: 0,
+    });
   });
 });
 
@@ -26,7 +30,9 @@ describe("createOcrRunner", () => {
     const runner = createOcrRunner({ makeRecognizer: make });
 
     expect(await runner.recognize("/f1.jpg")).toEqual({
-      text: "one two three", wordCount: 3, meanConfidence: 90,
+      text: "one two three",
+      wordCount: 3,
+      meanConfidence: 90,
     });
     await runner.recognize("/f2.jpg");
     await runner.close();
@@ -49,7 +55,12 @@ describe("workerOptions", () => {
   });
 
   it("pairs langPath and cachePath, both with gzip: false", () => {
-    expect(workerOptions({ langPath: "/resources/tessdata", cachePath: "/cache/tesseract" })).toEqual({
+    expect(
+      workerOptions({
+        langPath: "/resources/tessdata",
+        cachePath: "/cache/tesseract",
+      }),
+    ).toEqual({
       langPath: "/resources/tessdata",
       cachePath: "/cache/tesseract",
       gzip: false,
@@ -57,7 +68,9 @@ describe("workerOptions", () => {
   });
 
   it("omits gzip entirely when langPath is unset, so tesseract.js's CDN default (gzip: true) still applies", () => {
-    expect(workerOptions({ cachePath: "/cache/tesseract" })).toEqual({ cachePath: "/cache/tesseract" });
+    expect(workerOptions({ cachePath: "/cache/tesseract" })).toEqual({
+      cachePath: "/cache/tesseract",
+    });
   });
 
   it("returns an empty object when nothing is set", () => {

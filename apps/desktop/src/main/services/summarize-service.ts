@@ -1,7 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AiRegistry, TranscriptLine } from "@sift/core";
-import { assembleSummaryContent, buildOutputBaseName, sanitizeFilename, SUMMARY_SYSTEM_PROMPT } from "@sift/core";
+import {
+  assembleSummaryContent,
+  buildOutputBaseName,
+  sanitizeFilename,
+  SUMMARY_SYSTEM_PROMPT,
+} from "@sift/core";
 import type { NewMedia, SiftDatabase, SummaryRow } from "@sift/db";
 import {
   getFramesByMediaId,
@@ -88,7 +93,12 @@ export class SummarizeService {
    * persists the result, and returns the saved `SummaryRecord`.
    */
   async start(
-    input: { metadata: MediaMetadata; providerId: string; model: string; promptId: number },
+    input: {
+      metadata: MediaMetadata;
+      providerId: string;
+      model: string;
+      promptId: number;
+    },
     onToken?: (delta: string) => void,
   ): Promise<SummaryRecord> {
     const { db, registry } = this.opts;
@@ -126,9 +136,19 @@ export class SummarizeService {
         segments = [];
       }
     }
-    const content = assembleSummaryContent(prompt.body, transcript.text, frames, segments);
+    const content = assembleSummaryContent(
+      prompt.body,
+      transcript.text,
+      frames,
+      segments,
+    );
     const text = await provider.summarize(
-      { model: input.model, systemPrompt: SUMMARY_SYSTEM_PROMPT, content, maxTokens: SUMMARY_MAX_TOKENS },
+      {
+        model: input.model,
+        systemPrompt: SUMMARY_SYSTEM_PROMPT,
+        content,
+        maxTokens: SUMMARY_MAX_TOKENS,
+      },
       (delta) => onToken?.(delta),
     );
 
@@ -158,9 +178,13 @@ export class SummarizeService {
     const media = getMediaById(db, row.media_id);
     if (!media) throw new Error("Media not found.");
     const base = buildOutputBaseName(media.uploader, media.title);
-    const prompt = row.prompt_id != null ? getPromptById(db, row.prompt_id) : undefined;
+    const prompt =
+      row.prompt_id != null ? getPromptById(db, row.prompt_id) : undefined;
     const suffix = prompt ? prompt.name : "summary";
-    const path = join(downloadsDir, `${sanitizeFilename(`${base}__${suffix}`)}.md`);
+    const path = join(
+      downloadsDir,
+      `${sanitizeFilename(`${base}__${suffix}`)}.md`,
+    );
     mkdirSync(downloadsDir, { recursive: true });
     writeFileSync(path, row.text, "utf8");
     return path;

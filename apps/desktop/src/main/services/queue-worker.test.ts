@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { openTestDatabase } from "@sift/db/testing";
-import { runMigrations, insertQueueItem, insertMedia, tagsForMedia, type SiftDatabase } from "@sift/db";
+import {
+  runMigrations,
+  insertQueueItem,
+  insertMedia,
+  tagsForMedia,
+  type SiftDatabase,
+} from "@sift/db";
 import type { MediaMetadata, QueueSpec } from "@sift/ipc-contract";
 import { QueueWorker, type QueueWorkerDeps } from "./queue-worker";
 
@@ -45,7 +51,26 @@ const META = (over: Partial<MediaMetadata> = {}): MediaMetadata =>
     language: "en",
     captionLanguages: ["en"],
     formats: [],
-    raw: { formats: [{ ext: "mp4", vcodec: "avc1", acodec: "none", height: 720, tbr: 1000, filesize: 1 }, { ext: "m4a", vcodec: "none", acodec: "aac", height: null, tbr: 128, filesize: 1 }] },
+    raw: {
+      formats: [
+        {
+          ext: "mp4",
+          vcodec: "avc1",
+          acodec: "none",
+          height: 720,
+          tbr: 1000,
+          filesize: 1,
+        },
+        {
+          ext: "m4a",
+          vcodec: "none",
+          acodec: "aac",
+          height: null,
+          tbr: 128,
+          filesize: 1,
+        },
+      ],
+    },
     ...over,
   }) as MediaMetadata;
 
@@ -59,14 +84,29 @@ const SPEC = (over: Partial<QueueSpec> = {}): QueueSpec => ({
 });
 
 // Deferred-promise helper so tests can assert intermediate (running) state.
-function makeDeps(db: SiftDatabase, over: Partial<QueueWorkerDeps> = {}): QueueWorkerDeps {
+function makeDeps(
+  db: SiftDatabase,
+  over: Partial<QueueWorkerDeps> = {},
+): QueueWorkerDeps {
   const mediaId = seedMedia(db);
   return {
     db,
     metadata: { fetch: vi.fn(async () => META()) },
-    download: { start: vi.fn(async () => ({ id: mediaId })) as unknown as QueueWorkerDeps["download"]["start"] },
-    transcript: { get: vi.fn(async () => ({ mediaId })) as unknown as QueueWorkerDeps["transcript"]["get"] },
-    summarize: { start: vi.fn(async () => ({ mediaId })) as unknown as QueueWorkerDeps["summarize"]["start"] },
+    download: {
+      start: vi.fn(async () => ({
+        id: mediaId,
+      })) as unknown as QueueWorkerDeps["download"]["start"],
+    },
+    transcript: {
+      get: vi.fn(async () => ({
+        mediaId,
+      })) as unknown as QueueWorkerDeps["transcript"]["get"],
+    },
+    summarize: {
+      start: vi.fn(async () => ({
+        mediaId,
+      })) as unknown as QueueWorkerDeps["summarize"]["start"],
+    },
     emit: vi.fn(),
     ...over,
   };
@@ -96,7 +136,9 @@ describe("QueueWorker", () => {
     const mediaId = seedMedia(db);
     const deps = makeDeps(db, {
       download: {
-        start: vi.fn(async () => ({ id: mediaId })) as unknown as QueueWorkerDeps["download"]["start"],
+        start: vi.fn(async () => ({
+          id: mediaId,
+        })) as unknown as QueueWorkerDeps["download"]["start"],
       },
     });
     const w = new QueueWorker(deps);
@@ -117,7 +159,9 @@ describe("QueueWorker", () => {
           return { id: mediaId } as never;
         }) as unknown as QueueWorkerDeps["download"]["start"],
       },
-      metadata: { fetch: vi.fn(async (url: string) => META({ sourceUrl: url })) },
+      metadata: {
+        fetch: vi.fn(async (url: string) => META({ sourceUrl: url })),
+      },
     });
     const w = new QueueWorker(deps);
     w.add(["https://x/a", "https://x/b"], SPEC());
@@ -128,10 +172,20 @@ describe("QueueWorker", () => {
 
   it("partial-success: download done + transcript error → item done, summarize skipped", async () => {
     const deps = makeDeps(db, {
-      transcript: { get: vi.fn(async () => { throw new Error("429 too many"); }) as never },
+      transcript: {
+        get: vi.fn(async () => {
+          throw new Error("429 too many");
+        }) as never,
+      },
     });
     const w = new QueueWorker(deps);
-    w.add(["https://x/1"], SPEC({ transcript: true, summarize: { providerId: "p", model: "m", promptId: 1 } }));
+    w.add(
+      ["https://x/1"],
+      SPEC({
+        transcript: true,
+        summarize: { providerId: "p", model: "m", promptId: 1 },
+      }),
+    );
     await flush();
     const it0 = w.list()[0]!;
     expect(it0.status).toBe("done");
@@ -145,7 +199,13 @@ describe("QueueWorker", () => {
   it("happy path: transcript done → summarize runs with the spec's provider/model/prompt", async () => {
     const deps = makeDeps(db); // default fakes: transcript.get + summarize.start both resolve
     const w = new QueueWorker(deps);
-    w.add(["https://x/1"], SPEC({ transcript: true, summarize: { providerId: "p", model: "m", promptId: 1 } }));
+    w.add(
+      ["https://x/1"],
+      SPEC({
+        transcript: true,
+        summarize: { providerId: "p", model: "m", promptId: 1 },
+      }),
+    );
     await flush();
     // All ops succeeded → item auto-cleared.
     expect(w.list()).toHaveLength(0);
@@ -208,7 +268,13 @@ describe("QueueWorker", () => {
   });
 
   it("metadata fetch failure marks all requested ops error, item done", async () => {
-    const deps = makeDeps(db, { metadata: { fetch: vi.fn(async () => { throw new Error("no such video"); }) } });
+    const deps = makeDeps(db, {
+      metadata: {
+        fetch: vi.fn(async () => {
+          throw new Error("no such video");
+        }),
+      },
+    });
     const w = new QueueWorker(deps);
     w.add(["https://x/1"], SPEC({ transcript: true }));
     await flush();
@@ -224,7 +290,11 @@ describe("QueueWorker", () => {
       source_url: "https://x/1",
       spec_json: JSON.stringify(SPEC()),
       status: "running",
-      ops_json: JSON.stringify({ download: "running", transcript: "skipped", summarize: "skipped" }),
+      ops_json: JSON.stringify({
+        download: "running",
+        transcript: "skipped",
+        summarize: "skipped",
+      }),
       media_id: null,
       queue_order: 1,
       error: null,
@@ -244,19 +314,29 @@ describe("QueueWorker", () => {
     // Deferred download so we can cancel mid-flight, between op boundaries.
     let resolveDownload!: (v: { id: number }) => void;
     let downloadStarted!: () => void;
-    const started = new Promise<void>((r) => { downloadStarted = r; });
+    const started = new Promise<void>((r) => {
+      downloadStarted = r;
+    });
     const deps = makeDeps(db, {
       download: {
         start: vi.fn(() => {
           downloadStarted();
-          return new Promise<{ id: number }>((res) => { resolveDownload = res; });
+          return new Promise<{ id: number }>((res) => {
+            resolveDownload = res;
+          });
         }) as unknown as QueueWorkerDeps["download"]["start"],
       },
       transcript: { get: vi.fn(async () => ({ mediaId })) as never },
       summarize: { start: vi.fn(async () => ({ mediaId })) as never },
     });
     const w = new QueueWorker(deps);
-    w.add(["https://x/1"], SPEC({ transcript: true, summarize: { providerId: "p", model: "m", promptId: 1 } }));
+    w.add(
+      ["https://x/1"],
+      SPEC({
+        transcript: true,
+        summarize: { providerId: "p", model: "m", promptId: 1 },
+      }),
+    );
 
     // Wait until download.start has actually begun (item is running).
     await started;
@@ -282,7 +362,10 @@ describe("QueueWorker", () => {
     w.add(["https://x/a", "https://x/b"], SPEC());
     const [, b] = w.list();
     w.reorder(b!.id, "up");
-    expect(w.list().map((i) => i.sourceUrl)).toEqual(["https://x/b", "https://x/a"]);
+    expect(w.list().map((i) => i.sourceUrl)).toEqual([
+      "https://x/b",
+      "https://x/a",
+    ]);
   });
 
   it("pause stops picking new items", async () => {

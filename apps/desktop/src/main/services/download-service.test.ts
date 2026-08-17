@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LOCAL_TAG } from "@sift/core";
@@ -20,30 +26,86 @@ import {
   tagsForMedia,
   upsertAsset,
 } from "@sift/db";
-import type { DownloadOption, DownloadProgress, MediaMetadata } from "@sift/ipc-contract";
-import type { DownloadOpts, RawDownloadProgress, YtDlpRunner } from "../sidecars/ytdlp";
+import type {
+  DownloadOption,
+  DownloadProgress,
+  MediaMetadata,
+} from "@sift/ipc-contract";
+import type {
+  DownloadOpts,
+  RawDownloadProgress,
+  YtDlpRunner,
+} from "../sidecars/ytdlp";
 import { LOCAL_FORMAT_ID } from "../local-file";
 import { DownloadService, downloadDisplayLabel } from "./download-service";
 
 describe("downloadDisplayLabel", () => {
   it("returns the stored label for non-legacy (real) downloads", () => {
-    expect(downloadDisplayLabel({ format_id: "1080p", label: "1080p", file_path: "/x [1080p].mp4" })).toBe("1080p");
-    expect(downloadDisplayLabel({ format_id: "audio", label: "Audio only", file_path: "/x.m4a" })).toBe("Audio only");
+    expect(
+      downloadDisplayLabel({
+        format_id: "1080p",
+        label: "1080p",
+        file_path: "/x [1080p].mp4",
+      }),
+    ).toBe("1080p");
+    expect(
+      downloadDisplayLabel({
+        format_id: "audio",
+        label: "Audio only",
+        file_path: "/x.m4a",
+      }),
+    ).toBe("Audio only");
   });
 
   it("recovers the quality from a legacy download's filename", () => {
-    expect(downloadDisplayLabel({ format_id: "legacy", label: "Downloaded", file_path: "C:\\vids\\Chan__Title [1080p].mp4" })).toBe("1080p");
-    expect(downloadDisplayLabel({ format_id: "legacy", label: "Downloaded", file_path: "/vids/Chan__Title [720p].webm" })).toBe("720p");
-    expect(downloadDisplayLabel({ format_id: "legacy", label: "Downloaded", file_path: "/vids/Chan__Title [audio].m4a" })).toBe("Audio");
+    expect(
+      downloadDisplayLabel({
+        format_id: "legacy",
+        label: "Downloaded",
+        file_path: "C:\\vids\\Chan__Title [1080p].mp4",
+      }),
+    ).toBe("1080p");
+    expect(
+      downloadDisplayLabel({
+        format_id: "legacy",
+        label: "Downloaded",
+        file_path: "/vids/Chan__Title [720p].webm",
+      }),
+    ).toBe("720p");
+    expect(
+      downloadDisplayLabel({
+        format_id: "legacy",
+        label: "Downloaded",
+        file_path: "/vids/Chan__Title [audio].m4a",
+      }),
+    ).toBe("Audio");
   });
 
   it("falls back to the container extension when the quality isn't encoded", () => {
-    expect(downloadDisplayLabel({ format_id: "legacy", label: "Downloaded", file_path: "/vids/Chan__Title [best].mp4" })).toBe("MP4");
-    expect(downloadDisplayLabel({ format_id: "legacy", label: "Downloaded", file_path: "/vids/plain-name.webm" })).toBe("WEBM");
+    expect(
+      downloadDisplayLabel({
+        format_id: "legacy",
+        label: "Downloaded",
+        file_path: "/vids/Chan__Title [best].mp4",
+      }),
+    ).toBe("MP4");
+    expect(
+      downloadDisplayLabel({
+        format_id: "legacy",
+        label: "Downloaded",
+        file_path: "/vids/plain-name.webm",
+      }),
+    ).toBe("WEBM");
   });
 
   it("keeps 'Downloaded' only when there is no file path to learn from", () => {
-    expect(downloadDisplayLabel({ format_id: "legacy", label: "Downloaded", file_path: null })).toBe("Downloaded");
+    expect(
+      downloadDisplayLabel({
+        format_id: "legacy",
+        label: "Downloaded",
+        file_path: null,
+      }),
+    ).toBe("Downloaded");
   });
 });
 
@@ -51,7 +113,8 @@ const OPTION: DownloadOption = {
   id: "1080p",
   label: "1080p",
   detail: "MP4",
-  selector: "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b",
+  selector:
+    "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b",
   approxBytes: 345_000_000,
   kind: "video",
 };
@@ -122,7 +185,10 @@ function makeFakeRunner(
       callIndex += 1;
       return { filePath };
     },
-    async fetchSubtitles(): Promise<{ subPath: string; format: "json3" | "vtt" } | null> {
+    async fetchSubtitles(): Promise<{
+      subPath: string;
+      format: "json3" | "vtt";
+    } | null> {
       throw new Error("not used in this test");
     },
   };
@@ -162,7 +228,9 @@ describe("DownloadService", () => {
     const { service } = makeService({ db, runner, downloadsDir });
 
     const progressEvents: DownloadProgress[] = [];
-    const record = await service.start({ metadata, option: OPTION }, (p) => progressEvents.push(p));
+    const record = await service.start({ metadata, option: OPTION }, (p) =>
+      progressEvents.push(p),
+    );
 
     const mediaRows = listMedia(db);
     expect(mediaRows).toHaveLength(1);
@@ -298,7 +366,9 @@ describe("DownloadService", () => {
     const { runner } = makeFakeRunner({ rejectWith: boom });
     const { service } = makeService({ db, runner, downloadsDir });
 
-    await expect(service.start({ metadata, option: OPTION })).rejects.toThrow("boom");
+    await expect(service.start({ metadata, option: OPTION })).rejects.toThrow(
+      "boom",
+    );
 
     const mediaRows = listMedia(db);
     expect(mediaRows).toHaveLength(1);
@@ -321,22 +391,36 @@ describe("DownloadService", () => {
 
     // First start() succeeds normally, landing a "done" row for OPTION.
     const { runner: okRunner } = makeFakeRunner();
-    const { service: okService } = makeService({ db, runner: okRunner, downloadsDir });
+    const { service: okService } = makeService({
+      db,
+      runner: okRunner,
+      downloadsDir,
+    });
     await okService.start({ metadata, option: OPTION });
 
     const mediaId = listMedia(db)[0]!.id;
-    const before = listDownloadsByMediaId(db, mediaId).find((d) => d.format_id === OPTION.id)!;
+    const before = listDownloadsByMediaId(db, mediaId).find(
+      (d) => d.format_id === OPTION.id,
+    )!;
     expect(before.status).toBe("done");
     expect(before.file_path).toBe("/dl/Chan__Vid.mp4");
 
     // Re-start() the SAME format with a runner that rejects.
     const boom = new Error("boom");
     const { runner: failRunner } = makeFakeRunner({ rejectWith: boom });
-    const { service: failService, unlinked } = makeService({ db, runner: failRunner, downloadsDir });
+    const { service: failService, unlinked } = makeService({
+      db,
+      runner: failRunner,
+      downloadsDir,
+    });
 
-    await expect(failService.start({ metadata, option: OPTION })).rejects.toThrow("boom");
+    await expect(
+      failService.start({ metadata, option: OPTION }),
+    ).rejects.toThrow("boom");
 
-    const after = listDownloadsByMediaId(db, mediaId).find((d) => d.format_id === OPTION.id)!;
+    const after = listDownloadsByMediaId(db, mediaId).find(
+      (d) => d.format_id === OPTION.id,
+    )!;
     expect(after.status).toBe("done"); // restored, not "error"
     expect(after.file_path).toBe("/dl/Chan__Vid.mp4"); // original file path, not null
     expect(after.error).toBeNull();
@@ -364,7 +448,9 @@ describe("DownloadService", () => {
       unlinkFile: () => {},
     });
 
-    await expect(service.start({ metadata, option: OPTION })).rejects.toThrow(/output file is missing/);
+    await expect(service.start({ metadata, option: OPTION })).rejects.toThrow(
+      /output file is missing/,
+    );
 
     const mediaRows = listMedia(db);
     const dlRows = listDownloadsByMediaId(db, mediaRows[0]!.id);
@@ -382,7 +468,11 @@ describe("DownloadService", () => {
     const db1 = await openTestDatabase();
     runMigrations(db1);
     const r1 = makeFakeRunner();
-    const { service: s1 } = makeService({ db: db1, runner: r1.runner, downloadsDir });
+    const { service: s1 } = makeService({
+      db: db1,
+      runner: r1.runner,
+      downloadsDir,
+    });
     await s1.start({ metadata, option: OPTION });
     expect(r1.calls[0]!.ffmpegLocation).toBeUndefined();
     db1.close();
@@ -400,7 +490,11 @@ describe("DownloadService", () => {
       last_checked: 1,
     });
     const r2 = makeFakeRunner();
-    const { service: s2 } = makeService({ db: db2, runner: r2.runner, downloadsDir });
+    const { service: s2 } = makeService({
+      db: db2,
+      runner: r2.runner,
+      downloadsDir,
+    });
     await s2.start({ metadata, option: OPTION });
     expect(r2.calls[0]!.ffmpegLocation).toBe("/bin/ffmpeg");
     db2.close();
@@ -460,8 +554,14 @@ describe("DownloadService", () => {
     // Second format errors out, giving us one "done" + one "error" download row.
     const boom = new Error("boom");
     const { runner: failRunner } = makeFakeRunner({ rejectWith: boom });
-    const { service: failService } = makeService({ db, runner: failRunner, downloadsDir });
-    await expect(failService.start({ metadata, option: OPTION_AUDIO })).rejects.toThrow("boom");
+    const { service: failService } = makeService({
+      db,
+      runner: failRunner,
+      downloadsDir,
+    });
+    await expect(
+      failService.start({ metadata, option: OPTION_AUDIO }),
+    ).rejects.toThrow("boom");
 
     insertTranscript(db, {
       media_id: mediaId,
@@ -496,8 +596,16 @@ describe("DownloadService", () => {
 
     expect(item.formats).toHaveLength(2);
     const byId = Object.fromEntries(item.formats.map((f) => [f.id, f]));
-    expect(byId[OPTION.id]).toEqual({ id: OPTION.id, label: OPTION.label, status: "done" });
-    expect(byId[OPTION_AUDIO.id]).toEqual({ id: OPTION_AUDIO.id, label: OPTION_AUDIO.label, status: "error" });
+    expect(byId[OPTION.id]).toEqual({
+      id: OPTION.id,
+      label: OPTION.label,
+      status: "done",
+    });
+    expect(byId[OPTION_AUDIO.id]).toEqual({
+      id: OPTION_AUDIO.id,
+      label: OPTION_AUDIO.label,
+      status: "error",
+    });
 
     expect(item.summaryCount).toBe(1);
 
@@ -571,7 +679,9 @@ describe("DownloadService", () => {
     expect(formats).toEqual([OPTION.id, OPTION_AUDIO.id].sort());
     expect(d.transcripts).toHaveLength(2);
     expect(d.transcripts[0]!.text).toBe("second"); // newest first
-    expect(d.transcripts[1]!.segments).toEqual([{ start: 0, end: 1, text: "first" }]);
+    expect(d.transcripts[1]!.segments).toEqual([
+      { start: 0, end: 1, text: "first" },
+    ]);
     expect(d.summaries).toHaveLength(1);
     expect(d.summaries[0]!.promptId).toBe(prompt.id);
 
@@ -617,7 +727,11 @@ describe("DownloadService", () => {
     const { runner } = makeFakeRunner();
     const { service } = makeService({ db, runner, downloadsDir });
 
-    const rec = await service.start({ metadata, option: OPTION, tags: ["news", "ai"] });
+    const rec = await service.start({
+      metadata,
+      option: OPTION,
+      tags: ["news", "ai"],
+    });
     expect(new Set(tagsForMedia(db, rec.id))).toEqual(new Set(["news", "ai"]));
 
     db.close();
@@ -656,13 +770,27 @@ describe("DownloadService", () => {
     // Seed two downloaded media (start() with two different source URLs, same
     // technique as sibling tests): A → file "a.mp4" (kept), B → file "b.mp4" (missing).
     const { runner: runnerA } = makeFakeRunner({ filePaths: ["/dl/a.mp4"] });
-    const { service: seedServiceA } = makeService({ db, runner: runnerA, downloadsDir });
-    const metaA: MediaMetadata = { ...metadata, sourceUrl: "https://example.com/watch?v=aaa" };
+    const { service: seedServiceA } = makeService({
+      db,
+      runner: runnerA,
+      downloadsDir,
+    });
+    const metaA: MediaMetadata = {
+      ...metadata,
+      sourceUrl: "https://example.com/watch?v=aaa",
+    };
     const recA = await seedServiceA.start({ metadata: metaA, option: OPTION });
 
     const { runner: runnerB } = makeFakeRunner({ filePaths: ["/dl/b.mp4"] });
-    const { service: seedServiceB } = makeService({ db, runner: runnerB, downloadsDir });
-    const metaB: MediaMetadata = { ...metadata, sourceUrl: "https://example.com/watch?v=bbb" };
+    const { service: seedServiceB } = makeService({
+      db,
+      runner: runnerB,
+      downloadsDir,
+    });
+    const metaB: MediaMetadata = {
+      ...metadata,
+      sourceUrl: "https://example.com/watch?v=bbb",
+    };
     const recB = await seedServiceB.start({ metadata: metaB, option: OPTION });
 
     // Real service under test: fileExists is true only for A's file, so B is skipped.
@@ -721,7 +849,9 @@ describe("DownloadService", () => {
 
     await service.remove(mediaId);
 
-    expect(unlinked.sort()).toEqual(["/dl/Chan__Vid.m4a", "/dl/Chan__Vid.mp4"].sort());
+    expect(unlinked.sort()).toEqual(
+      ["/dl/Chan__Vid.m4a", "/dl/Chan__Vid.mp4"].sort(),
+    );
     expect(getMediaById(db, mediaId)).toBeUndefined();
     expect(listDownloadsByMediaId(db, mediaId)).toHaveLength(0);
     expect(getTranscriptsByMediaId(db, mediaId)).toHaveLength(0);
@@ -954,7 +1084,10 @@ describe("DownloadService", () => {
     const { runner } = makeFakeRunner();
     const { service } = makeService({ db, runner, downloadsDir });
 
-    const record = await service.importLocal({ path: mediaPath, durationSec: 61.5 });
+    const record = await service.importLocal({
+      path: mediaPath,
+      durationSec: 61.5,
+    });
 
     expect(record.title).toBe("Team Standup");
     expect(record.platformId).toBe("local");
@@ -999,7 +1132,9 @@ describe("DownloadService", () => {
     expect(listDownloadsByMediaId(db, audio.id)[0]!.height).toBeNull();
 
     // The delete guard's discriminator must not move with the label.
-    expect(listDownloadsByMediaId(db, video.id)[0]!.format_id).toBe(LOCAL_FORMAT_ID);
+    expect(listDownloadsByMediaId(db, video.id)[0]!.format_id).toBe(
+      LOCAL_FORMAT_ID,
+    );
 
     db.close();
   });
@@ -1042,12 +1177,15 @@ describe("DownloadService", () => {
     });
 
     // LOCAL_TAG is applied by the service, so both entry points (drop + picker) get it.
-    const record = await service.importLocal({ path: mediaPath, tags: ["talks"] });
+    const record = await service.importLocal({
+      path: mediaPath,
+      tags: ["talks"],
+    });
     expect(tagsForMedia(db, record.id)).toEqual([LOCAL_TAG, "talks"]);
 
-    await expect(service.importLocal({ path: join(dir, "nope.mp4") })).rejects.toThrow(
-      /no longer exists/,
-    );
+    await expect(
+      service.importLocal({ path: join(dir, "nope.mp4") }),
+    ).rejects.toThrow(/no longer exists/);
 
     db.close();
   });

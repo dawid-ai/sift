@@ -3,7 +3,11 @@ import { computeDHash, hammingDistance, isDuplicateHash } from "./dhash";
 import type { RgbaImage } from "./dhash";
 
 /** Build an RGBA image from a per-pixel gray function (0..255). */
-function grayImage(width: number, height: number, fn: (x: number, y: number) => number): RgbaImage {
+function grayImage(
+  width: number,
+  height: number,
+  fn: (x: number, y: number) => number,
+): RgbaImage {
   const data = new Uint8Array(width * height * 4);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -25,15 +29,21 @@ describe("computeDHash", () => {
   });
 
   it("gives near-identical hashes for the same content with light noise", () => {
-    const base = grayImage(64, 64, (x, y) => ((x * 7 + y * 13) % 256));
-    const noisy = grayImage(64, 64, (x, y) => Math.min(255, ((x * 7 + y * 13) % 256) + 3));
-    expect(hammingDistance(computeDHash(base), computeDHash(noisy))).toBeLessThanOrEqual(4);
+    const base = grayImage(64, 64, (x, y) => (x * 7 + y * 13) % 256);
+    const noisy = grayImage(64, 64, (x, y) =>
+      Math.min(255, ((x * 7 + y * 13) % 256) + 3),
+    );
+    expect(
+      hammingDistance(computeDHash(base), computeDHash(noisy)),
+    ).toBeLessThanOrEqual(4);
   });
 
   it("gives distant hashes for clearly different content", () => {
     const gradient = grayImage(64, 64, (x) => (x * 4) % 256);
     const inverse = grayImage(64, 64, (x) => 255 - ((x * 4) % 256));
-    expect(hammingDistance(computeDHash(gradient), computeDHash(inverse))).toBeGreaterThan(20);
+    expect(
+      hammingDistance(computeDHash(gradient), computeDHash(inverse)),
+    ).toBeGreaterThan(20);
   });
 });
 

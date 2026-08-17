@@ -15,7 +15,10 @@ function loadSql() {
   if (!sqlModulePromise) {
     const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
     const buf = readFileSync(wasmPath);
-    const wasmBinary = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    const wasmBinary = buf.buffer.slice(
+      buf.byteOffset,
+      buf.byteOffset + buf.byteLength,
+    );
     sqlModulePromise = initSqlJs({ wasmBinary });
   }
   return sqlModulePromise;

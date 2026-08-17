@@ -12,9 +12,15 @@ export interface TranscriptRow {
   file_path: string | null;
   created_at: number;
 }
-export type NewTranscript = Omit<TranscriptRow, "id" | "created_at" | "file_path">;
+export type NewTranscript = Omit<
+  TranscriptRow,
+  "id" | "created_at" | "file_path"
+>;
 
-export function insertTranscript(db: SiftDatabase, t: NewTranscript): TranscriptRow {
+export function insertTranscript(
+  db: SiftDatabase,
+  t: NewTranscript,
+): TranscriptRow {
   const created_at = Date.now();
   const res = db
     .prepare(
@@ -25,11 +31,19 @@ export function insertTranscript(db: SiftDatabase, t: NewTranscript): Transcript
   return getTranscriptById(db, Number(res.lastInsertRowid))!;
 }
 
-export function getTranscriptById(db: SiftDatabase, id: number): TranscriptRow | undefined {
-  return db.prepare<TranscriptRow>("SELECT * FROM transcript WHERE id = @id").get({ id });
+export function getTranscriptById(
+  db: SiftDatabase,
+  id: number,
+): TranscriptRow | undefined {
+  return db
+    .prepare<TranscriptRow>("SELECT * FROM transcript WHERE id = @id")
+    .get({ id });
 }
 
-export function getTranscriptsByMediaId(db: SiftDatabase, mediaId: number): TranscriptRow[] {
+export function getTranscriptsByMediaId(
+  db: SiftDatabase,
+  mediaId: number,
+): TranscriptRow[] {
   return db
     .prepare<TranscriptRow>(
       "SELECT * FROM transcript WHERE media_id = @mediaId ORDER BY created_at DESC, id DESC",
@@ -37,8 +51,15 @@ export function getTranscriptsByMediaId(db: SiftDatabase, mediaId: number): Tran
     .all({ mediaId });
 }
 
-export function setTranscriptFilePath(db: SiftDatabase, id: number, filePath: string): void {
-  db.prepare("UPDATE transcript SET file_path = @filePath WHERE id = @id").run({ id, filePath });
+export function setTranscriptFilePath(
+  db: SiftDatabase,
+  id: number,
+  filePath: string,
+): void {
+  db.prepare("UPDATE transcript SET file_path = @filePath WHERE id = @id").run({
+    id,
+    filePath,
+  });
 }
 
 export function deleteTranscript(db: SiftDatabase, id: number): void {

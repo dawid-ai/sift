@@ -1,4 +1,8 @@
-import type { TranscriptContext, TranscriptMethod, TranscriptProvider } from "./types";
+import type {
+  TranscriptContext,
+  TranscriptMethod,
+  TranscriptProvider,
+} from "./types";
 
 /** Method-aware pick from a provider list, in registration order.
  * - "auto": first provider that canHandle (registration order decides precedence).
@@ -10,9 +14,14 @@ export function resolveTranscriptProvider(
   method: TranscriptMethod,
 ): TranscriptProvider | null {
   const canHandle = (p: TranscriptProvider) => p.canHandle(ctx);
-  if (method === "captions_only") return providers.find((p) => !p.local && canHandle(p)) ?? null;
+  if (method === "captions_only")
+    return providers.find((p) => !p.local && canHandle(p)) ?? null;
   if (method === "prefer_whisper") {
-    return providers.find((p) => p.local && canHandle(p)) ?? providers.find(canHandle) ?? null;
+    return (
+      providers.find((p) => p.local && canHandle(p)) ??
+      providers.find(canHandle) ??
+      null
+    );
   }
   return providers.find(canHandle) ?? null; // auto
 }

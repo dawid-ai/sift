@@ -1,13 +1,28 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { openTestDatabase } from "./testing";
-import { runMigrations, insertMedia, getFrameCrop, setFrameCrop, clearFrameCrop } from "./index";
+import {
+  runMigrations,
+  insertMedia,
+  getFrameCrop,
+  setFrameCrop,
+  clearFrameCrop,
+} from "./index";
 import type { SiftDatabase, NewMedia } from "./index";
 
 function media(db: SiftDatabase): number {
   const m: NewMedia = {
-    source_url: "https://y/1", platform_id: "youtube", external_id: "abc", title: "V",
-    uploader: "C", uploader_url: null, duration_s: 100, thumbnail_path: null,
-    view_count: null, like_count: null, published_at: null, metadata_json: null,
+    source_url: "https://y/1",
+    platform_id: "youtube",
+    external_id: "abc",
+    title: "V",
+    uploader: "C",
+    uploader_url: null,
+    duration_s: 100,
+    thumbnail_path: null,
+    view_count: null,
+    like_count: null,
+    published_at: null,
+    metadata_json: null,
     download_status: "downloaded",
   };
   return insertMedia(db, m).id;
@@ -15,7 +30,10 @@ function media(db: SiftDatabase): number {
 
 describe("frame crop", () => {
   let db: SiftDatabase;
-  beforeEach(async () => { db = await openTestDatabase(); runMigrations(db); });
+  beforeEach(async () => {
+    db = await openTestDatabase();
+    runMigrations(db);
+  });
 
   it("is absent by default, then round-trips and clears", () => {
     const mid = media(db);

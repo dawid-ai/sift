@@ -22,7 +22,10 @@ export interface DropOverlayProps {
  * a long file is minutes of exactly this screen, and a faint static `<p>` in page flow read
  * as a frozen app. The moving percentage is the part that says "not frozen". */
 export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
-  const percent = busy?.ratio != null ? Math.round(Math.min(1, Math.max(0, busy.ratio)) * 100) : null;
+  const percent =
+    busy?.ratio != null
+      ? Math.round(Math.min(1, Math.max(0, busy.ratio)) * 100)
+      : null;
   return (
     <>
       {dragging && (
@@ -49,10 +52,18 @@ export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
           />
           {/* 3% film grain so the black has tooth instead of reading as a void. A tiled
               raster, painted once — no filter, no animation, nothing per-frame. */}
-          <div aria-hidden className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: GRAIN }} />
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-[0.03]"
+            style={{ backgroundImage: GRAIN }}
+          />
           <div className="corner-mark [--mark-inset:-7px] [--mark-size:11px] relative flex w-full max-w-[26rem] flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-primary/45 bg-surface/90 px-10 py-11 text-center shadow-[0_0_70px_-16px_hsl(18_95%_55%/0.45),0_30px_70px_-40px_hsl(0_0%_0%/0.9)] animate-in zoom-in-95 duration-150 motion-reduce:animate-none">
             <span className="grid h-14 w-14 place-items-center rounded-2xl border border-primary/30 bg-primary/12 text-primary shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.1)]">
-              <ArrowDownToLine className="h-6 w-6" strokeWidth={2} aria-hidden />
+              <ArrowDownToLine
+                className="h-6 w-6"
+                strokeWidth={2}
+                aria-hidden
+              />
             </span>
             {/* The overlay's one coral moment is the eyebrow + icon chip; everything below
                 is monochrome so the entry point is unambiguous. */}
@@ -62,7 +73,8 @@ export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
                 Drop to transcribe
               </p>
               <p className="mx-auto mt-2.5 max-w-[34ch] text-[13px] leading-6 text-muted-foreground">
-                Audio and video files land in your Library and are transcribed on this machine.
+                Audio and video files land in your Library and are transcribed
+                on this machine.
               </p>
             </div>
           </div>
@@ -122,7 +134,9 @@ export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
             {percent !== null && (
               <span className="flex-none text-[17px] font-bold leading-none tracking-[-0.02em] tabular-nums text-foreground">
                 {percent}
-                <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">%</span>
+                <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
+                  %
+                </span>
               </span>
             )}
           </p>

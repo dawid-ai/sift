@@ -30,7 +30,10 @@ function sampleMedia(overrides: Partial<NewMedia> = {}): NewMedia {
   };
 }
 
-function sampleDownload(mediaId: number, overrides: Partial<NewDownload> = {}): NewDownload {
+function sampleDownload(
+  mediaId: number,
+  overrides: Partial<NewDownload> = {},
+): NewDownload {
   return {
     media_id: mediaId,
     format_id: "1080p",
@@ -54,9 +57,18 @@ describe("resetStaleDownloads", () => {
 
   it("flips only downloading download rows to error and returns the count", () => {
     const m = insertMedia(db, sampleMedia());
-    upsertDownload(db, sampleDownload(m.id, { format_id: "1080p", status: "downloading" }));
-    upsertDownload(db, sampleDownload(m.id, { format_id: "720p", status: "done" }));
-    upsertDownload(db, sampleDownload(m.id, { format_id: "audio", status: "error" }));
+    upsertDownload(
+      db,
+      sampleDownload(m.id, { format_id: "1080p", status: "downloading" }),
+    );
+    upsertDownload(
+      db,
+      sampleDownload(m.id, { format_id: "720p", status: "done" }),
+    );
+    upsertDownload(
+      db,
+      sampleDownload(m.id, { format_id: "audio", status: "error" }),
+    );
 
     const changed = resetStaleDownloads(db);
 

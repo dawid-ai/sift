@@ -8,7 +8,10 @@ describe("splitTagInput", () => {
     expect(splitTagInput("sq")).toEqual({ before: [], term: "sq" });
   });
   it("takes the term from after the last comma", () => {
-    expect(splitTagInput("systems, sq")).toEqual({ before: ["systems"], term: "sq" });
+    expect(splitTagInput("systems, sq")).toEqual({
+      before: ["systems"],
+      term: "sq",
+    });
   });
   it("trims around every separator", () => {
     expect(splitTagInput("systems ,  css , sq")).toEqual({
@@ -17,10 +20,16 @@ describe("splitTagInput", () => {
     });
   });
   it("gives an empty term for a trailing comma", () => {
-    expect(splitTagInput("systems,")).toEqual({ before: ["systems"], term: "" });
+    expect(splitTagInput("systems,")).toEqual({
+      before: ["systems"],
+      term: "",
+    });
   });
   it("drops empty segments from doubled commas", () => {
-    expect(splitTagInput("systems,,css,s")).toEqual({ before: ["systems", "css"], term: "s" });
+    expect(splitTagInput("systems,,css,s")).toEqual({
+      before: ["systems", "css"],
+      term: "s",
+    });
   });
 });
 
@@ -56,7 +65,9 @@ describe("applyTagPick", () => {
     expect(applyTagPick("sq", "sqlite")).toBe("sqlite");
   });
   it("normalises spacing around earlier separators", () => {
-    expect(applyTagPick("systems ,css, sq", "sqlite")).toBe("systems, css, sqlite");
+    expect(applyTagPick("systems ,css, sq", "sqlite")).toBe(
+      "systems, css, sqlite",
+    );
   });
   it("appends after a trailing comma instead of replacing", () => {
     expect(applyTagPick("systems,", "css")).toBe("systems, css");

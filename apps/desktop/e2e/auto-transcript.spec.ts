@@ -16,7 +16,9 @@ test("auto-transcript toggle gates transcribe-after-download", async () => {
     const window = await app.firstWindow();
 
     // Default on: download auto-fetches the transcript → panel shows.
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();
@@ -32,7 +34,9 @@ test("auto-transcript toggle gates transcribe-after-download", async () => {
 
     // Back to Home (remounts), download a different URL → no auto transcript this time.
     await window.getByRole("button", { name: "Home" }).click();
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture-2");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture-2");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();

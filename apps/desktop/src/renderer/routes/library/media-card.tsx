@@ -21,7 +21,11 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { cn, videoThumbUrl } from "@/lib/utils";
 import { highlightSegments } from "@/lib/search-snippet";
 import { platformLabel } from "@/lib/platform-label";
-import { ICON_ACTION, LOCAL_REMOVE_NOTE, PILL } from "@/routes/library/library-table";
+import {
+  ICON_ACTION,
+  LOCAL_REMOVE_NOTE,
+  PILL,
+} from "@/routes/library/library-table";
 import { formatDuration } from "@/routes/home/preview-card";
 
 const STATUS_LABELS: Record<MediaRecord["downloadStatus"], string> = {
@@ -41,7 +45,10 @@ const STATUS_LABELS: Record<MediaRecord["downloadStatus"], string> = {
  * as a bordered pill. On a page where most tiles are un-downloaded, that made the least
  * significant state the loudest mark on the poster — brighter than the card title beneath it.
  */
-const STATUS_VARIANTS: Record<MediaRecord["downloadStatus"], NonNullable<BadgeProps["variant"]>> = {
+const STATUS_VARIANTS: Record<
+  MediaRecord["downloadStatus"],
+  NonNullable<BadgeProps["variant"]>
+> = {
   none: "outline",
   downloading: "warning",
   done: "success",
@@ -67,7 +74,8 @@ const PLATFORM_ICONS: Record<string, LucideIcon> = {
   soundcloud: Music,
   [LOCAL_PLATFORM_ID]: HardDrive,
 };
-const platformIcon = (id: string): LucideIcon => PLATFORM_ICONS[id.toLowerCase()] ?? Globe;
+const platformIcon = (id: string): LucideIcon =>
+  PLATFORM_ICONS[id.toLowerCase()] ?? Globe;
 
 /** Splits a path for display: everything up to and including the last separator, then the
  * filename. Handles both separators — imported files carry whatever the OS gave us. */
@@ -118,7 +126,8 @@ function fileLabel(path: string, uploader: string | null): string {
   const pretty = prettyFile(path);
   if (!uploader) return pretty;
   const [head, ...rest] = pretty.split(" — ");
-  if (rest.length > 0 && nameKey(head ?? "") === nameKey(uploader)) return rest.join(" — ");
+  if (rest.length > 0 && nameKey(head ?? "") === nameKey(uploader))
+    return rest.join(" — ");
   return pretty;
 }
 
@@ -150,9 +159,24 @@ export interface MediaCardProps {
 }
 
 /** Presentational card for a single library entry: open detail + inline-confirm remove. */
-export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hit, query }: MediaCardProps) {
+export function MediaCard({
+  item,
+  onOpen,
+  onRemove,
+  onTagClick,
+  onTagExclude,
+  hit,
+  query,
+}: MediaCardProps) {
   const [confirming, setConfirming] = useState(false);
-  const { media, transcriptCount, transcriptLanguage, formats, summaryCount, tags } = item;
+  const {
+    media,
+    transcriptCount,
+    transcriptLanguage,
+    formats,
+    summaryCount,
+    tags,
+  } = item;
   // Mirrors LibraryRow's marker — the Library has two views and styling one and missing
   // the other is the easy mistake here.
   const local = media.platformId === LOCAL_PLATFORM_ID;
@@ -176,7 +200,10 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
   }
   for (const f of formats) {
     meta.push(
-      <span key={`fmt-${f.id}`} className={f.status === "error" ? "text-danger" : undefined}>
+      <span
+        key={`fmt-${f.id}`}
+        className={f.status === "error" ? "text-danger" : undefined}
+      >
         {f.label}
       </span>,
     );
@@ -264,7 +291,10 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
         />
         {/* Rim, painted over the poster: a loaded thumbnail keeps the same lit edge the
             placeholder has, so the two states of the poster share one silhouette. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/[0.07]" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/[0.07]"
+        />
         {/* Status is the one thing on a tile allowed a hue, so it keeps its tinted variant —
             over a solid backing, since a /12 fill is unreadable on a poster. The default state
             gets a slightly lighter backing (70 vs 80) so the neutral outline reads as the quiet
@@ -279,7 +309,9 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
             // one, which read as a rendering fault rather than as a chip on a poster. Both
             // chips clear the frame now; neither touches it.
             "absolute left-4 top-4 px-2",
-            media.downloadStatus === "none" ? "bg-background/70" : "bg-background/80",
+            media.downloadStatus === "none"
+              ? "bg-background/70"
+              : "bg-background/80",
           )}
         >
           {STATUS_LABELS[media.downloadStatus]}
@@ -299,7 +331,10 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
           the 10px step. */}
       <div className="flex flex-1 flex-col p-4">
         <div className="flex-1">
-          <CardTitle data-testid="media-title" className="line-clamp-2 text-[15px] leading-snug">
+          <CardTitle
+            data-testid="media-title"
+            className="line-clamp-2 text-[15px] leading-snug"
+          >
             {media.title}
           </CardTitle>
 
@@ -315,7 +350,9 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
               <PlatformMark aria-hidden className="h-3.5 w-3.5" />
               <span className="sr-only">{platform}</span>
             </span>
-            <span className="min-w-0 truncate">{media.uploader ?? platform}</span>
+            <span className="min-w-0 truncate">
+              {media.uploader ?? platform}
+            </span>
           </p>
 
           {/* Tier 3: the qualifiers, as one quiet line. Language, quality and summary count are
@@ -335,25 +372,30 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
             </p>
           )}
 
-          {hit && (hit.field === "transcript" || hit.field === "summary") && hit.snippet && (
-            <div
-              data-testid="search-snippet"
-              className="mt-2.5 rounded-lg border border-border/70 bg-background/40 p-2.5 text-xs leading-relaxed text-muted-foreground"
-            >
-              <span className="mr-1.5 rounded border border-border bg-surface-2 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.1em] text-fg-subtle">
-                {hit.field}
-              </span>
-              {highlightSegments(hit.snippet, query ?? "").map((s, i) =>
-                s.match ? (
-                  <mark key={i} className="rounded-[3px] bg-primary/25 px-0.5 text-foreground">
-                    {s.text}
-                  </mark>
-                ) : (
-                  <span key={i}>{s.text}</span>
-                ),
-              )}
-            </div>
-          )}
+          {hit &&
+            (hit.field === "transcript" || hit.field === "summary") &&
+            hit.snippet && (
+              <div
+                data-testid="search-snippet"
+                className="mt-2.5 rounded-lg border border-border/70 bg-background/40 p-2.5 text-xs leading-relaxed text-muted-foreground"
+              >
+                <span className="mr-1.5 rounded border border-border bg-surface-2 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.1em] text-fg-subtle">
+                  {hit.field}
+                </span>
+                {highlightSegments(hit.snippet, query ?? "").map((s, i) =>
+                  s.match ? (
+                    <mark
+                      key={i}
+                      className="rounded-[3px] bg-primary/25 px-0.5 text-foreground"
+                    >
+                      {s.text}
+                    </mark>
+                  ) : (
+                    <span key={i}>{s.text}</span>
+                  ),
+                )}
+              </div>
+            )}
 
           {/* The only chips left on the tile. Now that nothing else is a pill, a chip on this
               card means exactly one thing: a tag you can filter by. */}
@@ -381,7 +423,10 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
             // 8px of clearance on every side of the inset, so Open sits *inside* the box
             // instead of against its wall.
             <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-border bg-background/50 py-2 pl-3 pr-2">
-              <FolderOpen aria-hidden className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
+              <FolderOpen
+                aria-hidden
+                className="h-3.5 w-3.5 shrink-0 text-fg-subtle"
+              />
               {/* Filename first, folder after — and the filename is cut in the *middle*, not at
                   the tail. Clipping the tail of `<channel>__<title>.ext` left the channel, which
                   the card names two lines above, and dropped both the title and the extension:
@@ -418,7 +463,9 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
                 variant="ghost"
                 className="h-7 shrink-0 rounded-lg px-2.5 text-[12px] text-muted-foreground hover:bg-foreground/[0.08] hover:text-foreground"
                 data-testid="media-reveal"
-                onClick={() => void window.sift.library.reveal(media.downloadPath!)}
+                onClick={() =>
+                  void window.sift.library.reveal(media.downloadPath!)
+                }
               >
                 Open
               </Button>
@@ -434,8 +481,13 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
                card that exists is not a placeholder. The line is a fact about the disk; the
                poster's chip is a fact about the download. */
             <div className="mt-2.5 flex h-[46px] items-center gap-2 rounded-lg border border-border/60 bg-background/30 px-3">
-              <FolderOpen aria-hidden className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
-              <span className="text-[12px] leading-5 text-fg-subtle">No local file</span>
+              <FolderOpen
+                aria-hidden
+                className="h-3.5 w-3.5 shrink-0 text-fg-subtle"
+              />
+              <span className="text-[12px] leading-5 text-fg-subtle">
+                No local file
+              </span>
             </div>
           )}
         </div>
@@ -465,11 +517,18 @@ export function MediaCard({ item, onOpen, onRemove, onTagClick, onTagExclude, hi
               >
                 Confirm remove
               </Button>
-              <Button size="sm" variant="ghost" className="h-8 px-3" onClick={() => setConfirming(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-3"
+                onClick={() => setConfirming(false)}
+              >
                 Cancel
               </Button>
               {local && (
-                <span className="w-full text-[11px] leading-snug text-muted-foreground">{LOCAL_REMOVE_NOTE}</span>
+                <span className="w-full text-[11px] leading-snug text-muted-foreground">
+                  {LOCAL_REMOVE_NOTE}
+                </span>
               )}
             </>
           ) : (

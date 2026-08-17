@@ -14,7 +14,10 @@ export const initialUpdateState: UpdateState = { kind: "idle" };
 /** Reducer actions: every UpdateEvent, plus the local "Later" dismissal. */
 export type UpdateAction = UpdateEvent | { type: "dismiss" };
 
-export function updateReducer(state: UpdateState, action: UpdateAction): UpdateState {
+export function updateReducer(
+  state: UpdateState,
+  action: UpdateAction,
+): UpdateState {
   switch (action.type) {
     case "dismiss":
       return { kind: "idle" };
@@ -23,7 +26,11 @@ export function updateReducer(state: UpdateState, action: UpdateAction): UpdateS
     case "not-available":
       return { kind: "not-available" };
     case "available":
-      return { kind: "available", version: action.version, releaseNotes: action.releaseNotes };
+      return {
+        kind: "available",
+        version: action.version,
+        releaseNotes: action.releaseNotes,
+      };
     case "downloading":
       // A late progress tick after the download already finished must not undo "downloaded".
       if (state.kind === "downloaded") return state;

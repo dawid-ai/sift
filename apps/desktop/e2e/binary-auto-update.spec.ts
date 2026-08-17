@@ -16,7 +16,11 @@ test("first-run installs yt-dlp and surfaces the ready toast", async () => {
 
   const app = await electron.launch({
     args: [join(__dirname, "..", "out", "main", "index.js")],
-    env: { ...process.env, SIFT_E2E_FIXTURE_DIR: fixtureDir, SIFT_E2E_BINARY_MAINTENANCE: "1" },
+    env: {
+      ...process.env,
+      SIFT_E2E_FIXTURE_DIR: fixtureDir,
+      SIFT_E2E_BINARY_MAINTENANCE: "1",
+    },
   });
 
   try {

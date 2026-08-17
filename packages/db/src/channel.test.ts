@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 import { openTestDatabase } from "./testing";
 import { runMigrations } from "./migrations";
 import {
-  deleteChannel, getChannelByChannelId, getChannelById, insertChannel,
-  listChannels, updateChannelRefresh, upsertChannel, type NewChannel,
+  deleteChannel,
+  getChannelByChannelId,
+  getChannelById,
+  insertChannel,
+  listChannels,
+  updateChannelRefresh,
+  upsertChannel,
+  type NewChannel,
 } from "./channel";
 
 const sample = (over: Partial<NewChannel> = {}): NewChannel => ({
@@ -37,8 +43,14 @@ describe("channel CRUD", () => {
   it("upsert is keyed by channel_id — same id twice → one row, metadata refreshed", async () => {
     const db = await openTestDatabase();
     runMigrations(db);
-    const first = upsertChannel(db, sample({ title: "Old", follower_count: 1 }));
-    const second = upsertChannel(db, sample({ title: "New", follower_count: 2 }));
+    const first = upsertChannel(
+      db,
+      sample({ title: "Old", follower_count: 1 }),
+    );
+    const second = upsertChannel(
+      db,
+      sample({ title: "New", follower_count: 2 }),
+    );
     expect(second.id).toBe(first.id);
     expect(listChannels(db)).toHaveLength(1);
     expect(getChannelById(db, first.id)!.title).toBe("New");
@@ -50,7 +62,11 @@ describe("channel CRUD", () => {
     const db = await openTestDatabase();
     runMigrations(db);
     const c = insertChannel(db, sample());
-    updateChannelRefresh(db, c.id, { last_seen_video_id: "vidX", new_count: 3, last_checked: 123 });
+    updateChannelRefresh(db, c.id, {
+      last_seen_video_id: "vidX",
+      new_count: 3,
+      last_checked: 123,
+    });
     const after = getChannelById(db, c.id)!;
     expect(after.new_count).toBe(3);
     expect(after.last_seen_video_id).toBe("vidX");

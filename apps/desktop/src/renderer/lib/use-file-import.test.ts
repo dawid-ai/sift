@@ -20,7 +20,9 @@ describe("partitionDropped", () => {
   });
 
   it("rejects a media file with no path, naming it in the unreadable-path notice", () => {
-    const { entries, notice } = partitionDropped([{ name: "clip.mov", path: null }]);
+    const { entries, notice } = partitionDropped([
+      { name: "clip.mov", path: null },
+    ]);
     expect(entries).toEqual([]);
     expect(notice).toContain("Couldn't read where");
     expect(notice).toContain("clip.mov");

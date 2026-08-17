@@ -14,7 +14,10 @@ export interface QueueItemRow {
 
 export type NewQueueItem = Omit<QueueItemRow, "id" | "created_at">;
 
-export function insertQueueItem(db: SiftDatabase, item: NewQueueItem): QueueItemRow {
+export function insertQueueItem(
+  db: SiftDatabase,
+  item: NewQueueItem,
+): QueueItemRow {
   const now = Date.now();
   const result = db
     .prepare(
@@ -25,13 +28,20 @@ export function insertQueueItem(db: SiftDatabase, item: NewQueueItem): QueueItem
   return getQueueItem(db, Number(result.lastInsertRowid))!;
 }
 
-export function getQueueItem(db: SiftDatabase, id: number): QueueItemRow | undefined {
-  return db.prepare<QueueItemRow>("SELECT * FROM queue_item WHERE id = @id").get({ id });
+export function getQueueItem(
+  db: SiftDatabase,
+  id: number,
+): QueueItemRow | undefined {
+  return db
+    .prepare<QueueItemRow>("SELECT * FROM queue_item WHERE id = @id")
+    .get({ id });
 }
 
 export function listQueueItems(db: SiftDatabase): QueueItemRow[] {
   return db
-    .prepare<QueueItemRow>("SELECT * FROM queue_item ORDER BY queue_order ASC, id ASC")
+    .prepare<QueueItemRow>(
+      "SELECT * FROM queue_item ORDER BY queue_order ASC, id ASC",
+    )
     .all();
 }
 
@@ -64,13 +74,22 @@ export function deleteQueueItem(db: SiftDatabase, id: number): void {
   db.prepare("DELETE FROM queue_item WHERE id = ?").run(id);
 }
 
-export function setQueueOrder(db: SiftDatabase, id: number, order: number): void {
-  db.prepare("UPDATE queue_item SET queue_order = ? WHERE id = ?").run(order, id);
+export function setQueueOrder(
+  db: SiftDatabase,
+  id: number,
+  order: number,
+): void {
+  db.prepare("UPDATE queue_item SET queue_order = ? WHERE id = ?").run(
+    order,
+    id,
+  );
 }
 
 export function maxQueueOrder(db: SiftDatabase): number {
   const r = db
-    .prepare<{ m: number | null }>("SELECT MAX(queue_order) AS m FROM queue_item")
+    .prepare<{ m: number | null }>(
+      "SELECT MAX(queue_order) AS m FROM queue_item",
+    )
     .get();
   return r?.m ?? 0;
 }

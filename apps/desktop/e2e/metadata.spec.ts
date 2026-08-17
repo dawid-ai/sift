@@ -14,12 +14,18 @@ test("Home → metadata preview + Settings → Platforms render offline via fixt
   try {
     const window = await app.firstWindow();
 
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
 
     const previewCard = window.getByTestId("preview-card");
     await expect(previewCard).toBeVisible();
-    await expect(window.getByTestId("preview-title")).toHaveText("Fixture Video Title");
-    await expect(window.getByTestId("preview-platform")).toContainText("YouTube");
+    await expect(window.getByTestId("preview-title")).toHaveText(
+      "Fixture Video Title",
+    );
+    await expect(window.getByTestId("preview-platform")).toContainText(
+      "YouTube",
+    );
 
     await expect(window.getByTestId("home-error")).toHaveCount(0);
 
@@ -27,7 +33,9 @@ test("Home → metadata preview + Settings → Platforms render offline via fixt
 
     const platformsSection = window.getByTestId("platforms-section");
     await expect(platformsSection).toBeVisible();
-    await expect(platformsSection.getByTestId("tested-platform").first()).toBeVisible();
+    await expect(
+      platformsSection.getByTestId("tested-platform").first(),
+    ).toBeVisible();
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });
@@ -45,7 +53,9 @@ test("a link yt-dlp can't handle shows an error and leaves the app usable", asyn
   try {
     const window = await app.firstWindow();
 
-    await window.getByTestId("url-input").fill("https://unsupported.example/shots/1234-promo");
+    await window
+      .getByTestId("url-input")
+      .fill("https://unsupported.example/shots/1234-promo");
 
     // The rejected `metadata:fetch` invoke must land in HomeView's catch, not take the
     // window with it — Electron logs handler rejections to the main console either way,
@@ -61,8 +71,12 @@ test("a link yt-dlp can't handle shows an error and leaves the app usable", asyn
     await expect(window.getByTestId("library-empty")).toBeVisible();
 
     await window.getByRole("button", { name: "Home" }).click();
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
-    await expect(window.getByTestId("preview-title")).toHaveText("Fixture Video Title");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
+    await expect(window.getByTestId("preview-title")).toHaveText(
+      "Fixture Video Title",
+    );
     await expect(window.getByTestId("home-error")).toHaveCount(0);
   } finally {
     await app.close();

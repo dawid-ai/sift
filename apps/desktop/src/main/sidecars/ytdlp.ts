@@ -5,13 +5,18 @@ import { promisify } from "node:util";
 
 /** Thrown when no yt-dlp binary is installed/registered (see @sift/db `getAsset`). */
 export class YtDlpNotInstalledError extends Error {
-  constructor(message = "yt-dlp is not installed — install it in Settings → Binaries") {
+  constructor(
+    message = "yt-dlp is not installed — install it in Settings → Binaries",
+  ) {
     super(message);
     this.name = "YtDlpNotInstalledError";
   }
 }
 
-export type ExecFn = (file: string, args: string[]) => Promise<{ stdout: string; stderr: string }>;
+export type ExecFn = (
+  file: string,
+  args: string[],
+) => Promise<{ stdout: string; stderr: string }>;
 
 /** Raw progress values parsed from a `SIFTPROG` line (see `parseProgressLine`). */
 export interface RawDownloadProgress {
@@ -48,10 +53,19 @@ export interface SubtitleOpts {
 
 export interface YtDlpRunner {
   dumpJson(url: string, cookiesFile?: string): Promise<unknown>;
-  flatPlaylist(url: string, opts: { items?: string }, cookiesFile?: string): Promise<unknown>;
+  flatPlaylist(
+    url: string,
+    opts: { items?: string },
+    cookiesFile?: string,
+  ): Promise<unknown>;
   listExtractors(): Promise<string[]>;
-  download(opts: DownloadOpts, onProgress: (p: RawDownloadProgress) => void): Promise<{ filePath: string }>;
-  fetchSubtitles(opts: SubtitleOpts): Promise<{ subPath: string; format: "json3" | "vtt" } | null>;
+  download(
+    opts: DownloadOpts,
+    onProgress: (p: RawDownloadProgress) => void,
+  ): Promise<{ filePath: string }>;
+  fetchSubtitles(
+    opts: SubtitleOpts,
+  ): Promise<{ subPath: string; format: "json3" | "vtt" } | null>;
 }
 
 const execFileAsync = promisify(execFile);
@@ -92,7 +106,11 @@ const UNSUPPORTED_URL_RE = /^ERROR:\s*Unsupported URL:/im;
  * network errors all carry detail the user needs, and `isAuthError` pattern-matches
  * against this very message downstream (see `MetadataService`/`DownloadService`).
  */
-export function ytdlpFailureMessage(action: string, url: string, stderr: string): string {
+export function ytdlpFailureMessage(
+  action: string,
+  url: string,
+  stderr: string,
+): string {
   const trimmed = stderr.trim();
   if (UNSUPPORTED_URL_RE.test(trimmed)) {
     return `yt-dlp has no extractor for ${hostLabel(url)}, so this link can't be fetched. Settings → Platforms lists every site it supports.`;
@@ -172,7 +190,14 @@ export function createYtDlpRunner(deps: {
       let stdout: string;
       let stderr: string;
       try {
-        ({ stdout, stderr } = await exec(path, [...cookieArgs(cookiesFile), ...jsRuntimeArgs(), "-J", "--no-warnings", "--", url]));
+        ({ stdout, stderr } = await exec(path, [
+          ...cookieArgs(cookiesFile),
+          ...jsRuntimeArgs(),
+          "-J",
+          "--no-warnings",
+          "--",
+          url,
+        ]));
       } catch (err) {
         throw new Error(
           ytdlpFailureMessage("while dumping JSON for", url, stderrOf(err)),
@@ -184,7 +209,9 @@ export function createYtDlpRunner(deps: {
       } catch (err) {
         const trimmedStderr = stderr.trim();
         const suffix = trimmedStderr ? `: ${trimmedStderr}` : "";
-        throw new Error(`yt-dlp returned invalid JSON for ${url}${suffix}`, { cause: err });
+        throw new Error(`yt-dlp returned invalid JSON for ${url}${suffix}`, {
+          cause: err,
+        });
       }
     },
 
@@ -192,18 +219,28 @@ export function createYtDlpRunner(deps: {
       const path = requireBinaryPath();
       const args = [
         ...cookieArgs(cookiesFile),
-        "--flat-playlist", "-J", "--no-warnings",
+        "--flat-playlist",
+        "-J",
+        "--no-warnings",
         ...(opts.items ? ["--playlist-items", opts.items] : []),
-        "--", url,
+        "--",
+        url,
       ];
       let stdout: string;
       try {
         ({ stdout } = await exec(path, args));
       } catch (err) {
-        throw new Error(ytdlpFailureMessage("listing", url, stderrOf(err)), { cause: err });
+        throw new Error(ytdlpFailureMessage("listing", url, stderrOf(err)), {
+          cause: err,
+        });
       }
-      try { return JSON.parse(stdout); }
-      catch (err) { throw new Error(`yt-dlp returned invalid JSON for ${url}`, { cause: err }); }
+      try {
+        return JSON.parse(stdout);
+      } catch (err) {
+        throw new Error(`yt-dlp returned invalid JSON for ${url}`, {
+          cause: err,
+        });
+      }
     },
 
     async listExtractors(): Promise<string[]> {
@@ -243,7 +280,9 @@ export function createYtDlpRunner(deps: {
         // Verified: only this flag fixes it (PYTHONUTF8/PYTHONIOENCODING do not).
         "--encoding",
         "UTF-8",
-        ...(opts.ffmpegLocation ? ["--ffmpeg-location", opts.ffmpegLocation] : []),
+        ...(opts.ffmpegLocation
+          ? ["--ffmpeg-location", opts.ffmpegLocation]
+          : []),
         "--",
         opts.url,
       ];
@@ -272,7 +311,11 @@ export function createYtDlpRunner(deps: {
           }
         }
 
-        function consume(chunk: Buffer | string, buffer: string, isStdout: boolean): string {
+        function consume(
+          chunk: Buffer | string,
+          buffer: string,
+          isStdout: boolean,
+        ): string {
           const combined = buffer + String(chunk);
           const lines = combined.split(/\r?\n/);
           const remainder = lines.pop() ?? "";
@@ -302,12 +345,18 @@ export function createYtDlpRunner(deps: {
             return;
           }
           const suffix = lastStderr ? `: ${lastStderr}` : "";
-          reject(new Error(`yt-dlp download failed (exit code ${String(code)})${suffix}`));
+          reject(
+            new Error(
+              `yt-dlp download failed (exit code ${String(code)})${suffix}`,
+            ),
+          );
         });
       });
     },
 
-    async fetchSubtitles(opts: SubtitleOpts): Promise<{ subPath: string; format: "json3" | "vtt" } | null> {
+    async fetchSubtitles(
+      opts: SubtitleOpts,
+    ): Promise<{ subPath: string; format: "json3" | "vtt" } | null> {
       const path = requireBinaryPath();
 
       // Request ONLY the exact language track. A glob like "en.*" also matches every
@@ -336,12 +385,18 @@ export function createYtDlpRunner(deps: {
       await exec(path, args); // ExecFn; a non-zero exit rejects — let it propagate
 
       const files = readdirSync(opts.outputDir).filter(
-        (f) => f.toLowerCase().endsWith(".json3") || f.toLowerCase().endsWith(".vtt"),
+        (f) =>
+          f.toLowerCase().endsWith(".json3") ||
+          f.toLowerCase().endsWith(".vtt"),
       );
       const langTag = `.${opts.language.toLowerCase()}.`;
       // prefer the exact-language file; prefer json3 over vtt when both exist
       const pick =
-        files.find((f) => f.toLowerCase().includes(langTag) && f.toLowerCase().endsWith(".json3")) ??
+        files.find(
+          (f) =>
+            f.toLowerCase().includes(langTag) &&
+            f.toLowerCase().endsWith(".json3"),
+        ) ??
         files.find((f) => f.toLowerCase().includes(langTag)) ??
         files.find((f) => f.toLowerCase().endsWith(".json3")) ??
         files[0];

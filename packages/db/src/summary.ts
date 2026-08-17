@@ -24,11 +24,19 @@ export function insertSummary(db: SiftDatabase, s: NewSummary): SummaryRow {
   return getSummaryById(db, Number(res.lastInsertRowid))!;
 }
 
-export function getSummaryById(db: SiftDatabase, id: number): SummaryRow | undefined {
-  return db.prepare<SummaryRow>("SELECT * FROM summary WHERE id = @id").get({ id });
+export function getSummaryById(
+  db: SiftDatabase,
+  id: number,
+): SummaryRow | undefined {
+  return db
+    .prepare<SummaryRow>("SELECT * FROM summary WHERE id = @id")
+    .get({ id });
 }
 
-export function getSummariesByMediaId(db: SiftDatabase, mediaId: number): SummaryRow[] {
+export function getSummariesByMediaId(
+  db: SiftDatabase,
+  mediaId: number,
+): SummaryRow[] {
   return db
     .prepare<SummaryRow>(
       "SELECT * FROM summary WHERE media_id = @mediaId ORDER BY created_at DESC, id DESC",
@@ -36,8 +44,15 @@ export function getSummariesByMediaId(db: SiftDatabase, mediaId: number): Summar
     .all({ mediaId });
 }
 
-export function setSummaryFilePath(db: SiftDatabase, id: number, filePath: string): void {
-  db.prepare("UPDATE summary SET file_path = @filePath WHERE id = @id").run({ id, filePath });
+export function setSummaryFilePath(
+  db: SiftDatabase,
+  id: number,
+  filePath: string,
+): void {
+  db.prepare("UPDATE summary SET file_path = @filePath WHERE id = @id").run({
+    id,
+    filePath,
+  });
 }
 
 export function deleteSummary(db: SiftDatabase, id: number): void {

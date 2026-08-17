@@ -21,7 +21,10 @@ function isPromptPackEntry(e: unknown): e is PromptPackEntry {
  * dropped so the caller can tell the user, instead of importing a subset with no visible
  * sign anything was skipped.
  */
-export function parsePromptPack(raw: string): { entries: PromptPackEntry[]; skipped: number } {
+export function parsePromptPack(raw: string): {
+  entries: PromptPackEntry[];
+  skipped: number;
+} {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);

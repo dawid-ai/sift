@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { extname, join } from "node:path";
 import { LOCAL_TAG, buildOutputBaseName, sanitizeFilename } from "@sift/core";
 import type { DownloadRow, MediaRow, NewMedia, SiftDatabase } from "@sift/db";
@@ -85,8 +91,10 @@ function deriveStatus(downloads: DownloadRow[]): {
 } {
   const done = downloads.find((d) => d.status === "done");
   if (done) return { status: "done", path: done.file_path };
-  if (downloads.some((d) => d.status === "downloading")) return { status: "downloading", path: null };
-  if (downloads.some((d) => d.status === "error")) return { status: "error", path: null };
+  if (downloads.some((d) => d.status === "downloading"))
+    return { status: "downloading", path: null };
+  if (downloads.some((d) => d.status === "error"))
+    return { status: "error", path: null };
   return { status: "none", path: null };
 }
 
@@ -178,7 +186,8 @@ export class DownloadService {
     const { db, runner } = this.opts;
     const downloadsDir = this.opts.downloadsDir();
     const fileExists = this.opts.fileExists ?? existsSync;
-    const unlink = this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
+    const unlink =
+      this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
     const { metadata, option } = input;
 
     mkdirSync(downloadsDir, { recursive: true });
@@ -212,13 +221,23 @@ export class DownloadService {
     // yt-dlp silently skips the merge, exits 0, and prints a merged path that never gets
     // written — hence the existsSync guard below.
     const ffmpegRow = getAsset(db, "ffmpeg");
-    const ffmpegLocation = ffmpegRow ? resolveAssetPath(this.opts.binariesDir, ffmpegRow.path) : undefined;
+    const ffmpegLocation = ffmpegRow
+      ? resolveAssetPath(this.opts.binariesDir, ffmpegRow.path)
+      : undefined;
     const cookiesFile =
-      (await (this.opts.getCookiesFile ?? (async () => null))(metadata.sourceUrl)) ?? undefined;
+      (await (this.opts.getCookiesFile ?? (async () => null))(
+        metadata.sourceUrl,
+      )) ?? undefined;
 
     try {
       const { filePath } = await runner.download(
-        { url: metadata.sourceUrl, format: option.selector, outputTemplate, ffmpegLocation, cookiesFile },
+        {
+          url: metadata.sourceUrl,
+          format: option.selector,
+          outputTemplate,
+          ffmpegLocation,
+          cookiesFile,
+        },
         (p) => onProgress?.({ mediaId: media.id, downloadId: dl.id, ...p }),
       );
       if (!fileExists(filePath)) {
@@ -244,14 +263,36 @@ export class DownloadService {
       setDownloadStatus(db, dl.id, "done", filePath, null, null);
       return toMediaRecord(media, listDownloadsByMediaId(db, media.id));
     } catch (err) {
-      if (cookiesFile && isAuthError(err instanceof Error ? err.message : String(err))) {
+      if (
+        cookiesFile &&
+        isAuthError(err instanceof Error ? err.message : String(err))
+      ) {
         this.opts.reportAuthFailure?.(metadata.sourceUrl);
       }
-      if (prior && prior.status === "done" && prior.file_path && fileExists(prior.file_path)) {
+      if (
+        prior &&
+        prior.status === "done" &&
+        prior.file_path &&
+        fileExists(prior.file_path)
+      ) {
         // A failed re-download of an already-downloaded format keeps the working copy.
-        setDownloadStatus(db, dl.id, "done", prior.file_path, prior.file_size, null);
+        setDownloadStatus(
+          db,
+          dl.id,
+          "done",
+          prior.file_path,
+          prior.file_size,
+          null,
+        );
       } else {
-        setDownloadStatus(db, dl.id, "error", null, null, err instanceof Error ? err.message : String(err));
+        setDownloadStatus(
+          db,
+          dl.id,
+          "error",
+          null,
+          null,
+          err instanceof Error ? err.message : String(err),
+        );
       }
       throw err;
     }
@@ -287,7 +328,8 @@ export class DownloadService {
     const media = existing ?? insertMedia(db, fromMetadata(metadata));
     // LOCAL_TAG here, not in the renderer, so both entry points (drop + picker) get it.
     // `addTag` is INSERT OR IGNORE over a NOCASE column, so re-import stays idempotent.
-    for (const name of [LOCAL_TAG, ...(input.tags ?? [])]) addTag(db, media.id, name);
+    for (const name of [LOCAL_TAG, ...(input.tags ?? [])])
+      addTag(db, media.id, name);
 
     // The Formats column shows a format, so give it one: the video's real height when the
     // renderer could read it, else the container ("MP3"/"M4A" for audio, where videoHeight
@@ -319,8 +361,17 @@ export class DownloadService {
   /** One page of the library matching `filter`, newest first, with the total match count
    * for the pager. Filtering (tag/channel/platform/date/id-set) happens in SQL, so only the
    * page's rows are enriched — the library no longer loads every row to render one screen. */
-  async listPage(filter: MediaFilter, page: number, pageSize: number): Promise<MediaPage> {
-    const { rows, total } = listMediaPage(this.opts.db, filter, pageSize, page * pageSize);
+  async listPage(
+    filter: MediaFilter,
+    page: number,
+    pageSize: number,
+  ): Promise<MediaPage> {
+    const { rows, total } = listMediaPage(
+      this.opts.db,
+      filter,
+      pageSize,
+      page * pageSize,
+    );
     return { items: this.toListItems(rows), total };
   }
 
@@ -328,7 +379,11 @@ export class DownloadService {
    * channel/platform/tag dropdowns stay complete under pagination. */
   async facets(): Promise<LibraryFacets> {
     const { db } = this.opts;
-    return { channels: listMediaChannels(db), platforms: listMediaPlatforms(db), tags: listAllTags(db) };
+    return {
+      channels: listMediaChannels(db),
+      platforms: listMediaPlatforms(db),
+      tags: listAllTags(db),
+    };
   }
 
   /** All media ids matching `filter` (newest first) — used to export the whole filtered set. */
@@ -340,7 +395,10 @@ export class DownloadService {
    * `list()` and `listPage()`. */
   private toListItems(rows: MediaRow[]): MediaListItem[] {
     const { db } = this.opts;
-    const tagMap = tagsForMediaIds(db, rows.map((m) => m.id));
+    const tagMap = tagsForMediaIds(
+      db,
+      rows.map((m) => m.id),
+    );
     return rows.map((m) => {
       const downloads = listDownloadsByMediaId(db, m.id);
       const transcripts = getTranscriptsByMediaId(db, m.id);
@@ -365,7 +423,8 @@ export class DownloadService {
   async remove(id: number): Promise<void> {
     const { db } = this.opts;
     const fileExists = this.opts.fileExists ?? existsSync;
-    const unlink = this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
+    const unlink =
+      this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
 
     for (const d of listDownloadsByMediaId(db, id)) {
       // Imported local files are referenced where the user keeps them, never copied —
@@ -413,18 +472,31 @@ export class DownloadService {
       model: d.model,
       createdAt: d.created_at,
     }));
-    return { media: toMediaRecord(media, dlRows), downloads, transcripts, summaries, documents, tags: tagsForMedia(db, id) };
+    return {
+      media: toMediaRecord(media, dlRows),
+      downloads,
+      transcripts,
+      summaries,
+      documents,
+      tags: tagsForMedia(db, id),
+    };
   }
 
   /** Deletes a single download row and unlinks its file, if any. */
   async removeDownload(id: number): Promise<void> {
     const { db } = this.opts;
     const fileExists = this.opts.fileExists ?? existsSync;
-    const unlink = this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
+    const unlink =
+      this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
 
     const row = getDownloadById(db, id);
     // Same guard as remove(): an imported local file is the user's, not ours to delete.
-    if (row && row.format_id !== LOCAL_FORMAT_ID && row.file_path && fileExists(row.file_path)) {
+    if (
+      row &&
+      row.format_id !== LOCAL_FORMAT_ID &&
+      row.file_path &&
+      fileExists(row.file_path)
+    ) {
       unlink(row.file_path);
     }
     deleteDownload(db, id);
@@ -447,7 +519,10 @@ export class DownloadService {
 
   /** Writes an .m3u of the given media that have an on-disk download, to
    * <downloadsDir>/playlists. Media whose file no longer exists are skipped. */
-  async exportPlaylist(mediaIds: number[], name: string): Promise<PlaylistExportResult> {
+  async exportPlaylist(
+    mediaIds: number[],
+    name: string,
+  ): Promise<PlaylistExportResult> {
     const { db } = this.opts;
     const downloadsDir = this.opts.downloadsDir();
     const fileExists = this.opts.fileExists ?? existsSync;
@@ -461,6 +536,10 @@ export class DownloadService {
     const path = join(dir, `${sanitizeFilename(name)}.m3u`);
     writeFileSync(path, content, "utf8");
 
-    return { path, included: kept.length, skipped: entries.length - kept.length };
+    return {
+      path,
+      included: kept.length,
+      skipped: entries.length - kept.length,
+    };
   }
 }

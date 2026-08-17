@@ -21,14 +21,20 @@ export interface TranscriptResult {
   model: string | null; // 4a: null; whisper sets its model name
 }
 
-export type TranscriptProgressFn = (p: { stage: string; ratio: number | null }) => void;
+export type TranscriptProgressFn = (p: {
+  stage: string;
+  ratio: number | null;
+}) => void;
 
 export interface TranscriptProvider {
   id: string;
   label: string;
   local?: boolean; // true = local engine (whisper); used by method policy
   canHandle(ctx: TranscriptContext): boolean;
-  transcribe(ctx: TranscriptContext, onProgress: TranscriptProgressFn): Promise<TranscriptResult>;
+  transcribe(
+    ctx: TranscriptContext,
+    onProgress: TranscriptProgressFn,
+  ): Promise<TranscriptResult>;
 }
 
 /** User-selectable transcript source policy (settings:getTranscriptLanguages' sibling knob).

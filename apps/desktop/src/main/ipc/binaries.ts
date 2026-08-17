@@ -1,6 +1,11 @@
 import type { BrowserWindow } from "electron";
 import { ipcMain } from "electron";
-import { IPC, type BinaryKind, type BinaryUpdateEvent, type BinaryUpdatePolicy } from "@sift/ipc-contract";
+import {
+  IPC,
+  type BinaryKind,
+  type BinaryUpdateEvent,
+  type BinaryUpdatePolicy,
+} from "@sift/ipc-contract";
 import type { BinariesService } from "../services/binaries-service";
 
 /**
@@ -13,7 +18,9 @@ export function registerBinariesIpc(
 ): void {
   ipcMain.handle(IPC.binariesList, () => service.list());
 
-  ipcMain.handle(IPC.binariesCheck, (_event, kind: BinaryKind) => service.check(kind));
+  ipcMain.handle(IPC.binariesCheck, (_event, kind: BinaryKind) =>
+    service.check(kind),
+  );
 
   ipcMain.handle(IPC.binariesInstall, (_event, kind: BinaryKind) =>
     service.install(kind, (progress) => {
@@ -43,12 +50,17 @@ export function registerBinaryUpdatesIpc(
 
   const emit = (e: BinaryUpdateEvent): void => {
     lastByKind.set(e.kind, e);
-    for (const win of getWindows()) win.webContents.send(IPC.binariesUpdateEvent, e);
+    for (const win of getWindows())
+      win.webContents.send(IPC.binariesUpdateEvent, e);
   };
 
   ipcMain.handle(IPC.binariesGetPolicy, () => policyStore.get());
-  ipcMain.handle(IPC.binariesSetPolicy, (_e, mode: BinaryUpdatePolicy) => policyStore.set(mode));
-  ipcMain.handle(IPC.binariesCurrentUpdateEvent, () => [...lastByKind.values()]);
+  ipcMain.handle(IPC.binariesSetPolicy, (_e, mode: BinaryUpdatePolicy) =>
+    policyStore.set(mode),
+  );
+  ipcMain.handle(IPC.binariesCurrentUpdateEvent, () => [
+    ...lastByKind.values(),
+  ]);
 
   return { emit, currentEvents: () => [...lastByKind.values()] };
 }

@@ -15,7 +15,9 @@ test("extracts slide frames from a downloaded video and shows them", async () =>
     const window = await app.firstWindow();
 
     // Download a fixture video (real tiny mp4 on disk) so frames:extract has a file to read.
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
     await expect(window.getByTestId("preview-card")).toBeVisible();
     await window.getByTestId("download-button").click();
     await expect(window.getByTestId("download-done")).toBeVisible();
@@ -35,15 +37,22 @@ test("extracts slide frames from a downloaded video and shows them", async () =>
 
     const framesLocator = window.getByTestId("media-detail-frame");
     await expect(framesLocator).toHaveCount(2);
-    await expect(window.getByTestId("media-detail-action-error")).toHaveCount(0);
+    await expect(window.getByTestId("media-detail-action-error")).toHaveCount(
+      0,
+    );
 
     // The read OCR text is shown, and each thumbnail loads over the sift-frame:// protocol.
     await expect(framesLocator.first()).toContainText("Fixture Slide One");
-    const imgSrc = await framesLocator.first().locator("img").getAttribute("src");
+    const imgSrc = await framesLocator
+      .first()
+      .locator("img")
+      .getAttribute("src");
     expect(imgSrc).toMatch(/^sift-frame:/);
 
     // Deselecting a frame (include toggle) persists through the setIncluded IPC.
-    const firstInclude = framesLocator.first().getByTestId("media-detail-frame-include");
+    const firstInclude = framesLocator
+      .first()
+      .getByTestId("media-detail-frame-include");
     await expect(firstInclude).toBeChecked();
     await firstInclude.uncheck();
     await expect(firstInclude).not.toBeChecked();
@@ -64,7 +73,9 @@ test("extracts slide frames from a downloaded video and shows them", async () =>
     const box = (await overlay.boundingBox())!;
     await window.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
     await window.mouse.down();
-    await window.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.7, { steps: 8 });
+    await window.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.7, {
+      steps: 8,
+    });
     await window.mouse.up();
     // Drawing ends edit mode and marks a region (Clear appears).
     await expect(window.getByTestId("media-detail-clear-region")).toBeVisible();

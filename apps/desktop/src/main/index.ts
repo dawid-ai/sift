@@ -1,11 +1,32 @@
 import { randomUUID } from "node:crypto";
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync, rmSync } from "node:fs";
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  rmSync,
+} from "node:fs";
 import { readFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { dirname, join } from "node:path";
-import { app, BrowserWindow, Menu, protocol, safeStorage, session } from "electron";
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  protocol,
+  safeStorage,
+  session,
+} from "electron";
 import { autoUpdater } from "electron-updater";
-import { AiRegistry, branding, LOCAL_PLATFORM_ID, LOCAL_TAG, TranscriptRegistry } from "@sift/core";
+import {
+  AiRegistry,
+  branding,
+  LOCAL_PLATFORM_ID,
+  LOCAL_TAG,
+  TranscriptRegistry,
+} from "@sift/core";
 import type { AiProvider, TranscriptProvider } from "@sift/core";
 import { openDatabase, runMigrations, type SiftDatabase } from "@sift/db";
 import {
@@ -15,7 +36,16 @@ import {
   type BinarySource,
 } from "@sift/binaries";
 import { IPC, type BinaryKind } from "@sift/ipc-contract";
-import { backfillMediaChannelIds, backfillPlatformTag, downloadExistsByFilePath, frameExistsByImagePath, getAsset, mediaExistsByThumbnailPath, upsertAsset, type AssetKind } from "@sift/db";
+import {
+  backfillMediaChannelIds,
+  backfillPlatformTag,
+  downloadExistsByFilePath,
+  frameExistsByImagePath,
+  getAsset,
+  mediaExistsByThumbnailPath,
+  upsertAsset,
+  type AssetKind,
+} from "@sift/db";
 import { normalizeAssetPaths, resolveAssetPath } from "./asset-path";
 import { parseRange, mediaContentType } from "./media-range";
 import { registerAppIpc } from "./ipc/app";
@@ -54,7 +84,11 @@ import { serveThumb } from "./services/thumbnail-cache";
 import { WhisperSetupService } from "./services/whisper-setup-service";
 import { createYtdlpSubsProvider } from "./transcript/ytdlp-subs-provider";
 import { createWhisperProvider } from "./transcript/whisper-provider";
-import { createYtDlpRunner, ytdlpFailureMessage, type YtDlpRunner } from "./sidecars/ytdlp";
+import {
+  createYtDlpRunner,
+  ytdlpFailureMessage,
+  type YtDlpRunner,
+} from "./sidecars/ytdlp";
 import { createFfmpegRunner, type FfmpegRunner } from "./sidecars/ffmpeg";
 import { createOcrRunner, type OcrRunner } from "./sidecars/ocr";
 import { createWhisperRunner } from "./sidecars/whisper";
@@ -108,16 +142,28 @@ Menu.setApplicationMenu(null);
 // registered as a privileged (standard + secure) scheme BEFORE app-ready so <img> can load it
 // under the CSP. The handler (in whenReady) downloads-on-miss and serves from userData/thumbnails.
 protocol.registerSchemesAsPrivileged([
-  { scheme: "sift-thumb", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  {
+    scheme: "sift-thumb",
+    privileges: { standard: true, secure: true, supportFetchAPI: true },
+  },
   // Serves downloaded video files to the in-app <video>. stream:true enables Range
   // requests so scrubbing/seeking works; secure+standard so it loads under the CSP.
-  { scheme: "sift-media", privileges: { standard: true, secure: true, stream: true } },
+  {
+    scheme: "sift-media",
+    privileges: { standard: true, secure: true, stream: true },
+  },
   // Serves extracted slide frames to the renderer's <img>. Static JPEGs, no Range needed.
-  { scheme: "sift-frame", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  {
+    scheme: "sift-frame",
+    privileges: { standard: true, secure: true, supportFetchAPI: true },
+  },
   // Serves poster frames grabbed from imported local files. Its own scheme because
   // sift-thumb is a remote-URL cache with a host allowlist (it can't serve a local path)
   // and sift-frame gates on the `frame` table, which belongs to the Slides flow.
-  { scheme: "sift-poster", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  {
+    scheme: "sift-poster",
+    privileges: { standard: true, secure: true, supportFetchAPI: true },
+  },
 ]);
 
 // Offline e2e hook (see docs/DEVELOPMENT.md "e2e fixture hook"): when set, the app
@@ -164,7 +210,12 @@ function fixtureSources(fixtureDir: string): Record<BinaryKind, BinarySource> {
       kind: "deno",
       async resolveLatest() {
         const sha256 = await sha256File(join(fixtureDir, "deno"));
-        return { version: "9.9.9", assetUrl: "fixture://deno", sha256, binaryName: "deno" };
+        return {
+          version: "9.9.9",
+          assetUrl: "fixture://deno",
+          sha256,
+          binaryName: "deno",
+        };
       },
     },
   };
@@ -236,20 +287,49 @@ const FIXTURE_CHANNEL_JSON = {
   playlist_count: 3,
   thumbnails: [
     { url: "https://example.com/avatar.jpg", width: 160, height: 160 },
-    { url: "https://example.com/banner.jpg", width: 2048, height: 288, id: "banner" },
+    {
+      url: "https://example.com/banner.jpg",
+      width: 2048,
+      height: 288,
+      id: "banner",
+    },
   ],
   entries: [
-    { id: "fixv1", url: "https://www.youtube.com/watch?v=fixv1", title: "Fixture Channel Video 1", duration: 600, view_count: 100 },
-    { id: "fixv2", url: "https://www.youtube.com/watch?v=fixv2", title: "Fixture Channel Video 2", duration: 45, view_count: 900 },
+    {
+      id: "fixv1",
+      url: "https://www.youtube.com/watch?v=fixv1",
+      title: "Fixture Channel Video 1",
+      duration: 600,
+      view_count: 100,
+    },
+    {
+      id: "fixv2",
+      url: "https://www.youtube.com/watch?v=fixv2",
+      title: "Fixture Channel Video 2",
+      duration: 45,
+      view_count: 900,
+    },
   ],
 };
 
 /** Canned feed/channels dump served by the fixture runner when the URL is the subscriptions feed. */
 const FIXTURE_SUBS_JSON = {
   entries: [
-    { id: "UC_sub_a", channel: "Sub Alpha", uploader_id: "@suba", channel_follower_count: 1000,
-      thumbnails: [{ url: "https://example.com/a.jpg", width: 100, height: 100 }] },
-    { id: "UC_sub_b", channel: "Sub Bravo", uploader_id: "@subb", channel_follower_count: 2000 },
+    {
+      id: "UC_sub_a",
+      channel: "Sub Alpha",
+      uploader_id: "@suba",
+      channel_follower_count: 1000,
+      thumbnails: [
+        { url: "https://example.com/a.jpg", width: 100, height: 100 },
+      ],
+    },
+    {
+      id: "UC_sub_b",
+      channel: "Sub Bravo",
+      uploader_id: "@subb",
+      channel_follower_count: 2000,
+    },
   ],
 };
 
@@ -261,7 +341,9 @@ const FIXTURE_SUBS_JSON = {
  * in the URL and hand back its data reshaped as a `normalizeChannel`-compatible dump, so importing
  * "Sub Alpha" actually yields a channel titled "Sub Alpha" — proving sync→import end to end.
  */
-function subscriptionAsChannelFixture(sub: (typeof FIXTURE_SUBS_JSON.entries)[number]): unknown {
+function subscriptionAsChannelFixture(
+  sub: (typeof FIXTURE_SUBS_JSON.entries)[number],
+): unknown {
   return {
     id: sub.id,
     channel_id: sub.id,
@@ -305,7 +387,11 @@ function fixtureYtDlpRunner(): YtDlpRunner {
       // usable rather than dying on the rejected invoke.
       if (url.includes("unsupported.example")) {
         throw new Error(
-          ytdlpFailureMessage("while dumping JSON for", url, `ERROR: Unsupported URL: ${url}`),
+          ytdlpFailureMessage(
+            "while dumping JSON for",
+            url,
+            `ERROR: Unsupported URL: ${url}`,
+          ),
         );
       }
       return FIXTURE_METADATA_JSON;
@@ -338,7 +424,9 @@ function fixtureYtDlpRunner(): YtDlpRunner {
     },
     // Writes a canned VTT into the given outputDir (no spawn, no network), so the
     // offline transcript e2e (Task 7) can exercise TranscriptService end-to-end.
-    async fetchSubtitles({ outputDir }): Promise<{ subPath: string; format: "json3" | "vtt" } | null> {
+    async fetchSubtitles({
+      outputDir,
+    }): Promise<{ subPath: string; format: "json3" | "vtt" } | null> {
       const subPath = join(outputDir, "subs.vtt");
       writeFileSync(subPath, FIXTURE_VTT);
       return { subPath, format: "vtt" };
@@ -396,7 +484,10 @@ function fixtureWhisperProvider(): TranscriptProvider {
 async function renderPdf(html: string): Promise<Buffer> {
   const tmp = join(app.getPath("temp"), `sift-doc-${randomUUID()}.html`);
   writeFileSync(tmp, html, "utf8");
-  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: { sandbox: true, javascript: false },
+  });
   try {
     await win.loadFile(tmp);
     return await win.webContents.printToPDF({ printBackground: true });
@@ -441,7 +532,13 @@ function fixtureFrameService(database: SiftDatabase): FrameService {
   // Hamming distance — a path string isn't (two paths differ by only a couple of bits).
   const hashFrame = (p: string): string =>
     p.endsWith("0001.jpg") ? "ffffffffffffffff" : "0000000000000000";
-  return new FrameService({ db: database, ffmpeg, makeOcr, framesDir, hashFrame });
+  return new FrameService({
+    db: database,
+    ffmpeg,
+    makeOcr,
+    framesDir,
+    hashFrame,
+  });
 }
 
 /** Offline whisper setup for the e2e fixture branch: `install()` seeds a whisper asset row
@@ -463,7 +560,11 @@ function fixtureWhisperSetup(
     modelPath: existsSync(modelPath) ? modelPath : null,
   });
   const install = async (
-    onProgress?: (p: { stage: "binary" | "model"; received: number; total: number | null }) => void,
+    onProgress?: (p: {
+      stage: "binary" | "model";
+      received: number;
+      total: number | null;
+    }) => void,
   ) => {
     onProgress?.({ stage: "binary", received: 1, total: 1 });
     mkdirSync(dirname(cliPath), { recursive: true });
@@ -570,11 +671,16 @@ function createWindow(): void {
 app.whenReady().then(() => {
   // Serve locally-cached thumbnails. sift-thumb://img/<encodeURIComponent(remote https url)>.
   protocol.handle("sift-thumb", async (req) => {
-    const raw = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
+    const raw = decodeURIComponent(
+      new URL(req.url).pathname.replace(/^\/+/, ""),
+    );
     const r = await serveThumb({ dir: thumbnailsDir() }, raw);
     if (!r) return new Response(null, { status: 404 });
     return new Response(new Uint8Array(r.body), {
-      headers: { "content-type": r.contentType, "cache-control": "public, max-age=31536000, immutable" },
+      headers: {
+        "content-type": r.contentType,
+        "cache-control": "public, max-age=31536000, immutable",
+      },
     });
   });
 
@@ -584,8 +690,15 @@ app.whenReady().then(() => {
   // them on disk, not copied into downloadsDir(), so a prefix check would break them.
   // Membership in the download table is the whole gate.
   protocol.handle("sift-media", async (req) => {
-    const filePath = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
-    if (!db || !dbReady || !downloadExistsByFilePath(getDb(), filePath) || !existsSync(filePath)) {
+    const filePath = decodeURIComponent(
+      new URL(req.url).pathname.replace(/^\/+/, ""),
+    );
+    if (
+      !db ||
+      !dbReady ||
+      !downloadExistsByFilePath(getDb(), filePath) ||
+      !existsSync(filePath)
+    ) {
       return new Response(null, { status: 404 });
     }
     // Serve with explicit HTTP Range support so the <video> element is seekable: forward the
@@ -614,7 +727,9 @@ app.whenReady().then(() => {
         },
       });
     }
-    const body = Readable.toWeb(createReadStream(filePath)) as ReadableStream<Uint8Array>;
+    const body = Readable.toWeb(
+      createReadStream(filePath),
+    ) as ReadableStream<Uint8Array>;
     return new Response(body, {
       status: 200,
       headers: {
@@ -628,8 +743,15 @@ app.whenReady().then(() => {
   // Serve extracted slide frames. sift-frame://file/<encodeURIComponent(abs path)>.
   // Same allowlist posture as sift-media: only paths we actually stored in `frame`.
   protocol.handle("sift-frame", (req) => {
-    const filePath = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
-    if (!db || !dbReady || !frameExistsByImagePath(getDb(), filePath) || !existsSync(filePath)) {
+    const filePath = decodeURIComponent(
+      new URL(req.url).pathname.replace(/^\/+/, ""),
+    );
+    if (
+      !db ||
+      !dbReady ||
+      !frameExistsByImagePath(getDb(), filePath) ||
+      !existsSync(filePath)
+    ) {
       return new Response(null, { status: 404 });
     }
     return new Response(new Uint8Array(readFileSync(filePath)), {
@@ -640,8 +762,15 @@ app.whenReady().then(() => {
   // Serve poster frames for imported local files. sift-poster://file/<encodeURIComponent(abs path)>.
   // Same allowlist posture as sift-frame: only paths a media row actually points at.
   protocol.handle("sift-poster", (req) => {
-    const filePath = decodeURIComponent(new URL(req.url).pathname.replace(/^\/+/, ""));
-    if (!db || !dbReady || !mediaExistsByThumbnailPath(getDb(), filePath) || !existsSync(filePath)) {
+    const filePath = decodeURIComponent(
+      new URL(req.url).pathname.replace(/^\/+/, ""),
+    );
+    if (
+      !db ||
+      !dbReady ||
+      !mediaExistsByThumbnailPath(getDb(), filePath) ||
+      !existsSync(filePath)
+    ) {
       return new Response(null, { status: 404 });
     }
     return new Response(new Uint8Array(readFileSync(filePath)), {
@@ -682,7 +811,8 @@ app.whenReady().then(() => {
     // or notify when outdated. Throttled to once/24h via AssetRow.last_checked. Fire-and-forget
     // so it never blocks window creation; events are cached for the startup-race replay.
     // Skipped under e2e unless a spec opts in, so unrelated specs don't see install toasts.
-    const runMaintenance = !e2eFixtureDir || process.env.SIFT_E2E_BINARY_MAINTENANCE === "1";
+    const runMaintenance =
+      !e2eFixtureDir || process.env.SIFT_E2E_BINARY_MAINTENANCE === "1";
     if (runMaintenance) {
       void runStartupBinaryMaintenance({
         kinds: ["ytdlp", "ffmpeg", "deno"],
@@ -711,14 +841,25 @@ app.whenReady().then(() => {
     // e2e: an in-memory jar (no real Electron session/window/fs). Seeded signed-in so
     // the Sign-in settings tab has a site to show/remove offline.
     let e2eJar: ManagerCookie[] = e2eFixtureDir
-      ? [{ domain: ".youtube.com", path: "/", secure: true, expirationDate: 4102444800, name: "SID", value: "x" }]
+      ? [
+          {
+            domain: ".youtube.com",
+            path: "/",
+            secure: true,
+            expirationDate: 4102444800,
+            name: "SID",
+            value: "x",
+          },
+        ]
       : [];
 
     const authManager = createAuthManager({
       readAllCookies: e2eFixtureDir
         ? async (): Promise<ManagerCookie[]> => e2eJar
         : async (): Promise<ManagerCookie[]> => {
-            const cookies = await session.fromPartition("persist:auth").cookies.get({});
+            const cookies = await session
+              .fromPartition("persist:auth")
+              .cookies.get({});
             return cookies.map((c) => ({
               domain: c.domain ?? "",
               path: c.path ?? "/",
@@ -729,7 +870,11 @@ app.whenReady().then(() => {
             }));
           },
       removeCookiesForDomain: e2eFixtureDir
-        ? async (domain: string) => { e2eJar = e2eJar.filter((c) => registrableDomain(c.domain) !== domain); }
+        ? async (domain: string) => {
+            e2eJar = e2eJar.filter(
+              (c) => registrableDomain(c.domain) !== domain,
+            );
+          }
         : async (domain: string) => {
             const ses = session.fromPartition("persist:auth");
             const cookies = await ses.cookies.get({});
@@ -746,10 +891,15 @@ app.whenReady().then(() => {
             );
           },
       openBrowser: e2eFixtureDir ? async () => {} : () => openSignInBrowser(),
-      cookiesPath: e2eFixtureDir ? () => join(e2eFixtureDir, "auth.txt") : cookiesFile,
+      cookiesPath: e2eFixtureDir
+        ? () => join(e2eFixtureDir, "auth.txt")
+        : cookiesFile,
       writeFile: e2eFixtureDir
         ? () => {}
-        : (p, data) => { mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, data, "utf8"); },
+        : (p, data) => {
+            mkdirSync(dirname(p), { recursive: true });
+            writeFileSync(p, data, "utf8");
+          },
       removeFile: e2eFixtureDir ? () => {} : (p) => rmSync(p, { force: true }),
     });
     registerAuthIpc(authManager);
@@ -772,7 +922,9 @@ app.whenReady().then(() => {
       filePath: downloadsConfigFile(),
       defaultDir: downloadsDir(),
     });
-    registerDownloadsIpc(downloadsConfigStore, () => BrowserWindow.getFocusedWindow());
+    registerDownloadsIpc(downloadsConfigStore, () =>
+      BrowserWindow.getFocusedWindow(),
+    );
 
     const downloadService = new DownloadService({
       db: getDb(),
@@ -825,7 +977,8 @@ app.whenReady().then(() => {
       });
       const whisperRunner = createWhisperRunner({
         getBinaryPath: () => assetPath("whisper"),
-        getModelPath: () => (existsSync(modelFilePath()) ? modelFilePath() : null),
+        getModelPath: () =>
+          existsSync(modelFilePath()) ? modelFilePath() : null,
       });
       transcriptRegistry.register(
         createWhisperProvider({
@@ -849,7 +1002,9 @@ app.whenReady().then(() => {
     const transcriptService = new TranscriptService({
       db: getDb(),
       registry: transcriptRegistry,
-      downloadsDir: e2eFixtureDir ? e2eDownloadsDir : () => downloadsConfigStore.get(),
+      downloadsDir: e2eFixtureDir
+        ? e2eDownloadsDir
+        : () => downloadsConfigStore.get(),
       getPreferredLanguages: transcriptConfigStore.get,
       getMethod: () => transcriptMethodStore.get(),
       getCookiesFile: authManager.cookiesFileForUrl,
@@ -890,7 +1045,9 @@ app.whenReady().then(() => {
     });
 
     // The user's default provider + model (seeds the pickers). Keyless — non-secret JSON.
-    const aiDefaultStore = createAiDefaultConfigStore({ filePath: aiDefaultConfigFile() });
+    const aiDefaultStore = createAiDefaultConfigStore({
+      filePath: aiDefaultConfigFile(),
+    });
 
     /** Builds and registers a fresh provider for `providerId` after a key is set. */
     const rebuild = (providerId: string, key: string): void => {
@@ -933,7 +1090,9 @@ app.whenReady().then(() => {
       // dials a real daemon — same canned stub, just a second registry id/label.
       aiRegistry.register(fixtureAiProvider("anthropic", "Fixture AI"));
       aiRegistry.register(fixtureAiProvider("ollama", "Fixture Ollama"));
-      aiRegistry.register(fixtureAiProvider("claude-cli", "Fixture Claude CLI"));
+      aiRegistry.register(
+        fixtureAiProvider("claude-cli", "Fixture Claude CLI"),
+      );
     } else {
       const apiKey = secretsFor("anthropic").getKey();
       if (apiKey) aiRegistry.register(createAnthropicProvider({ apiKey }));
@@ -941,7 +1100,8 @@ app.whenReady().then(() => {
       // throws "Unknown AI provider" → UI prompts to add a key
 
       const openaiKey = secretsFor("openai").getKey();
-      if (openaiKey) aiRegistry.register(createOpenAiProvider({ apiKey: openaiKey }));
+      if (openaiKey)
+        aiRegistry.register(createOpenAiProvider({ apiKey: openaiKey }));
 
       // Ollama is local + keyless — always registered, unlike the keyed providers
       // above which wait for a stored secret. Reachability is only checked when
@@ -982,17 +1142,27 @@ app.whenReady().then(() => {
       ? fixtureFrameService(getDb())
       : new FrameService({
           db: getDb(),
-          ffmpeg: createFfmpegRunner({ getBinaryPath: () => assetPath("ffmpeg") }),
-          makeOcr: () => createOcrRunner({ langPath: tessdataDir(), cachePath: tesseractCacheDir() }),
+          ffmpeg: createFfmpegRunner({
+            getBinaryPath: () => assetPath("ffmpeg"),
+          }),
+          makeOcr: () =>
+            createOcrRunner({
+              langPath: tessdataDir(),
+              cachePath: tesseractCacheDir(),
+            }),
           framesDir,
         });
     const frameExportService = new FrameExportService({
       db: getDb(),
       registry: aiRegistry,
-      downloadsDir: e2eFixtureDir ? e2eDownloadsDir : () => downloadsConfigStore.get(),
+      downloadsDir: e2eFixtureDir
+        ? e2eDownloadsDir
+        : () => downloadsConfigStore.get(),
       renderPdf,
     });
-    registerFramesIpc(frameService, frameExportService, () => BrowserWindow.getAllWindows());
+    registerFramesIpc(frameService, frameExportService, () =>
+      BrowserWindow.getAllWindows(),
+    );
 
     const queueWorker = new QueueWorker({
       db: getDb(),
@@ -1010,7 +1180,13 @@ app.whenReady().then(() => {
     // Re-queue anything left 'running' by a crash, then drain in the background.
     queueWorker.recover();
 
-    registerAiProvidersIpc(aiRegistry, secretsFor, rebuild, customConfigStore, aiDefaultStore);
+    registerAiProvidersIpc(
+      aiRegistry,
+      secretsFor,
+      rebuild,
+      customConfigStore,
+      aiDefaultStore,
+    );
   }
   createWindow();
 

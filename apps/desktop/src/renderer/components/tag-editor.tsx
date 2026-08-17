@@ -132,7 +132,9 @@ export function TagEditor({
             <Tag aria-hidden className="h-3.5 w-3.5" />
           </span>
           <span className="min-w-0">
-            <span className="block text-[12px] font-semibold text-foreground/85">No tags yet.</span>
+            <span className="block text-[12px] font-semibold text-foreground/85">
+              No tags yet.
+            </span>
             <span className="mt-0.5 block text-[11.5px] leading-4 text-muted-foreground">
               Tagged videos can be filtered in the Library.
             </span>
@@ -184,7 +186,10 @@ export function TagEditor({
                 {suggestions.length}
               </span>
             </div>
-            <ul className="scroll-thin overflow-y-auto p-1" style={{ maxHeight: place.maxH }}>
+            <ul
+              className="scroll-thin overflow-y-auto p-1"
+              style={{ maxHeight: place.maxH }}
+            >
               {suggestions.map((s, i) => {
                 const tint = tagTint(s);
                 return (

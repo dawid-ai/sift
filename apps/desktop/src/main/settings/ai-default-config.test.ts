@@ -19,7 +19,9 @@ describe("createAiDefaultConfigStore", () => {
     const store = createAiDefaultConfigStore({ filePath: "ai.json", fs });
     expect(store.get()).toBeNull();
     store.set({ providerId: "claude-cli", model: "opus" });
-    expect(createAiDefaultConfigStore({ filePath: "ai.json", fs }).get()).toEqual({
+    expect(
+      createAiDefaultConfigStore({ filePath: "ai.json", fs }).get(),
+    ).toEqual({
       providerId: "claude-cli",
       model: "opus",
     });

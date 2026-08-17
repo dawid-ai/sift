@@ -21,11 +21,15 @@ test("Settings → Binaries: offline install flow persists and updates the UI", 
 
     const ytdlpRow = window.getByTestId("binary-ytdlp");
     await expect(ytdlpRow).toBeVisible();
-    await expect(window.getByTestId("binary-ytdlp-version")).toHaveText("Not installed");
+    await expect(window.getByTestId("binary-ytdlp-version")).toHaveText(
+      "Not installed",
+    );
 
     await ytdlpRow.getByRole("button", { name: "Install" }).click();
 
-    await expect(window.getByTestId("binary-ytdlp-version")).toHaveText("Installed: 9.9.9");
+    await expect(window.getByTestId("binary-ytdlp-version")).toHaveText(
+      "Installed: 9.9.9",
+    );
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });

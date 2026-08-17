@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 
 // No `electron` import — stays Node-loadable for Vitest, mirroring downloads-config.ts.
@@ -15,19 +21,26 @@ export interface BinaryUpdatesConfigDeps {
   };
 }
 const defaultFs: NonNullable<BinaryUpdatesConfigDeps["fs"]> = {
-  existsSync, readFileSync, writeFileSync, rmSync, mkdirSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  mkdirSync,
 };
 
-export function createBinaryUpdatesConfigStore(
-  deps: BinaryUpdatesConfigDeps,
-): { get(): BinaryUpdatePolicy; set(mode: BinaryUpdatePolicy): void } {
+export function createBinaryUpdatesConfigStore(deps: BinaryUpdatesConfigDeps): {
+  get(): BinaryUpdatePolicy;
+  set(mode: BinaryUpdatePolicy): void;
+} {
   const { filePath } = deps;
   const fs = deps.fs ?? defaultFs;
   return {
     get(): BinaryUpdatePolicy {
       if (!fs.existsSync(filePath)) return "auto";
       try {
-        const parsed: unknown = JSON.parse(fs.readFileSync(filePath).toString("utf8"));
+        const parsed: unknown = JSON.parse(
+          fs.readFileSync(filePath).toString("utf8"),
+        );
         const m = (parsed as { mode?: unknown } | null)?.mode;
         return m === "notify" ? "notify" : "auto";
       } catch {

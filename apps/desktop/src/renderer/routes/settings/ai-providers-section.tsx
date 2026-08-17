@@ -46,7 +46,9 @@ function ProviderPanel({
           >
             <Icon className="h-3.5 w-3.5" />
           </span>
-          <p className="truncate text-sm font-medium text-foreground">{label}</p>
+          <p className="truncate text-sm font-medium text-foreground">
+            {label}
+          </p>
         </div>
         {status}
       </div>
@@ -77,7 +79,9 @@ function DefaultProviderControl() {
   function persist(nextProvider: string, nextModel: string) {
     setProviderId(nextProvider);
     setModel(nextModel);
-    void window.sift.aiProviders.setDefault(nextProvider ? { providerId: nextProvider, model: nextModel } : null);
+    void window.sift.aiProviders.setDefault(
+      nextProvider ? { providerId: nextProvider, model: nextModel } : null,
+    );
   }
 
   return (
@@ -90,13 +94,16 @@ function DefaultProviderControl() {
         value={providerId}
         onChange={(e) => {
           const next = e.target.value;
-          const first = KNOWN_PROVIDERS.find((p) => p.id === next)?.models[0]?.id ?? "";
+          const first =
+            KNOWN_PROVIDERS.find((p) => p.id === next)?.models[0]?.id ?? "";
           persist(next, first);
         }}
       >
         <option value="">Auto (first available)</option>
         {KNOWN_PROVIDERS.map((p) => (
-          <option key={p.id} value={p.id}>{p.label}</option>
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
         ))}
       </SettingsSelect>
       {providerId && models.length > 0 && (
@@ -106,7 +113,9 @@ function DefaultProviderControl() {
           onChange={(e) => persist(providerId, e.target.value)}
         >
           {models.map((m) => (
-            <option key={m.id} value={m.id}>{m.label}</option>
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
           ))}
         </SettingsSelect>
       )}
@@ -116,7 +125,9 @@ function DefaultProviderControl() {
 
 /** Keyless card for the Claude Code CLI provider — a detected/not-found probe + the ToS note. */
 function ClaudeCliCard({ label }: { label: string }) {
-  const [status, setStatus] = useState<"checking" | "found" | "missing">("checking");
+  const [status, setStatus] = useState<"checking" | "found" | "missing">(
+    "checking",
+  );
   useEffect(() => {
     let cancelled = false;
     window.sift.aiProviders.cliStatus().then((ok) => {
@@ -135,7 +146,11 @@ function ClaudeCliCard({ label }: { label: string }) {
           data-testid="ai-cli-status"
           variant={status === "found" ? "success" : "neutral"}
         >
-          {status === "checking" ? "Checking…" : status === "found" ? "Detected" : "Not found"}
+          {status === "checking"
+            ? "Checking…"
+            : status === "found"
+              ? "Detected"
+              : "Not found"}
         </Badge>
       }
     >
@@ -147,8 +162,13 @@ function ClaudeCliCard({ label }: { label: string }) {
           FULL_BLEED_SM,
         )}
       >
-        Uses your logged-in <code className="rounded bg-foreground/[0.07] px-1 py-0.5 font-mono text-[11px] text-foreground/80">claude</code> subscription — no API key. Requires Claude Code installed
-        and signed in. Note: driving a consumer subscription from another app is a ToS grey area.
+        Uses your logged-in{" "}
+        <code className="rounded bg-foreground/[0.07] px-1 py-0.5 font-mono text-[11px] text-foreground/80">
+          claude
+        </code>{" "}
+        subscription — no API key. Requires Claude Code installed and signed in.
+        Note: driving a consumer subscription from another app is a ToS grey
+        area.
       </p>
     </ProviderPanel>
   );
@@ -186,9 +206,17 @@ function CustomConfigFields() {
   }
 
   return (
-    <div className={cn("mt-3 flex flex-col gap-2 border-t pt-3", SECTION_RULE, FULL_BLEED_SM)}>
+    <div
+      className={cn(
+        "mt-3 flex flex-col gap-2 border-t pt-3",
+        SECTION_RULE,
+        FULL_BLEED_SM,
+      )}
+    >
       <MicroLabel>Endpoint</MicroLabel>
-      {error && <SettingsError data-testid="ai-custom-error">{error}</SettingsError>}
+      {error && (
+        <SettingsError data-testid="ai-custom-error">{error}</SettingsError>
+      )}
       <div className="flex items-center gap-2">
         <Input
           data-testid="ai-custom-baseurl"
@@ -286,13 +314,20 @@ function ProviderKeyRow({
       icon={KeyRound}
       label={label}
       status={
-        <Badge data-testid={`ai-key-status-${id}`} variant={hasKey ? "success" : "neutral"}>
+        <Badge
+          data-testid={`ai-key-status-${id}`}
+          variant={hasKey ? "success" : "neutral"}
+        >
           {hasKey ? "Key saved" : "No key"}
         </Badge>
       }
     >
       <div className="mt-3 flex flex-col gap-2">
-        {error && <SettingsError data-testid={`ai-key-error-${id}`}>{error}</SettingsError>}
+        {error && (
+          <SettingsError data-testid={`ai-key-error-${id}`}>
+            {error}
+          </SettingsError>
+        )}
         <div className="flex items-center gap-2">
           {/* type="password" is the masking — untouched. font-mono so a pasted key that
               does show (some providers echo a prefix) lines up like a key, not prose. */}
@@ -336,7 +371,9 @@ export function AiProvidersSection() {
    * "No key". A count that contradicts the three states under it is worse than no count. */
   const [keyed, setKeyed] = useState<Record<string, boolean>>({});
   const reportKeyStatus = useCallback((id: string, hasKey: boolean) => {
-    setKeyed((prev) => (prev[id] === hasKey ? prev : { ...prev, [id]: hasKey }));
+    setKeyed((prev) =>
+      prev[id] === hasKey ? prev : { ...prev, [id]: hasKey },
+    );
   }, []);
   const savedKeys = KEYED_PROVIDERS.filter((p) => keyed[p.id]).length;
 
@@ -350,7 +387,12 @@ export function AiProvidersSection() {
           <CountTag>{`${savedKeys}/${KEYED_PROVIDERS.length}`}</CountTag>
         </div>
         {KEYED_PROVIDERS.map((p) => (
-          <ProviderKeyRow key={p.id} id={p.id} label={p.label} onKeyStatus={reportKeyStatus} />
+          <ProviderKeyRow
+            key={p.id}
+            id={p.id}
+            label={p.label}
+            onKeyStatus={reportKeyStatus}
+          />
         ))}
       </div>
 

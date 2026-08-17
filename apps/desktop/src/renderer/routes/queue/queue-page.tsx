@@ -39,7 +39,8 @@ function isFailed(it: QueueItem): boolean {
 
 /** "failed" / "done · 1 issue" / "done" status text from a queue item. */
 function statusText(it: QueueItem): string {
-  if (it.status !== "done" || !it.ops) return it.status === "running" ? "downloading" : it.status;
+  if (it.status !== "done" || !it.ops)
+    return it.status === "running" ? "downloading" : it.status;
   if (isFailed(it)) return "failed";
   // Download succeeded (or was skipped); a transcript/summarize error is a partial issue.
   const issues = (["download", "transcript", "summarize"] as const).filter(
@@ -49,7 +50,12 @@ function statusText(it: QueueItem): string {
 }
 
 function hasError(it: QueueItem): boolean {
-  return Boolean(it.ops && (["download", "transcript", "summarize"] as const).some((k) => it.ops![k] === "error"));
+  return Boolean(
+    it.ops &&
+    (["download", "transcript", "summarize"] as const).some(
+      (k) => it.ops![k] === "error",
+    ),
+  );
 }
 
 /** Strips yt-dlp's noisy "Command failed: <huge command>" prefix, keeping the real "ERROR: …". */
@@ -100,7 +106,8 @@ type Tone = "queued" | "running" | "done" | "issues" | "failed" | "canceled";
 const INFO_TEXT = "text-[hsl(210_90%_58%)]";
 const INFO_BORDER = "border-[hsl(210_90%_58%/0.3)]";
 const INFO_FILL = "bg-[hsl(210_90%_58%/0.14)]";
-const INFO_BAR = "bg-[linear-gradient(90deg,hsl(210_90%_58%),hsl(203_92%_68%))]";
+const INFO_BAR =
+  "bg-[linear-gradient(90deg,hsl(210_90%_58%),hsl(203_92%_68%))]";
 
 function itemTone(it: QueueItem): Tone {
   if (it.status === "canceled") return "canceled";
@@ -162,13 +169,16 @@ function displayUrl(url: string): string {
   try {
     const u = new URL(url);
     const rest = `${u.pathname}${u.search}`;
-    return rest === "" || rest === "/" ? u.hostname.replace(/^www\./, "") : rest;
+    return rest === "" || rest === "/"
+      ? u.hostname.replace(/^www\./, "")
+      : rest;
   } catch {
     return url.replace(/^https?:\/\/(www\.)?/, "");
   }
 }
 
-const PILL = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium leading-5";
+const PILL =
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium leading-5";
 const NEUTRAL_PILL = `${PILL} border-foreground/[0.12] bg-foreground/[0.06] text-muted-foreground`;
 
 /* Counter tiles are the only *elevated* surface on this view: a top-lit white-alpha fill
@@ -191,7 +201,10 @@ const STAT_IDLE: StatTone = {
   chip: "bg-foreground/[0.06] text-muted-foreground",
 };
 
-const STAT_TONES: Record<"queued" | "running" | "done" | "attention", StatTone> = {
+const STAT_TONES: Record<
+  "queued" | "running" | "done" | "attention",
+  StatTone
+> = {
   // Waiting is not a status hue — a non-empty backlog steps up in white, not in colour.
   queued: {
     border: "border-foreground/[0.16]",
@@ -250,12 +263,22 @@ function StatTile({
   const t = value > 0 ? tone : STAT_IDLE;
   return (
     <div className={`${STAT_SHELL} ${t.border}`}>
-      {t.wash && <span aria-hidden className={`pointer-events-none absolute inset-0 ${t.wash}`} />}
+      {t.wash && (
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute inset-0 ${t.wash}`}
+        />
+      )}
       <div className="relative flex items-center justify-between gap-2">
-        <p className={`text-[11px] font-semibold uppercase leading-none tracking-[0.08em] ${t.label}`}>
+        <p
+          className={`text-[11px] font-semibold uppercase leading-none tracking-[0.08em] ${t.label}`}
+        >
           {label}
         </p>
-        <span aria-hidden className={`grid h-5 w-5 flex-none place-items-center rounded-md ${t.chip}`}>
+        <span
+          aria-hidden
+          className={`grid h-5 w-5 flex-none place-items-center rounded-md ${t.chip}`}
+        >
           <Icon strokeWidth={1.5} className="h-3.5 w-3.5" />
         </span>
       </div>
@@ -273,7 +296,9 @@ function StatTile({
       {/* Three tiers, not two: numeral → label → caption. The caption explains the label, so
           it has to sit *below* it on both size and colour — at 13px/muted it was physically
           larger than the thing it explained and painted in the same grey. */}
-      <p className="relative mt-2 text-[12px] leading-[1.35] text-fg-subtle">{caption}</p>
+      <p className="relative mt-2 text-[12px] leading-[1.35] text-fg-subtle">
+        {caption}
+      </p>
     </div>
   );
 }
@@ -289,7 +314,15 @@ function StatTile({
  * real `.panel` fill, not a 2% white wash over the canvas, so it belongs to the same layer as
  * the card above it and the ambient gradient can't mottle through it.
  */
-function EmptyState({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
+function EmptyState({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+}) {
   return (
     <div className="panel relative flex min-h-[280px] flex-col items-center justify-center overflow-hidden px-6 py-16 text-center">
       <span
@@ -302,7 +335,9 @@ function EmptyState({ icon: Icon, title, body }: { icon: LucideIcon; title: stri
       >
         <Icon strokeWidth={1.5} className="h-6 w-6" />
       </span>
-      <p className="relative mt-4 text-[15px] font-semibold tracking-[-0.01em] text-foreground">{title}</p>
+      <p className="relative mt-4 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+        {title}
+      </p>
       <p className="relative mx-auto mt-2 max-w-[32ch] text-balance text-[13px] leading-[1.6] text-muted-foreground">
         {body}
       </p>
@@ -326,7 +361,13 @@ function EmptyState({ icon: Icon, title, body }: { icon: LucideIcon; title: stri
  * The chip is neutral with a status dot instead of a tinted coral pill: "is the runner going"
  * is a state, and it was spending the CTA's hue a few hundred pixels above the CTA.
  */
-function RunnerControls({ paused, onToggle }: { paused: boolean; onToggle: () => void }) {
+function RunnerControls({
+  paused,
+  onToggle,
+}: {
+  paused: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div className="flex flex-none items-center gap-2.5">
       <span
@@ -346,8 +387,17 @@ function RunnerControls({ paused, onToggle }: { paused: boolean; onToggle: () =>
       </span>
       {/* Same object as the panel-header controls on Channel detail — `sm` + `outline` — so a
           control sitting in a section header is one shape across this area. */}
-      <Button data-testid="queue-pause" size="sm" variant="outline" onClick={onToggle}>
-        {paused ? <Play aria-hidden className="h-3.5 w-3.5" /> : <Pause aria-hidden className="h-3.5 w-3.5" />}
+      <Button
+        data-testid="queue-pause"
+        size="sm"
+        variant="outline"
+        onClick={onToggle}
+      >
+        {paused ? (
+          <Play aria-hidden className="h-3.5 w-3.5" />
+        ) : (
+          <Pause aria-hidden className="h-3.5 w-3.5" />
+        )}
         {paused ? "Resume" : "Pause"}
       </Button>
     </div>
@@ -368,10 +418,16 @@ function specLine(s: QueueSpec | null): string {
   const audio = s.format.kind === "audio";
   return [
     audio ? "Audio only" : "Video & audio",
-    audio ? null : s.format.maxHeight ? `Max ${s.format.maxHeight}p` : "Best available",
+    audio
+      ? null
+      : s.format.maxHeight
+        ? `Max ${s.format.maxHeight}p`
+        : "Best available",
     s.transcript ? "Transcribe on" : "Transcribe off",
     s.summarize ? "Summarize on" : "Summarize off",
-    s.tags.length > 0 ? `${s.tags.length} tag${s.tags.length > 1 ? "s" : ""}` : "No tags",
+    s.tags.length > 0
+      ? `${s.tags.length} tag${s.tags.length > 1 ? "s" : ""}`
+      : "No tags",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -411,7 +467,11 @@ export function QueuePage() {
     return c;
   }, [items]);
   const total =
-    counts.queued + counts.running + counts.done + counts.attention + counts.canceled;
+    counts.queued +
+    counts.running +
+    counts.done +
+    counts.attention +
+    counts.canceled;
 
   /* The spec row folds away once the batch defaults are set. Composing occupied 378px of a
      900px viewport — 43% of the first screen given to an empty input on a *monitoring*
@@ -436,7 +496,11 @@ export function QueuePage() {
      state read this one expression, so "what will be added" and "can you add" cannot
      disagree — which is the whole of the bug below. */
   const pending = useMemo(
-    () => urls.split("\n").map((u) => u.trim()).filter(Boolean),
+    () =>
+      urls
+        .split("\n")
+        .map((u) => u.trim())
+        .filter(Boolean),
     [urls],
   );
 
@@ -483,7 +547,8 @@ export function QueuePage() {
             Batch work, one line at a time.
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Paste a list of URLs, choose what happens to each, and let them run in order.
+            Paste a list of URLs, choose what happens to each, and let them run
+            in order.
           </p>
         </motion.header>
 
@@ -495,7 +560,9 @@ export function QueuePage() {
                   that exists for exactly this rung — a decorative coral that clears 3:1
                   without spending the CTA hue — so it is used by name rather than re-mixed
                   as a fraction of `primary`, which would drift the moment `--primary` moves. */}
-              <p className="eyebrow text-[10px] tracking-[0.16em] text-accent-muted">NEW BATCH</p>
+              <p className="eyebrow text-[10px] tracking-[0.16em] text-accent-muted">
+                NEW BATCH
+              </p>
               <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.01em] text-foreground">
                 Paste what you want processed
               </h2>
@@ -503,7 +570,9 @@ export function QueuePage() {
             {/* The runner lives with the list it governs (see RunnerControls). While the queue
                 is empty there is no list panel to head, so this is where it waits — and it is
                 the only thing in the composer that isn't part of composing. */}
-            {items.length === 0 && <RunnerControls paused={paused} onToggle={togglePause} />}
+            {items.length === 0 && (
+              <RunnerControls paused={paused} onToggle={togglePause} />
+            )}
           </div>
 
           {/* resize-none: the native grip is the one bit of browser chrome that survives a dark
@@ -555,7 +624,10 @@ export function QueuePage() {
               step under the `muted-foreground` its own field labels sit on — and `foreground/70`
               is content. Not `foreground/45`: that composites to 4.13:1 here, the same
               under-floor value the canceled pill was moved off last round. */}
-          <details className="mt-4 border-t border-border pt-4" open={specExpanded}>
+          <details
+            className="mt-4 border-t border-border pt-4"
+            open={specExpanded}
+          >
             <summary
               onClick={(e) => {
                 e.preventDefault();
@@ -723,10 +795,14 @@ export function QueuePage() {
                       >
                         <ToneIcon aria-hidden className="h-3 w-3" />
                         {`${statusText(it)}${
-                          it.status === "running" && it.progress !== null ? ` · ${it.progress}%` : ""
+                          it.status === "running" && it.progress !== null
+                            ? ` · ${it.progress}%`
+                            : ""
                         }`}
                       </span>
-                      <span className={NEUTRAL_PILL}>{sourceHost(it.sourceUrl)}</span>
+                      <span className={NEUTRAL_PILL}>
+                        {sourceHost(it.sourceUrl)}
+                      </span>
                     </div>
 
                     <p
@@ -743,11 +819,16 @@ export function QueuePage() {
                             button on the page, so the format chip is neutral like the source
                             and tag chips beside it — the tinted pills on this row are the two
                             that carry meaning (AI violet) and the status. */}
-                        <span data-testid="queue-item-format" className={NEUTRAL_PILL}>
+                        <span
+                          data-testid="queue-item-format"
+                          className={NEUTRAL_PILL}
+                        >
                           {formatLabel(it.spec.format)}
                         </span>
                         {it.spec.transcript && (
-                          <span className={`${PILL} border-ai/25 bg-ai/12 text-ai`}>
+                          <span
+                            className={`${PILL} border-ai/25 bg-ai/12 text-ai`}
+                          >
                             <Captions aria-hidden className="h-3 w-3" />
                             Transcript
                           </span>
@@ -762,7 +843,10 @@ export function QueuePage() {
                           </span>
                         )}
                         {it.spec.tags?.map((t) => (
-                          <span key={t} className={NEUTRAL_PILL}>{`#${t}`}</span>
+                          <span
+                            key={t}
+                            className={NEUTRAL_PILL}
+                          >{`#${t}`}</span>
                         ))}
                       </div>
                     )}
@@ -779,7 +863,11 @@ export function QueuePage() {
                                 ? "w-1/3 animate-pulse motion-reduce:animate-none"
                                 : "transition-[width] duration-300 ease-out"
                             }`}
-                            style={it.progress === null ? undefined : { width: `${it.progress}%` }}
+                            style={
+                              it.progress === null
+                                ? undefined
+                                : { width: `${it.progress}%` }
+                            }
                           />
                         </div>
                         <span

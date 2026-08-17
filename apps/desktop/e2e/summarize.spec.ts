@@ -14,7 +14,9 @@ test("Home → transcript → summarize (offline fixture) streams and stores a s
   try {
     const window = await app.firstWindow();
 
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
 
     const previewCard = window.getByTestId("preview-card");
     await expect(previewCard).toBeVisible();

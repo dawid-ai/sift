@@ -10,6 +10,7 @@ Single source of truth for continuing this work in a fresh session.
 > Nothing here is uncommitted anymore. Normal repo rules apply again: branch off master for new work.
 >
 > **Still needs a real-hardware pass (NOT offline-testable — shipped unverified on real binaries):**
+>
 > 1. **Whisper progress bar** — the `-pp` flag + `progress = N%` stderr regex are from whisper.cpp
 >    docs; confirm the bar actually moves on a live re-transcribe (`sidecars/whisper.ts`,
 >    `transcript-panel.tsx` testid `transcript-progress`). Flag name could differ by build.
@@ -18,7 +19,7 @@ Single source of truth for continuing this work in a fresh session.
 > 3. **AI-polish output quality** — tune `POLISH_SYSTEM_PROMPT` against real `claude` / real Ollama
 >    (use Settings → Prompt playground).
 > 4. **Tesseract offline** (task #7) — still downloads `eng.traineddata` on first OCR run; vendor it
->    + `extraResources` + `langPath` before claiming full offline.
+>    - `extraResources` + `langPath` before claiming full offline.
 > 5. **Dev-mode window icon** — packaged `.exe` has the new icon; `pnpm dev` still shows Electron's
 >    default (set `BrowserWindow({ icon })` if it bothers you). Cosmetic only.
 
@@ -31,6 +32,7 @@ AI-polish output quality still needs real-`claude` tuning. Spec:
 `docs/superpowers/specs/2026-08-06-ai-polished-document-export-design.md`.
 
 ### Done this session (uncommitted)
+
 - **AI-polished document export — distillation, not cleanup.** The polish now feeds the WHOLE
   transcript to the model in ONE call, with `[[SLIDE n]]` placeholders, and asks for a dense
   KNOWLEDGE DOCUMENT (headers/paragraphs/bullets, substance only — no filler/questions/discovery),
@@ -53,10 +55,12 @@ AI-polish output quality still needs real-`claude` tuning. Spec:
   paste transcript + edit prompt + run through a provider; for tuning (edits are local, not persisted).
 
 ### ✅ DONE — transcripts & summaries are now files on disk + "Open" everywhere
+
 Transcripts and prompt outputs were **DB-only** (no file to open). Now auto-written on create so
 every Files-panel row can reveal a real file:
+
 - **Migration 016** (`016-artifact-file-path.sql.ts`): `ALTER TABLE transcript/summary ADD COLUMN
-  file_path TEXT` (nullable — old rows / write-failures stay null; DB text is source of truth).
+file_path TEXT` (nullable — old rows / write-failures stay null; DB text is source of truth).
   `migrations.test.ts` count 15→16.
 - **DB**: `TranscriptRow`/`SummaryRow` gain `file_path`; new `setTranscriptFilePath` /
   `setSummaryFilePath` setters (insert unchanged — path set after the write). Exported from db index.
@@ -77,6 +81,7 @@ every Files-panel row can reveal a real file:
   asserts on the Files panel or downloads-dir contents, so low risk).
 
 ### ✅ DONE — user-feedback fixes (prior; typecheck + lint + whisper tests green)
+
 1. **Files tab count.** `media-detail.tsx` badge for the Files tab now counts
    `documents.length + transcripts.length + summaries.length + downloads.length` (everything the
    Files panel actually lists).
@@ -96,6 +101,7 @@ every Files-panel row can reveal a real file:
    case-insensitive dedup (`!tags.some((x) => x.toLowerCase() === t.toLowerCase())`).
 
 ### How the user tests / tunes
+
 - Prompt tuning: **Settings → Prompt playground** (paste a chunk of the Stanford transcript, run through
   Claude CLI, iterate). Winning prompt gets pasted back and baked into `POLISH_SYSTEM_PROMPT` by us.
 - Real pipeline: `pnpm dev` → open the Stanford lecture → **Slides** → Polish with = Claude Code CLI →
@@ -104,6 +110,7 @@ every Files-panel row can reveal a real file:
 - Files hub: any video → **Files** tab. Save slides: **Slides** tab → **Save slides…**.
 
 ### Deferred (agreed "later")
+
 - Vision slide placement (pass slide images to the model so it positions them by content, not timestamp).
 - CLI streaming (`--output-format stream-json`).
 
@@ -150,6 +157,7 @@ detectSceneTimes (ffmpeg, downscaled scan)      sidecars/ffmpeg.ts
 ## File map
 
 **New files:**
+
 - `packages/core/src/frames/keep.ts` — `isDataFrame` OCR gate + `KEEP_FRAME_DEFAULTS` (minWords 5, minConfidence 60)
 - `packages/core/src/frames/dhash.ts` — `computeDHash`, `hammingDistance`, `isDuplicateHash`, `DUPLICATE_MAX_DISTANCE = 6`
 - `packages/core/src/frames/brightness.ts` — `brightPixelFraction`, `MIN_FULLSCREEN_BRIGHT_FRACTION = 0.6`
@@ -165,6 +173,7 @@ detectSceneTimes (ffmpeg, downscaled scan)      sidecars/ffmpeg.ts
 - `*.test.ts` alongside each of the above
 
 **Modified files:**
+
 - `apps/desktop/src/main/sidecars/ffmpeg.ts` — `buildSceneScanArgs`, `detectSceneTimes` (streaming), `buildFrameAtArgs` (hybrid seek + crop), `parseFfmpegTime`. `extractWav` unchanged.
 - `apps/desktop/src/main/index.ts` — constructs `FrameService` + `sift-frame://` protocol + fixture branch (`fixtureFrameService` w/ `FIXTURE_JPEG`); registers frames IPC
 - `apps/desktop/src/main/paths.ts` — `framesDir(mediaId)`, `framesRootDir`, `tesseractCacheDir`
@@ -181,7 +190,7 @@ detectSceneTimes (ffmpeg, downscaled scan)      sidecars/ffmpeg.ts
 ## Key decisions & calibrated constants (all tuned on the real video — DON'T blindly change)
 
 - **Scene-detect then grab at segment MIDPOINT** (not the scene-change frame). The scene-change
-  frame is the *transition* (outgoing talking head) → the infamous "talking head a split-second
+  frame is the _transition_ (outgoing talking head) → the infamous "talking head a split-second
   before the slide". Midpoint = maximally far from both cuts = the stable held slide, and it
   matches wherever the player seeks. `settledGrabTimes` in `frame-service.ts`.
 - **Hybrid seek** for exact frames: `-ss (t-5) -i input -ss 5 …` (fast keyframe seek + accurate
@@ -211,7 +220,9 @@ detectSceneTimes (ffmpeg, downscaled scan)      sidecars/ffmpeg.ts
 ## NEXT STEPS (in priority order)
 
 ### 1. ✅ DONE: no-AI document export (transcript + selected slides) — task #8
+
 Shipped (typecheck, unit, lint, build, e2e all green). Zero AI, zero new deps.
+
 - `packages/core/src/frames/document.ts` — pure `renderMarkdownDocument` / `renderHtmlDocument`;
   interleaves segments + included frames by time, coalesces adjacent segments into paragraphs.
   Format-agnostic: caller resolves image `src` (file:// for md, data: URI for html). `document.test.ts`.
@@ -226,7 +237,9 @@ Shipped (typecheck, unit, lint, build, e2e all green). Zero AI, zero new deps.
 - Slides are IMAGES filling the transcript's gaps — no OCR/text recreation (as specified).
 
 ### ✅ DONE: AI-polished document export (Tiers 1 & 2) + Claude Code CLI provider
+
 Built on top of the raw export. Spec: `docs/superpowers/specs/2026-08-06-ai-polished-document-export-design.md`.
+
 - **Core** `frames/document.ts`: `buildDocumentBlocks`, `chunkText`, `polishTextBlocks` (rewrites
   each text run via an injected `polish` fn; slides are hard boundaries so placement is preserved),
   block-based renderers. `POLISH_SYSTEM_PROMPT` in `ai/prompt.ts` (clean, don't summarize).
@@ -246,9 +259,11 @@ Built on top of the raw export. Spec: `docs/superpowers/specs/2026-08-06-ai-poli
   (not offline-testable) — document in DEVELOPMENT.md before release.
 
 ### 2. (superseded — see DONE above) Claude Code CLI provider
+
 The user has `claude` installed + logged in (they run `claude -p ... "/decompose"` headless).
 The Claude.ai subscription CANNOT be used by Sift's `@anthropic-ai/sdk` directly (that's API
 credits). The ONLY subscription path is shelling out to headless Claude Code, which has vision:
+
 - New provider "Claude Code CLI" in the AI registry (`@sift/core/ai`), spawns
   `claude -p "<prompt>"` with the selected slide image paths (Claude Code Read has vision).
 - Use for the SMART per-slide extraction (charts → structured data) on curated slides only, so
@@ -258,9 +273,11 @@ credits). The ONLY subscription path is shelling out to headless Claude Code, wh
 - Keep the existing Anthropic/OpenAI API path for anyone who has credits.
 
 ### 3. Bundle Tesseract traineddata for offline (task #7) — before any release
+
 Vendor `eng.traineddata` + electron-builder `extraResources` + pass `langPath` to `createOcrRunner`.
 
 ### 4. Real-video threshold tuning (ongoing)
+
 `sceneThreshold` (ffmpeg.ts `DEFAULT_SCENE_THRESHOLD` 0.4), dHash distance (6), brightness (0.6),
 OCR minWords/minConfidence (5/60). Tune on 2–3 real talks.
 

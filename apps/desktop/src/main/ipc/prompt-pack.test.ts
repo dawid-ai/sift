@@ -50,7 +50,12 @@ describe("parsePromptPack", () => {
   });
 
   it("reports skipped for an array where every entry is malformed", () => {
-    const raw = JSON.stringify([{ name: "" }, { body: "no name" }, "not an object", null]);
+    const raw = JSON.stringify([
+      { name: "" },
+      { body: "no name" },
+      "not an object",
+      null,
+    ]);
 
     const result = parsePromptPack(raw);
 
@@ -59,23 +64,29 @@ describe("parsePromptPack", () => {
   });
 
   it("throws a clear message (not the raw parser error) for invalid JSON", () => {
-    expect(() => parsePromptPack("{ not valid json")).toThrow("That file isn't valid JSON.");
-  });
-
-  it("throws for valid JSON that isn't a top-level array", () => {
-    expect(() => parsePromptPack(JSON.stringify({ name: "x", body: "y" }))).toThrow(
-      "That file isn't a prompt pack (expected a JSON array).",
+    expect(() => parsePromptPack("{ not valid json")).toThrow(
+      "That file isn't valid JSON.",
     );
   });
 
+  it("throws for valid JSON that isn't a top-level array", () => {
+    expect(() =>
+      parsePromptPack(JSON.stringify({ name: "x", body: "y" })),
+    ).toThrow("That file isn't a prompt pack (expected a JSON array).");
+  });
+
   it("trims name/body but does not otherwise mutate valid entries", () => {
-    const raw = JSON.stringify([{ name: "  Padded  ", body: "  padded body  " }]);
+    const raw = JSON.stringify([
+      { name: "  Padded  ", body: "  padded body  " },
+    ]);
 
     const result = parsePromptPack(raw);
 
     // parsePromptPack only validates/filters; trimming for the actual upsert happens at
     // the call site (summarize.ts's import handler), so the raw body survives here.
-    expect(result.entries).toEqual([{ name: "  Padded  ", body: "  padded body  " }]);
+    expect(result.entries).toEqual([
+      { name: "  Padded  ", body: "  padded body  " },
+    ]);
     expect(result.skipped).toBe(0);
   });
 });

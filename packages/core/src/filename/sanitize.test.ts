@@ -3,7 +3,9 @@ import { sanitizeFilename, buildOutputBaseName } from "./sanitize";
 
 describe("sanitizeFilename", () => {
   it("replaces reserved and control chars with underscore", () => {
-    expect(sanitizeFilename('a/b:c*d?e"f<g>h|i\\j')).toBe("a_b_c_d_e_f_g_h_i_j");
+    expect(sanitizeFilename('a/b:c*d?e"f<g>h|i\\j')).toBe(
+      "a_b_c_d_e_f_g_h_i_j",
+    );
     expect(sanitizeFilename("tab\tnew\nline")).toBe("tab new line");
   });
   it("collapses whitespace, trims, strips trailing dots/spaces", () => {

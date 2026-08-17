@@ -143,8 +143,18 @@ export type BinaryUpdatePolicy = "auto" | "notify";
  * `ready.reason` distinguishes a first-run install from an update, for copy. */
 export type BinaryUpdateEvent =
   | { type: "installing"; kind: BinaryKind }
-  | { type: "ready"; kind: BinaryKind; version: string; reason: "installed" | "updated" }
-  | { type: "available"; kind: BinaryKind; installedVersion: string; latestVersion: string }
+  | {
+      type: "ready";
+      kind: BinaryKind;
+      version: string;
+      reason: "installed" | "updated";
+    }
+  | {
+      type: "available";
+      kind: BinaryKind;
+      installedVersion: string;
+      latestVersion: string;
+    }
   | { type: "error"; kind: BinaryKind; message: string };
 
 /** Point-in-time install status for the whisper.cpp binary + local model. */
@@ -345,7 +355,11 @@ export interface MediaListItem {
   media: MediaRecord;
   transcriptCount: number;
   transcriptLanguage: string | null; // newest transcript's language, else null
-  formats: { id: string; label: string; status: "downloading" | "done" | "error" }[];
+  formats: {
+    id: string;
+    label: string;
+    status: "downloading" | "done" | "error";
+  }[];
   summaryCount: number;
   tags: string[];
 }
@@ -399,18 +413,39 @@ export interface TagCount {
 export type ChannelContentType = "videos" | "shorts" | "live";
 export type ChannelOrder = "latest" | "oldest" | "most_viewed";
 export interface ChannelRecord {
-  id: number; channelId: string; url: string; handle: string | null;
-  title: string; description: string | null; uploader: string | null;
-  avatarUrl: string | null; bannerUrl: string | null;
-  followerCount: number | null; videoCount: number | null;
-  newCount: number; lastChecked: number | null; createdAt: number;
+  id: number;
+  channelId: string;
+  url: string;
+  handle: string | null;
+  title: string;
+  description: string | null;
+  uploader: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  followerCount: number | null;
+  videoCount: number | null;
+  newCount: number;
+  lastChecked: number | null;
+  createdAt: number;
 }
 export interface ChannelVideo {
-  externalId: string; url: string; title: string;
-  durationSec: number | null; viewCount: number | null; isShort: boolean;
+  externalId: string;
+  url: string;
+  title: string;
+  durationSec: number | null;
+  viewCount: number | null;
+  isShort: boolean;
 }
-export interface ChannelVideosQuery { contentType: ChannelContentType; order: ChannelOrder; count: number; }
-export interface ChannelVideosResult { videos: ChannelVideo[]; viewCountsAvailable: boolean; order: ChannelOrder; }
+export interface ChannelVideosQuery {
+  contentType: ChannelContentType;
+  order: ChannelOrder;
+  count: number;
+}
+export interface ChannelVideosResult {
+  videos: ChannelVideo[];
+  viewCountsAvailable: boolean;
+  order: ChannelOrder;
+}
 /** A library media item downloaded from a channel — the lightweight shape the channel
  * detail's "Downloaded from this channel" list renders and links to its in-app detail page. */
 export interface DownloadedVideo {
@@ -429,9 +464,15 @@ export interface ChannelRefreshAllResult {
 export type ChannelVideoStatus = "queued" | "downloaded";
 
 export interface SubscriptionRecord {
-  id: number; channelId: string; url: string; handle: string | null;
-  title: string; avatarUrl: string | null; followerCount: number | null;
-  syncedAt: number; tracked: boolean;
+  id: number;
+  channelId: string;
+  url: string;
+  handle: string | null;
+  title: string;
+  avatarUrl: string | null;
+  followerCount: number | null;
+  syncedAt: number;
+  tracked: boolean;
 }
 
 /** A media row plus its transcripts and summaries, for the detail view. */
@@ -650,7 +691,11 @@ export interface SiftApi {
     list(): Promise<MediaListItem[]>;
     /** One page of the library matching `filter`, newest first, plus the total match count.
      * Filtering runs in SQL, so only the page's rows are loaded. `page` is 0-based. */
-    listPage(filter: MediaFilter, page: number, pageSize: number): Promise<MediaPage>;
+    listPage(
+      filter: MediaFilter,
+      page: number,
+      pageSize: number,
+    ): Promise<MediaPage>;
     /** Distinct channel/platform/tag values across the whole library, for the filter dropdowns. */
     facets(): Promise<LibraryFacets>;
     /** All media ids matching `filter` (newest first) — e.g. to export the whole filtered set. */
@@ -672,7 +717,10 @@ export interface SiftApi {
     /** Substring search over title/uploader/transcript/summary; hit per media with a snippet for text hits. */
     search(query: string): Promise<SearchHit[]>;
     /** Writes an .m3u of the given media (those with an on-disk download) to the playlists folder. */
-    exportPlaylist(mediaIds: number[], name: string): Promise<PlaylistExportResult>;
+    exportPlaylist(
+      mediaIds: number[],
+      name: string,
+    ): Promise<PlaylistExportResult>;
   };
   tags: {
     /** Adds a tag to a media row (idempotent, case-insensitive). */
@@ -732,7 +780,10 @@ export interface SiftApi {
     remove(id: number): Promise<void>;
     refresh(id: number): Promise<ChannelRecord>;
     refreshAll(): Promise<ChannelRefreshAllResult>;
-    listVideos(id: number, query: ChannelVideosQuery): Promise<ChannelVideosResult>;
+    listVideos(
+      id: number,
+      query: ChannelVideosQuery,
+    ): Promise<ChannelVideosResult>;
     openForMedia(mediaId: number): Promise<ChannelRecord>;
     /** For a list of video URLs, which are already queued or already downloaded. Absent = neither. */
     videoStatuses(urls: string[]): Promise<Record<string, ChannelVideoStatus>>;
@@ -747,7 +798,10 @@ export interface SiftApi {
     /** Returns the stored transcript for this URL if present, else fetches+stores one. Rejects if no provider can handle it.
      * `force: "whisper"` bypasses the cache and always re-transcribes locally via Whisper,
      * replacing any existing transcript (only after a successful re-transcribe). */
-    get(input: { metadata: MediaMetadata; force?: "whisper" }): Promise<TranscriptRecord>;
+    get(input: {
+      metadata: MediaMetadata;
+      force?: "whisper";
+    }): Promise<TranscriptRecord>;
     /** Subscribes to coarse stage progress (e.g. "extracting-audio", "transcribing") for
      * in-flight transcript jobs. Returns an unsubscribe function. */
     onProgress(cb: (p: TranscriptProgress) => void): () => void;
@@ -805,7 +859,9 @@ export interface SiftApi {
     ): Promise<string>;
     /** Prompts for a folder and copies every selected slide there at full resolution.
      * Returns the folder + count, or null if the user cancelled. */
-    saveSelected(mediaId: number): Promise<{ dir: string; count: number } | null>;
+    saveSelected(
+      mediaId: number,
+    ): Promise<{ dir: string; count: number } | null>;
     /** Subscribes to extraction progress. Returns an unsubscribe function. */
     onProgress(cb: (p: FrameProgress) => void): () => void;
     /** Subscribes to AI-polish document-export progress. Returns an unsubscribe function. */
@@ -814,7 +870,10 @@ export interface SiftApi {
   prompts: {
     list(): Promise<PromptInfo[]>;
     create(input: { name: string; body: string }): Promise<PromptInfo>;
-    update(id: number, input: { name: string; body: string }): Promise<PromptInfo>;
+    update(
+      id: number,
+      input: { name: string; body: string },
+    ): Promise<PromptInfo>;
     delete(id: number): Promise<void>;
     /** Writes the user's non-builtin prompts to a chosen .json path; null if cancelled. */
     export(): Promise<string | null>;
@@ -844,6 +903,11 @@ export interface SiftApi {
     cliStatus(): Promise<boolean>;
     /** Runs an arbitrary system-prompt + content through a provider and returns the text.
      * Powers the Settings prompt playground (prompt tuning); does not persist anything. */
-    runPrompt(input: { providerId: string; model: string; systemPrompt: string; content: string }): Promise<string>;
+    runPrompt(input: {
+      providerId: string;
+      model: string;
+      systemPrompt: string;
+      content: string;
+    }): Promise<string>;
   };
 }

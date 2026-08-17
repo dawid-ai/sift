@@ -12,7 +12,8 @@ import { formatDuration } from "@/routes/home/preview-card";
 
 /** Shown next to Confirm remove for an imported file — the one thing users are nervous
  * about, and until now documented only in DEVELOPMENT.md. */
-export const LOCAL_REMOVE_NOTE = "Removes the library entry; your file stays where it is.";
+export const LOCAL_REMOVE_NOTE =
+  "Removes the library entry; your file stays where it is.";
 
 /** Whether the Channel cell can open Sift's own channel page. `channels.openForMedia`
  * resolves a channel URL out of the stored yt-dlp dump, and that page is YouTube-shaped
@@ -175,13 +176,25 @@ export interface LibraryTableProps {
 
 /** Table-first library view: one row per media item, with format/transcript/summary counts
  * at a glance instead of requiring a detail-page visit. */
-export function LibraryTable({ items, onOpen, onRemove, onTagClick, onTagExclude, onOpenChannel, hits, query }: LibraryTableProps) {
+export function LibraryTable({
+  items,
+  onOpen,
+  onRemove,
+  onTagClick,
+  onTagExclude,
+  onOpenChannel,
+  hits,
+  query,
+}: LibraryTableProps) {
   return (
     // min-w keeps eight columns from crushing in a narrow window — the panel's scroller
     // takes the overflow instead of the cells.
     // `shrink-0` because the panel's scroller is a flex column: without it the table is a
     // shrinkable flex item and long pages could be squeezed instead of scrolling.
-    <table data-testid="library-table" className="w-full min-w-[58rem] shrink-0 border-collapse text-[13px]">
+    <table
+      data-testid="library-table"
+      className="w-full min-w-[58rem] shrink-0 border-collapse text-[13px]"
+    >
       <thead>
         <tr>
           <th className={cn(TH, "pl-4 text-left")}>Video</th>
@@ -249,9 +262,25 @@ interface LibraryRowProps {
 }
 
 /** A single row, with its own inline-confirm state for Remove (mirrors MediaCard). */
-function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenChannel, hit, query }: LibraryRowProps) {
+function LibraryRow({
+  item,
+  onOpen,
+  onRemove,
+  onTagClick,
+  onTagExclude,
+  onOpenChannel,
+  hit,
+  query,
+}: LibraryRowProps) {
   const [confirming, setConfirming] = useState(false);
-  const { media, transcriptCount, transcriptLanguage, formats, summaryCount, tags } = item;
+  const {
+    media,
+    transcriptCount,
+    transcriptLanguage,
+    formats,
+    summaryCount,
+    tags,
+  } = item;
   // Left accent + faint tint rather than a strong background: rows already carry a hover
   // tint and heavier fill would fight the tag chips on the title line.
   const local = media.platformId === LOCAL_PLATFORM_ID;
@@ -266,11 +295,15 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenCh
   // YouTube opens Sift's own channel page; everything else goes to the uploader's page on
   // the source platform (an X profile, a Vimeo user) in the default browser, since the
   // in-app Channels view has nothing to show for them.
-  const inAppChannel = !!onOpenChannel && !!media.uploader && canOpenChannel(media.sourceUrl);
-  const sourceChannelUrl = media.uploader ? externalLinkUrl(media.uploaderUrl) : null;
+  const inAppChannel =
+    !!onOpenChannel && !!media.uploader && canOpenChannel(media.sourceUrl);
+  const sourceChannelUrl = media.uploader
+    ? externalLinkUrl(media.uploaderUrl)
+    : null;
   // One shell for all three states of this cell (in-app link / external link / plain text), so
   // the column's text and its reserved glyph slot line up whatever the row can actually do.
-  const channelCell = "flex max-w-[13rem] items-center gap-1 text-left leading-5 text-muted-foreground";
+  const channelCell =
+    "flex max-w-[13rem] items-center gap-1 text-left leading-5 text-muted-foreground";
   const channelLink =
     `${channelCell} underline-offset-4 transition-colors duration-150 ` +
     "hover:text-foreground hover:[&>span:first-child]:underline";
@@ -389,29 +422,41 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenCh
                       unnamed set would be a click with no readable consequence. `title` names
                       them. */}
                   {hiddenTags.length > 0 && (
-                    <Badge variant="neutral" className={CHIP_COUNT} title={hiddenTags.join(", ")}>
+                    <Badge
+                      variant="neutral"
+                      className={CHIP_COUNT}
+                      title={hiddenTags.join(", ")}
+                    >
                       +{hiddenTags.length}
                     </Badge>
                   )}
                 </span>
               )}
             </div>
-            {hit && (hit.field === "transcript" || hit.field === "summary") && hit.snippet && (
-              <div data-testid="search-snippet" className="mt-1 max-w-[34rem] text-xs leading-relaxed text-muted-foreground">
-                <span className="mr-1.5 rounded border border-border bg-surface-2 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.1em] text-fg-subtle">
-                  {hit.field}
-                </span>
-                {highlightSegments(hit.snippet, query ?? "").map((s, i) =>
-                  s.match ? (
-                    <mark key={i} className="rounded-[3px] bg-primary/25 px-0.5 text-foreground">
-                      {s.text}
-                    </mark>
-                  ) : (
-                    <span key={i}>{s.text}</span>
-                  ),
-                )}
-              </div>
-            )}
+            {hit &&
+              (hit.field === "transcript" || hit.field === "summary") &&
+              hit.snippet && (
+                <div
+                  data-testid="search-snippet"
+                  className="mt-1 max-w-[34rem] text-xs leading-relaxed text-muted-foreground"
+                >
+                  <span className="mr-1.5 rounded border border-border bg-surface-2 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.1em] text-fg-subtle">
+                    {hit.field}
+                  </span>
+                  {highlightSegments(hit.snippet, query ?? "").map((s, i) =>
+                    s.match ? (
+                      <mark
+                        key={i}
+                        className="rounded-[3px] bg-primary/25 px-0.5 text-foreground"
+                      >
+                        {s.text}
+                      </mark>
+                    ) : (
+                      <span key={i}>{s.text}</span>
+                    ),
+                  )}
+                </div>
+              )}
           </div>
         </div>
       </td>
@@ -436,32 +481,49 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenCh
             type="button"
             data-testid="library-row-channel"
             data-external="true"
-            onClick={() => void window.sift.library.openExternal(sourceChannelUrl)}
+            onClick={() =>
+              void window.sift.library.openExternal(sourceChannelUrl)
+            }
             title={`Open ${sourceChannelUrl} in your browser`}
             className={channelLink}
           >
             <span className="truncate">{media.uploader}</span>
-            <span aria-hidden className="inline-flex w-4 shrink-0 justify-center">
+            <span
+              aria-hidden
+              className="inline-flex w-4 shrink-0 justify-center"
+            >
               <ExternalLink className="h-3 w-3 opacity-0 transition-opacity duration-150 group-hover:opacity-60" />
             </span>
           </button>
         ) : (
           <span data-testid="library-row-channel" className={channelCell}>
-            {media.uploader ? <span className="truncate">{media.uploader}</span> : <NoValue />}
+            {media.uploader ? (
+              <span className="truncate">{media.uploader}</span>
+            ) : (
+              <NoValue />
+            )}
             <span aria-hidden className="inline-flex w-4 shrink-0" />
           </span>
         )}
       </td>
       <td
         data-testid="library-row-duration"
-        className={cn(TD, TD_LINE, "text-right font-mono tabular-nums text-muted-foreground")}
+        className={cn(
+          TD,
+          TD_LINE,
+          "text-right font-mono tabular-nums text-muted-foreground",
+        )}
       >
         {formatDuration(media.durationSec)}
       </td>
       <td className={cn(TD, TD_LINE)}>
         {/* Neutral: the wordmark identifies the source. Only the language keeps a hue here
             (violet, the AI channel) and quality stays a bare outline — see the chip family. */}
-        <Badge data-testid="library-row-platform" variant="neutral" className={CHIP_PLATFORM}>
+        <Badge
+          data-testid="library-row-platform"
+          variant="neutral"
+          className={CHIP_PLATFORM}
+        >
           {platformLabel(media.platformId)}
         </Badge>
       </td>
@@ -519,7 +581,13 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenCh
       </td>
       {/* Right-aligned and zero-padded, so 08/16/2026 and 07/28/2026 stack digit over digit
           instead of drifting with the width of a one-digit month. */}
-      <td className={cn(TD, TD_LINE, "whitespace-nowrap text-right tabular-nums text-muted-foreground")}>
+      <td
+        className={cn(
+          TD,
+          TD_LINE,
+          "whitespace-nowrap text-right tabular-nums text-muted-foreground",
+        )}
+      >
         {addedDate(media.createdAt)}
       </td>
       {/* No padding correction any more: the cell is `align-middle` and the controls are the
@@ -553,7 +621,12 @@ function LibraryRow({ item, onOpen, onRemove, onTagClick, onTagExclude, onOpenCh
               >
                 Confirm remove
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 px-2.5" onClick={() => setConfirming(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2.5"
+                onClick={() => setConfirming(false)}
+              >
                 Cancel
               </Button>
             </>

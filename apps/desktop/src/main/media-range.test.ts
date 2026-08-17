@@ -21,7 +21,10 @@ describe("parseRange", () => {
     expect(parseRange("bytes=500-", size)).toEqual({ start: 500, end: 999 });
   });
   it("clamps an end past EOF", () => {
-    expect(parseRange("bytes=100-99999", size)).toEqual({ start: 100, end: 999 });
+    expect(parseRange("bytes=100-99999", size)).toEqual({
+      start: 100,
+      end: 999,
+    });
   });
   it("resolves a suffix range to the last N bytes", () => {
     expect(parseRange("bytes=-300", size)).toEqual({ start: 700, end: 999 });

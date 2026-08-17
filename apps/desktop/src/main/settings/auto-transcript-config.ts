@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 
 // Whether to auto-fetch a transcript right after a video download completes. Default true
@@ -22,16 +28,19 @@ const defaultFs: NonNullable<AutoTranscriptConfigDeps["fs"]> = {
   mkdirSync,
 };
 
-export function createAutoTranscriptStore(
-  deps: AutoTranscriptConfigDeps,
-): { get(): boolean; set(enabled: boolean): void } {
+export function createAutoTranscriptStore(deps: AutoTranscriptConfigDeps): {
+  get(): boolean;
+  set(enabled: boolean): void;
+} {
   const { filePath } = deps;
   const fs = deps.fs ?? defaultFs;
   return {
     get(): boolean {
       if (!fs.existsSync(filePath)) return true; // default on
       try {
-        const parsed: unknown = JSON.parse(fs.readFileSync(filePath).toString("utf8"));
+        const parsed: unknown = JSON.parse(
+          fs.readFileSync(filePath).toString("utf8"),
+        );
         const e = (parsed as { enabled?: unknown } | null)?.enabled;
         return typeof e === "boolean" ? e : true;
       } catch {
@@ -40,7 +49,10 @@ export function createAutoTranscriptStore(
     },
     set(enabled: boolean): void {
       fs.mkdirSync(dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, Buffer.from(JSON.stringify({ enabled }), "utf8"));
+      fs.writeFileSync(
+        filePath,
+        Buffer.from(JSON.stringify({ enabled }), "utf8"),
+      );
     },
   };
 }

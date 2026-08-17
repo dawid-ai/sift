@@ -27,7 +27,9 @@ describe("segmentsToSrt", () => {
         { start: 1, end: 2, text: "   " },
         { start: 2, end: 3, text: "Two" },
       ]),
-    ).toBe("1\n00:00:00,000 --> 00:00:01,000\nOne\n\n2\n00:00:02,000 --> 00:00:03,000\nTwo\n");
+    ).toBe(
+      "1\n00:00:00,000 --> 00:00:01,000\nOne\n\n2\n00:00:02,000 --> 00:00:03,000\nTwo\n",
+    );
   });
 
   it("gives a zero-or-negative-length cue a one-second duration so players keep it", () => {

@@ -15,6 +15,8 @@ export function registerDownloadsIpc(
     const res = win
       ? await dialog.showOpenDialog(win, { properties: ["openDirectory"] })
       : await dialog.showOpenDialog({ properties: ["openDirectory"] });
-    return res.canceled || res.filePaths.length === 0 ? null : res.filePaths[0]!;
+    return res.canceled || res.filePaths.length === 0
+      ? null
+      : res.filePaths[0]!;
   });
 }

@@ -9,9 +9,12 @@ export function DownloadsSection() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.sift.downloads.getPath().then(setPath).catch((e) => {
-      setError(e instanceof Error ? e.message : String(e));
-    });
+    window.sift.downloads
+      .getPath()
+      .then(setPath)
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e));
+      });
   }, []);
 
   async function change() {
@@ -37,7 +40,10 @@ export function DownloadsSection() {
           {/* /45, the same alpha the Platforms search glyph uses. A leading field glyph is
               non-text UI and has a 3:1 floor; at /30 on this recessed well it measured
               2.5:1 and read as a smudge. */}
-          <FolderOpen aria-hidden className="h-4 w-4 shrink-0 text-foreground/45" />
+          <FolderOpen
+            aria-hidden
+            className="h-4 w-4 shrink-0 text-foreground/45"
+          />
           <code
             data-testid="downloads-path"
             className="min-w-0 truncate font-mono text-[13px] tracking-tight text-foreground"
@@ -55,8 +61,8 @@ export function DownloadsSection() {
         </Button>
       </div>
       <SettingsHint className="mt-2.5">
-        Changing this affects only new downloads — already-downloaded videos stay in their current
-        folder.
+        Changing this affects only new downloads — already-downloaded videos
+        stay in their current folder.
       </SettingsHint>
       {error && (
         <div className="mt-3">

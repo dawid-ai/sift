@@ -13,7 +13,10 @@ export interface AssetRow {
   last_checked: number;
 }
 
-export function upsertAsset(db: SiftDatabase, input: Omit<AssetRow, "id">): AssetRow {
+export function upsertAsset(
+  db: SiftDatabase,
+  input: Omit<AssetRow, "id">,
+): AssetRow {
   db.prepare(
     `INSERT INTO asset (kind, name, version, path, sha256, installed_at, last_checked)
      VALUES (@kind, @name, @version, @path, @sha256, @installed_at, @last_checked)
@@ -25,7 +28,10 @@ export function upsertAsset(db: SiftDatabase, input: Omit<AssetRow, "id">): Asse
   return getAsset(db, input.kind)!;
 }
 
-export function getAsset(db: SiftDatabase, kind: AssetKind): AssetRow | undefined {
+export function getAsset(
+  db: SiftDatabase,
+  kind: AssetKind,
+): AssetRow | undefined {
   return db.prepare<AssetRow>("SELECT * FROM asset WHERE kind = ?").get(kind);
 }
 
@@ -33,6 +39,10 @@ export function listAssets(db: SiftDatabase): AssetRow[] {
   return db.prepare<AssetRow>("SELECT * FROM asset ORDER BY kind").all();
 }
 
-export function touchAssetChecked(db: SiftDatabase, kind: AssetKind, at: number): void {
+export function touchAssetChecked(
+  db: SiftDatabase,
+  kind: AssetKind,
+  at: number,
+): void {
   db.prepare("UPDATE asset SET last_checked = ? WHERE kind = ?").run(at, kind);
 }

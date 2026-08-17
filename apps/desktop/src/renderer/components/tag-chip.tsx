@@ -53,7 +53,8 @@ export function tagTint(name: string): TagTint {
  * Nothing else about a tag is chromatic, so a selected tag is unmissable without the app
  * having to spend the accent anywhere else.
  */
-export const TAG_SELECTED = "border-primary/40 bg-primary/14 text-[hsl(18_100%_73%)]";
+export const TAG_SELECTED =
+  "border-primary/40 bg-primary/14 text-[hsl(18_100%_73%)]";
 
 /**
  * The chip geometry. Re-exported from `ui/badge` so a tag chip and a platform badge sitting in
@@ -105,7 +106,10 @@ export const CHIP_TONES: Record<ChipTone, string> = {
 };
 
 /** `className={chipClass("ai")}` — the box plus one semantic hue. */
-export function chipClass(tone: ChipTone = "neutral", className?: string): string {
+export function chipClass(
+  tone: ChipTone = "neutral",
+  className?: string,
+): string {
   return cn(CHIP_BOX, CHIP_TONES[tone], className);
 }
 
@@ -149,7 +153,10 @@ export function ChipDot({
     <span
       aria-hidden
       className={cn("h-1.5 w-1.5 flex-none rounded-full", className)}
-      style={{ backgroundColor: color, boxShadow: halo ? `0 0 0 2.5px ${halo}` : undefined }}
+      style={{
+        backgroundColor: color,
+        boxShadow: halo ? `0 0 0 2.5px ${halo}` : undefined,
+      }}
     />
   );
 }
@@ -165,12 +172,23 @@ export function ChipDot({
  * text does that job. A grey dot in front of it would add nothing and would borrow the one
  * shape (`Badge … dot`) that means "this is a state".
  */
-export function TagChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
+export function TagChip({
+  name,
+  onRemove,
+}: {
+  name: string;
+  onRemove?: () => void;
+}) {
   return (
     <span
       data-testid="tag-chip"
       data-tag={name}
-      className={cn(CHIP_SHELL, CHIP_HOVER_TINTED, "max-w-[16rem]", onRemove && "pr-1.5")}
+      className={cn(
+        CHIP_SHELL,
+        CHIP_HOVER_TINTED,
+        "max-w-[16rem]",
+        onRemove && "pr-1.5",
+      )}
     >
       <span className="truncate">{name}</span>
       {onRemove && (

@@ -20,31 +20,61 @@ import type { SiftDatabase, NewMedia } from "./index";
 
 function sample(overrides: Partial<NewMedia> = {}): NewMedia {
   return {
-    source_url: "https://y/1", platform_id: "youtube", external_id: "abc",
-    title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 100,
-    thumbnail_path: "https://y/thumb.jpg", view_count: 5, like_count: 1,
-    published_at: null, metadata_json: "{}", download_status: "downloading",
+    source_url: "https://y/1",
+    platform_id: "youtube",
+    external_id: "abc",
+    title: "Vid",
+    uploader: "Chan",
+    uploader_url: null,
+    duration_s: 100,
+    thumbnail_path: "https://y/thumb.jpg",
+    view_count: 5,
+    like_count: 1,
+    published_at: null,
+    metadata_json: "{}",
+    download_status: "downloading",
     ...overrides,
   };
 }
 
 describe("media queries", () => {
   let db: SiftDatabase;
-  beforeEach(async () => { db = await openTestDatabase(); runMigrations(db); });
+  beforeEach(async () => {
+    db = await openTestDatabase();
+    runMigrations(db);
+  });
 
   it("stores channel_id on insert and lists media by channel newest-first", () => {
     insertMedia(db, sample({ source_url: "https://y/a", channel_id: "UC1" }));
     insertMedia(db, sample({ source_url: "https://y/b", channel_id: "UC2" }));
-    const b2 = insertMedia(db, sample({ source_url: "https://y/c", channel_id: "UC1" }));
+    const b2 = insertMedia(
+      db,
+      sample({ source_url: "https://y/c", channel_id: "UC1" }),
+    );
     const uc1 = listMediaByChannelId(db, "UC1");
-    expect(uc1.map((m) => m.source_url)).toEqual(["https://y/c", "https://y/a"]);
+    expect(uc1.map((m) => m.source_url)).toEqual([
+      "https://y/c",
+      "https://y/a",
+    ]);
     expect(uc1[0]!.id).toBe(b2.id);
     expect(listMediaByChannelId(db, "UCnope")).toHaveLength(0);
   });
 
   it("backfillMediaChannelIds fills channel_id from metadata_json, skips rows without it, idempotently", () => {
-    const withId = insertMedia(db, sample({ source_url: "https://y/a", metadata_json: JSON.stringify({ channel_id: "UCabc" }) }));
-    const withoutId = insertMedia(db, sample({ source_url: "https://y/b", metadata_json: JSON.stringify({ title: "x" }) }));
+    const withId = insertMedia(
+      db,
+      sample({
+        source_url: "https://y/a",
+        metadata_json: JSON.stringify({ channel_id: "UCabc" }),
+      }),
+    );
+    const withoutId = insertMedia(
+      db,
+      sample({
+        source_url: "https://y/b",
+        metadata_json: JSON.stringify({ title: "x" }),
+      }),
+    );
     expect(getMediaById(db, withId.id)!.channel_id).toBeNull();
 
     backfillMediaChannelIds(db);
@@ -115,34 +145,49 @@ describe("media queries", () => {
     // Filters constrain both rows and total.
     expect(listMediaPage(db, { channel: "Alice" }, 10, 0).total).toBe(3); // V0,V2,V4
     expect(listMediaPage(db, { platform: "twitter" }, 10, 0).total).toBe(2); // V3,V4
-    expect(listMediaPage(db, { tags: ["music"] }, 10, 0).rows.map((r) => r.title)).toEqual(["V4", "V0"]);
+    expect(
+      listMediaPage(db, { tags: ["music"] }, 10, 0).rows.map((r) => r.title),
+    ).toEqual(["V4", "V0"]);
 
     // Multiple tags AND together: V0 has both, V4 only "MUSIC".
     addTag(db, rows[0]!.id, "live");
-    expect(listMediaPage(db, { tags: ["music", "Live"] }, 10, 0).rows.map((r) => r.title)).toEqual(["V0"]);
+    expect(
+      listMediaPage(db, { tags: ["music", "Live"] }, 10, 0).rows.map(
+        (r) => r.title,
+      ),
+    ).toEqual(["V0"]);
     expect(listMediaPage(db, { tags: [] }, 10, 0).total).toBe(5); // empty list constrains nothing
 
     // excludeTags is the negative filter: everything EXCEPT rows carrying the tag,
     // case-insensitive, and it stacks with a positive filter.
-    expect(listMediaPage(db, { excludeTags: ["Music"] }, 10, 0).rows.map((r) => r.title)).toEqual([
-      "V3",
-      "V2",
-      "V1",
-    ]);
+    expect(
+      listMediaPage(db, { excludeTags: ["Music"] }, 10, 0).rows.map(
+        (r) => r.title,
+      ),
+    ).toEqual(["V3", "V2", "V1"]);
     expect(listMediaPage(db, { excludeTags: [] }, 10, 0).total).toBe(5); // empty list constrains nothing
     expect(
-      listMediaPage(db, { channel: "Alice", excludeTags: ["music"] }, 10, 0).rows.map((r) => r.title),
+      listMediaPage(
+        db,
+        { channel: "Alice", excludeTags: ["music"] },
+        10,
+        0,
+      ).rows.map((r) => r.title),
     ).toEqual(["V2"]);
 
     // ids allowlist; empty allowlist matches nothing (empty search result).
-    expect(listMediaPage(db, { ids: [rows[1]!.id, rows[3]!.id] }, 10, 0).rows.map((r) => r.title)).toEqual([
-      "V3",
-      "V1",
-    ]);
+    expect(
+      listMediaPage(db, { ids: [rows[1]!.id, rows[3]!.id] }, 10, 0).rows.map(
+        (r) => r.title,
+      ),
+    ).toEqual(["V3", "V1"]);
     expect(listMediaPage(db, { ids: [] }, 10, 0).total).toBe(0);
 
     // listIds returns all matching ids (newest first) across pages.
-    expect(listMediaIds(db, { channel: "Bob" })).toEqual([rows[3]!.id, rows[1]!.id]);
+    expect(listMediaIds(db, { channel: "Bob" })).toEqual([
+      rows[3]!.id,
+      rows[1]!.id,
+    ]);
 
     // Facets span the whole library.
     expect(listMediaChannels(db)).toEqual(["Alice", "Bob"]);
@@ -151,8 +196,14 @@ describe("media queries", () => {
 
   it("getMediaBySourceUrl returns the most-recent row for a url, or undefined", () => {
     expect(getMediaBySourceUrl(db, "https://y/none")).toBeUndefined();
-    const first = insertMedia(db, sample({ source_url: "https://y/dup", title: "First" }));
-    const second = insertMedia(db, sample({ source_url: "https://y/dup", title: "Second" }));
+    const first = insertMedia(
+      db,
+      sample({ source_url: "https://y/dup", title: "First" }),
+    );
+    const second = insertMedia(
+      db,
+      sample({ source_url: "https://y/dup", title: "Second" }),
+    );
     const got = getMediaBySourceUrl(db, "https://y/dup");
     expect(got?.id).toBe(second.id);
     expect(got?.title).toBe("Second");

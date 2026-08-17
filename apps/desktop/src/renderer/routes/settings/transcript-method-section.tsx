@@ -3,14 +3,27 @@ import type { TranscriptMethod } from "@sift/ipc-contract";
 import { cn } from "@/lib/utils";
 import { NESTED_SURFACE, ROW_LIST, SettingsError } from "./settings-page";
 
-const METHODS: { value: TranscriptMethod; label: string; description: string }[] = [
-  { value: "auto", label: "Auto", description: "Use captions if available, Whisper if none." },
+const METHODS: {
+  value: TranscriptMethod;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "auto",
+    label: "Auto",
+    description: "Use captions if available, Whisper if none.",
+  },
   {
     value: "prefer_whisper",
     label: "Prefer Whisper",
-    description: "Use local Whisper when the video is downloaded, else captions.",
+    description:
+      "Use local Whisper when the video is downloaded, else captions.",
   },
-  { value: "captions_only", label: "Captions only", description: "Never use Whisper." },
+  {
+    value: "captions_only",
+    label: "Captions only",
+    description: "Never use Whisper.",
+  },
 ];
 
 /** Default transcript method used by transcript.get. Loads on mount, persists on every change. */
@@ -36,7 +49,10 @@ export function TranscriptMethodSection() {
   }
 
   return (
-    <div className="flex flex-col gap-3" data-testid="transcript-method-section">
+    <div
+      className="flex flex-col gap-3"
+      data-testid="transcript-method-section"
+    >
       {/* One nested block, rows separated by a hairline — not three bordered cards stacked
           inside an already-bordered section card. */}
       <div className={cn(NESTED_SURFACE, "overflow-hidden", ROW_LIST)}>

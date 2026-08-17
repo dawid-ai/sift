@@ -1,30 +1,53 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { openTestDatabase } from "./testing";
 import {
-  runMigrations, insertMedia, insertFrame, getFramesByMediaId, deleteFramesByMediaId,
-  deleteAutoFramesByMediaId, setFrameIncluded,
+  runMigrations,
+  insertMedia,
+  insertFrame,
+  getFramesByMediaId,
+  deleteFramesByMediaId,
+  deleteAutoFramesByMediaId,
+  setFrameIncluded,
 } from "./index";
 import type { SiftDatabase, NewMedia, NewFrame } from "./index";
 
 function media(db: SiftDatabase, url = "https://y/1"): number {
   const m: NewMedia = {
-    source_url: url, platform_id: "youtube", external_id: "abc", title: "Vid",
-    uploader: "Chan", uploader_url: null, duration_s: 100, thumbnail_path: null,
-    view_count: null, like_count: null, published_at: null, metadata_json: null,
+    source_url: url,
+    platform_id: "youtube",
+    external_id: "abc",
+    title: "Vid",
+    uploader: "Chan",
+    uploader_url: null,
+    duration_s: 100,
+    thumbnail_path: null,
+    view_count: null,
+    like_count: null,
+    published_at: null,
+    metadata_json: null,
     download_status: "none",
   };
   return insertMedia(db, m).id;
 }
 function frame(mediaId: number, overrides: Partial<NewFrame> = {}): NewFrame {
   return {
-    media_id: mediaId, ts_ms: 4167, image_path: "/f/frame-0001.jpg",
-    ocr_text: "Q3 Revenue", ocr_confidence: 88.5, phash: null, kind: "slide", ...overrides,
+    media_id: mediaId,
+    ts_ms: 4167,
+    image_path: "/f/frame-0001.jpg",
+    ocr_text: "Q3 Revenue",
+    ocr_confidence: 88.5,
+    phash: null,
+    kind: "slide",
+    ...overrides,
   };
 }
 
 describe("frame queries", () => {
   let db: SiftDatabase;
-  beforeEach(async () => { db = await openTestDatabase(); runMigrations(db); });
+  beforeEach(async () => {
+    db = await openTestDatabase();
+    runMigrations(db);
+  });
 
   it("inserts and reads back a frame with generated id and timestamp", () => {
     const mid = media(db);
@@ -43,7 +66,10 @@ describe("frame queries", () => {
     insertFrame(db, frame(a, { ts_ms: 20000, ocr_text: "A2" }));
     insertFrame(db, frame(a, { ts_ms: 4000, ocr_text: "A1" }));
     insertFrame(db, frame(b, { ts_ms: 1000, ocr_text: "B1" }));
-    expect(getFramesByMediaId(db, a).map((r) => r.ocr_text)).toEqual(["A1", "A2"]);
+    expect(getFramesByMediaId(db, a).map((r) => r.ocr_text)).toEqual([
+      "A1",
+      "A2",
+    ]);
     expect(getFramesByMediaId(db, b).map((r) => r.ocr_text)).toEqual(["B1"]);
   });
 

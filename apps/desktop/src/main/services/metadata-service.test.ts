@@ -14,7 +14,9 @@ const CANNED_YOUTUBE_JSON = {
   like_count: 16000000,
   upload_date: "20091025",
   extractor_key: "Youtube",
-  automatic_captions: { en: [{ url: "https://example.com/en.vtt", ext: "vtt" }] },
+  automatic_captions: {
+    en: [{ url: "https://example.com/en.vtt", ext: "vtt" }],
+  },
 };
 
 function fakeRunner(overrides: Partial<YtDlpRunner> = {}): YtDlpRunner {
@@ -41,11 +43,17 @@ describe("normalizeMetadata", () => {
     expect(result.uploaderUrl).toBe("https://www.youtube.com/@RickAstley");
     expect(result.durationSec).toBe(213);
     expect(typeof result.durationSec).toBe("number");
-    expect(result.thumbnailUrl).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg");
+    expect(result.thumbnailUrl).toBe(
+      "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    );
     expect(result.viewCount).toBe(1500000000);
     expect(result.likeCount).toBe(16000000);
     expect(result.uploadDate).toBe("20091025");
-    expect(result.platform).toEqual({ id: "youtube", label: "YouTube", tier: "tested" });
+    expect(result.platform).toEqual({
+      id: "youtube",
+      label: "YouTube",
+      tier: "tested",
+    });
     expect(result.hasCaptions).toBe(true);
     expect(result.raw).toBe(CANNED_YOUTUBE_JSON);
   });
@@ -67,14 +75,18 @@ describe("normalizeMetadata", () => {
     expect(result.likeCount).toBeNull();
     expect(result.uploadDate).toBeNull();
     expect(result.hasCaptions).toBe(false);
-    expect(result.platform).toEqual({ id: "unknown", label: "Unknown", tier: "unknown" });
+    expect(result.platform).toEqual({
+      id: "unknown",
+      label: "Unknown",
+      tier: "unknown",
+    });
   });
 
   it("extracts base-coded language and dedups caption languages across subtitles + automatic_captions", () => {
     const result = normalizeMetadata(
       {
         language: "en-US",
-        subtitles: { "pl": [{}], "en-GB": [{}] },
+        subtitles: { pl: [{}], "en-GB": [{}] },
         automatic_captions: { en: [{}], "en-pl": [{}], "en-orig": [{}] },
       },
       "url",
@@ -91,7 +103,11 @@ describe("normalizeMetadata", () => {
 
   it("falls back uploader/uploaderUrl to channel/channel_url and honors subtitles for hasCaptions", () => {
     const result = normalizeMetadata(
-      { channel: "Some Channel", channel_url: "https://x/channel", subtitles: { en: [] } },
+      {
+        channel: "Some Channel",
+        channel_url: "https://x/channel",
+        subtitles: { en: [] },
+      },
       "url3",
     );
 
@@ -116,7 +132,9 @@ describe("MetadataService", () => {
   it("fetch() calls the runner's dumpJson and normalizes the result", async () => {
     const service = new MetadataService(fakeRunner());
 
-    const result = await service.fetch("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    const result = await service.fetch(
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    );
 
     expect(result.title).toBe("Never Gonna Give You Up");
     expect(result.platform.tier).toBe("tested");
@@ -124,13 +142,18 @@ describe("MetadataService", () => {
     expect(typeof result.durationSec).toBe("number");
     expect(result.hasCaptions).toBe(true);
     expect(result.raw).toBe(CANNED_YOUTUBE_JSON);
-    expect(result.sourceUrl).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    expect(result.sourceUrl).toBe(
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    );
   });
 
   it("listExtractors() delegates to the runner", async () => {
     const service = new MetadataService(fakeRunner());
 
-    await expect(service.listExtractors()).resolves.toEqual(["Youtube", "Vimeo"]);
+    await expect(service.listExtractors()).resolves.toEqual([
+      "Youtube",
+      "Vimeo",
+    ]);
   });
 
   it("fetch() rejects with YtDlpNotInstalledError when the runner has no binary installed", async () => {
@@ -142,15 +165,22 @@ describe("MetadataService", () => {
       }),
     );
 
-    await expect(service.fetch("https://example.com/video")).rejects.toBeInstanceOf(
-      YtDlpNotInstalledError,
-    );
+    await expect(
+      service.fetch("https://example.com/video"),
+    ).rejects.toBeInstanceOf(YtDlpNotInstalledError);
   });
 
   it("passes a resolved cookies file into dumpJson", async () => {
     let seen: string | undefined;
-    const runner = { dumpJson: async (_u: string, c?: string) => { seen = c; return {}; } } as unknown as YtDlpRunner;
-    const svc = new MetadataService(runner, { getCookiesFile: async () => "/c/youtube.txt" });
+    const runner = {
+      dumpJson: async (_u: string, c?: string) => {
+        seen = c;
+        return {};
+      },
+    } as unknown as YtDlpRunner;
+    const svc = new MetadataService(runner, {
+      getCookiesFile: async () => "/c/youtube.txt",
+    });
     await svc.fetch("https://www.youtube.com/watch?v=x");
     expect(seen).toBe("/c/youtube.txt");
   });

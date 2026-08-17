@@ -1,13 +1,21 @@
 import { baseLangCode, resolvePlatform } from "@sift/core";
 import type { MediaMetadata } from "@sift/ipc-contract";
 import { isAuthError } from "../auth/status";
-import { filePathFromUrl, isLocalFileUrl, localFileMetadata } from "../local-file";
+import {
+  filePathFromUrl,
+  isLocalFileUrl,
+  localFileMetadata,
+} from "../local-file";
 import type { YtDlpRunner } from "../sidecars/ytdlp";
 import { computeDownloadOptions } from "./download-options";
 
 /** Coerces an unknown value into a finite number, or `null` if it isn't one. */
 function toNumberOrNull(value: unknown): number | null {
-  if (typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {
+  if (
+    typeof value !== "number" ||
+    Number.isNaN(value) ||
+    !Number.isFinite(value)
+  ) {
     return null;
   }
   return value;
@@ -30,7 +38,9 @@ function isNonEmptyObject(value: unknown): boolean {
 
 /** yt-dlp reports captions via `subtitles` (manual) and/or `automatic_captions`. */
 function hasAnyCaptions(raw: Record<string, unknown>): boolean {
-  return isNonEmptyObject(raw.subtitles) || isNonEmptyObject(raw.automatic_captions);
+  return (
+    isNonEmptyObject(raw.subtitles) || isNonEmptyObject(raw.automatic_captions)
+  );
 }
 
 /** Base-language codes present across yt-dlp's `subtitles` + `automatic_captions`, deduped. */
@@ -53,7 +63,10 @@ function captionLanguages(raw: Record<string, unknown>): string[] {
  * into the app's normalized `MediaMetadata` shape. Never throws on missing/malformed
  * fields — everything not present or not the expected type maps to `null`.
  */
-export function normalizeMetadata(raw: unknown, sourceUrl: string): MediaMetadata {
+export function normalizeMetadata(
+  raw: unknown,
+  sourceUrl: string,
+): MediaMetadata {
   const record: Record<string, unknown> =
     typeof raw === "object" && raw !== null && !Array.isArray(raw)
       ? (raw as Record<string, unknown>)
@@ -63,11 +76,14 @@ export function normalizeMetadata(raw: unknown, sourceUrl: string): MediaMetadat
 
   return {
     sourceUrl,
-    platform: resolvePlatform(typeof extractorKey === "string" ? extractorKey : null),
+    platform: resolvePlatform(
+      typeof extractorKey === "string" ? extractorKey : null,
+    ),
     externalId: toStringOrNull(record.id),
     title: toStringOrNull(record.title) ?? "",
     uploader: toStringOrNull(record.uploader) ?? toStringOrNull(record.channel),
-    uploaderUrl: toStringOrNull(record.uploader_url) ?? toStringOrNull(record.channel_url),
+    uploaderUrl:
+      toStringOrNull(record.uploader_url) ?? toStringOrNull(record.channel_url),
     channelId: toStringOrNull(record.channel_id),
     durationSec: toNumberOrNull(record.duration),
     thumbnailUrl: toStringOrNull(record.thumbnail),
@@ -114,7 +130,10 @@ export class MetadataService {
     try {
       raw = await this.runner.dumpJson(url, cookiesFile);
     } catch (err) {
-      if (cookiesFile && isAuthError(err instanceof Error ? err.message : String(err))) {
+      if (
+        cookiesFile &&
+        isAuthError(err instanceof Error ? err.message : String(err))
+      ) {
         this.opts.reportAuthFailure?.(url);
         throw new Error(
           `${err instanceof Error ? err.message : String(err)} — your ${new URL(url).host} session may have expired. Settings → Accounts → Sign in again.`,

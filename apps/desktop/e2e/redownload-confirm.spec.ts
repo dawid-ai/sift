@@ -34,7 +34,9 @@ test("re-entering a captured URL shows widgets and confirms re-download", async 
     await expect(window.getByTestId("already-captured")).toBeVisible();
     await expect(window.getByTestId("captured-video")).toBeVisible();
     await expect(window.getByTestId("captured-transcript")).toBeVisible();
-    await expect(window.getByTestId("download-button")).toContainText("Re-download");
+    await expect(window.getByTestId("download-button")).toContainText(
+      "Re-download",
+    );
 
     // Clicking Download asks first; Cancel dismisses without downloading.
     await window.getByTestId("download-button").click();

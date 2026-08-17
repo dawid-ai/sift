@@ -3,7 +3,9 @@
 export function pageWindow(current: number, count: number): (number | "…")[] {
   if (count < 1) return [];
   const keep = new Set([1, count, current - 1, current, current + 1]);
-  const shown = [...keep].filter((p) => p >= 1 && p <= count).sort((a, b) => a - b);
+  const shown = [...keep]
+    .filter((p) => p >= 1 && p <= count)
+    .sort((a, b) => a - b);
   const out: (number | "…")[] = [];
   let prev = 0;
   for (const p of shown) {

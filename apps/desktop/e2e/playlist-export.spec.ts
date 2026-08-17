@@ -16,7 +16,9 @@ test("export the library as an m3u", async () => {
 
     // 1. Home → download (mirrors download.spec.ts exactly) so the Library has one
     // downloaded media to export.
-    await window.getByTestId("url-input").fill("https://www.youtube.com/watch?v=fixture");
+    await window
+      .getByTestId("url-input")
+      .fill("https://www.youtube.com/watch?v=fixture");
 
     const previewCard = window.getByTestId("preview-card");
     await expect(previewCard).toBeVisible();
@@ -50,7 +52,11 @@ test("export the library as an m3u", async () => {
     const downloadPath = items[0]!.media.downloadPath;
     expect(downloadPath).toBeTruthy();
 
-    const m3uPath = join(dirname(downloadPath!), "playlists", "sift-library.m3u");
+    const m3uPath = join(
+      dirname(downloadPath!),
+      "playlists",
+      "sift-library.m3u",
+    );
     const content = await readFile(m3uPath, "utf8");
 
     expect(content.startsWith("#EXTM3U")).toBe(true);

@@ -46,8 +46,13 @@ export function insertDownload(db: SiftDatabase, d: NewDownload): DownloadRow {
   return getDownloadById(db, Number(result.lastInsertRowid))!;
 }
 
-export function getDownloadById(db: SiftDatabase, id: number): DownloadRow | undefined {
-  return db.prepare<DownloadRow>("SELECT * FROM download WHERE id = @id").get({ id });
+export function getDownloadById(
+  db: SiftDatabase,
+  id: number,
+): DownloadRow | undefined {
+  return db
+    .prepare<DownloadRow>("SELECT * FROM download WHERE id = @id")
+    .get({ id });
 }
 
 export function getDownloadByMediaAndFormat(
@@ -62,7 +67,10 @@ export function getDownloadByMediaAndFormat(
     .get({ mediaId, formatId });
 }
 
-export function listDownloadsByMediaId(db: SiftDatabase, mediaId: number): DownloadRow[] {
+export function listDownloadsByMediaId(
+  db: SiftDatabase,
+  mediaId: number,
+): DownloadRow[] {
   return db
     .prepare<DownloadRow>(
       "SELECT * FROM download WHERE media_id = @mediaId ORDER BY created_at DESC, id DESC",
@@ -116,12 +124,9 @@ export function setDownloadFormat(
   label: string,
   height: number | null,
 ): void {
-  db.prepare("UPDATE download SET label = ?, height = ?, updated_at = ? WHERE id = ?").run(
-    label,
-    height,
-    Date.now(),
-    id,
-  );
+  db.prepare(
+    "UPDATE download SET label = ?, height = ?, updated_at = ? WHERE id = ?",
+  ).run(label, height, Date.now(), id);
 }
 
 export function deleteDownload(db: SiftDatabase, id: number): void {
@@ -139,9 +144,14 @@ export function resetDownloadingToError(db: SiftDatabase): number {
 
 /** True when any download row stores this exact file_path. The sift-media:// protocol
  * handler uses it as its security gate — only real downloads are ever served from disk. */
-export function downloadExistsByFilePath(db: SiftDatabase, filePath: string): boolean {
+export function downloadExistsByFilePath(
+  db: SiftDatabase,
+  filePath: string,
+): boolean {
   const row = db
-    .prepare<{ n: number }>("SELECT COUNT(*) AS n FROM download WHERE file_path = @filePath")
+    .prepare<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM download WHERE file_path = @filePath",
+    )
     .get({ filePath });
   return (row?.n ?? 0) > 0;
 }

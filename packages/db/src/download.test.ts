@@ -19,19 +19,37 @@ import {
   resetDownloadingToError,
   downloadExistsByFilePath,
 } from "./index";
-import type { SiftDatabase, NewMedia, NewDownload, NewTranscript, NewSummary } from "./index";
+import type {
+  SiftDatabase,
+  NewMedia,
+  NewDownload,
+  NewTranscript,
+  NewSummary,
+} from "./index";
 
 function sampleMedia(overrides: Partial<NewMedia> = {}): NewMedia {
   return {
-    source_url: "https://y/1", platform_id: "youtube", external_id: "abc",
-    title: "Vid", uploader: "Chan", uploader_url: null, duration_s: 100,
-    thumbnail_path: "https://y/thumb.jpg", view_count: 5, like_count: 1,
-    published_at: null, metadata_json: "{}", download_status: "downloading",
+    source_url: "https://y/1",
+    platform_id: "youtube",
+    external_id: "abc",
+    title: "Vid",
+    uploader: "Chan",
+    uploader_url: null,
+    duration_s: 100,
+    thumbnail_path: "https://y/thumb.jpg",
+    view_count: 5,
+    like_count: 1,
+    published_at: null,
+    metadata_json: "{}",
+    download_status: "downloading",
     ...overrides,
   };
 }
 
-function sampleDownload(mediaId: number, overrides: Partial<NewDownload> = {}): NewDownload {
+function sampleDownload(
+  mediaId: number,
+  overrides: Partial<NewDownload> = {},
+): NewDownload {
   return {
     media_id: mediaId,
     format_id: "1080p",
@@ -87,7 +105,11 @@ describe("download queries", () => {
     upsertDownload(db, sampleDownload(m.id, { status: "downloading" }));
     upsertDownload(
       db,
-      sampleDownload(m.id, { file_path: "/a.mp4", file_size: 10, status: "done" }),
+      sampleDownload(m.id, {
+        file_path: "/a.mp4",
+        file_size: 10,
+        status: "done",
+      }),
     );
     upsertDownload(
       db,
@@ -135,9 +157,18 @@ describe("download queries", () => {
 
   it("resetDownloadingToError flips only downloading rows to error and returns the count", () => {
     const m = insertMedia(db, sampleMedia());
-    const downloading1 = insertDownload(db, sampleDownload(m.id, { format_id: "1080p", status: "downloading" }));
-    const downloading2 = insertDownload(db, sampleDownload(m.id, { format_id: "audio", status: "downloading" }));
-    const done = insertDownload(db, sampleDownload(m.id, { format_id: "720p", status: "done" }));
+    const downloading1 = insertDownload(
+      db,
+      sampleDownload(m.id, { format_id: "1080p", status: "downloading" }),
+    );
+    const downloading2 = insertDownload(
+      db,
+      sampleDownload(m.id, { format_id: "audio", status: "downloading" }),
+    );
+    const done = insertDownload(
+      db,
+      sampleDownload(m.id, { format_id: "720p", status: "done" }),
+    );
     const changed = resetDownloadingToError(db);
     expect(changed).toBe(2);
     expect(getDownloadById(db, downloading1.id)?.status).toBe("error");
@@ -147,16 +178,19 @@ describe("download queries", () => {
 
   it("downloadExistsByFilePath is true only for a stored file_path", () => {
     const m = insertMedia(db, sampleMedia());
-    insertDownload(db, sampleDownload(m.id, {
-      format_id: "22",
-      label: "720p",
-      ext: "mp4",
-      height: 720,
-      file_path: "C:\\videos\\a.mp4",
-      file_size: 100,
-      status: "done",
-      error: null,
-    }));
+    insertDownload(
+      db,
+      sampleDownload(m.id, {
+        format_id: "22",
+        label: "720p",
+        ext: "mp4",
+        height: 720,
+        file_path: "C:\\videos\\a.mp4",
+        file_size: 100,
+        status: "done",
+        error: null,
+      }),
+    );
     expect(downloadExistsByFilePath(db, "C:\\videos\\a.mp4")).toBe(true);
     expect(downloadExistsByFilePath(db, "C:\\videos\\missing.mp4")).toBe(false);
   });

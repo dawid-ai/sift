@@ -32,11 +32,17 @@ describe("localFileMetadata", () => {
 
   it("marks the platform as local without touching the yt-dlp platform registry", () => {
     const meta = localFileMetadata(join(tmpdir(), "a.mp4"));
-    expect(meta.platform).toEqual({ id: "local", label: "Local file", tier: "tested" });
+    expect(meta.platform).toEqual({
+      id: "local",
+      label: "Local file",
+      tier: "tested",
+    });
   });
 
   it("carries a probed duration when given one, else null", () => {
-    expect(localFileMetadata(join(tmpdir(), "a.mp4"), 42.5).durationSec).toBe(42.5);
+    expect(localFileMetadata(join(tmpdir(), "a.mp4"), 42.5).durationSec).toBe(
+      42.5,
+    );
     expect(localFileMetadata(join(tmpdir(), "a.mp4")).durationSec).toBeNull();
   });
 
@@ -51,7 +57,11 @@ describe("localFileMetadata", () => {
 
 /** Minimal but structurally real JPEG: SOI, an APP0 segment to skip past, an optional
  * DHT (shares SOF's marker range but is NOT a frame header), then SOF0, then EOI. */
-function fakeJpeg(width: number, height: number, opts: { withDht?: boolean } = {}): Buffer {
+function fakeJpeg(
+  width: number,
+  height: number,
+  opts: { withDht?: boolean } = {},
+): Buffer {
   const parts: Buffer[] = [Buffer.from([0xff, 0xd8])];
   const app0 = Buffer.alloc(4 + 12);
   app0.writeUInt16BE(0xffe0, 0);
@@ -75,13 +85,22 @@ function fakeJpeg(width: number, height: number, opts: { withDht?: boolean } = {
 
 describe("jpegSize", () => {
   it("reads the frame size out of SOF0, skipping earlier segments", () => {
-    expect(jpegSize(fakeJpeg(1920, 1080))).toEqual({ width: 1920, height: 1080 });
-    expect(jpegSize(fakeJpeg(3840, 2160))).toEqual({ width: 3840, height: 2160 });
+    expect(jpegSize(fakeJpeg(1920, 1080))).toEqual({
+      width: 1920,
+      height: 1080,
+    });
+    expect(jpegSize(fakeJpeg(3840, 2160))).toEqual({
+      width: 3840,
+      height: 2160,
+    });
   });
 
   it("does not mistake a huffman table for a frame header", () => {
     // 0xC4 sits inside the SOF marker range but is DHT — reading it as SOF yields garbage.
-    expect(jpegSize(fakeJpeg(1280, 720, { withDht: true }))).toEqual({ width: 1280, height: 720 });
+    expect(jpegSize(fakeJpeg(1280, 720, { withDht: true }))).toEqual({
+      width: 1280,
+      height: 720,
+    });
   });
 
   it("returns null rather than throwing on anything that isn't a parseable JPEG", () => {
@@ -93,7 +112,11 @@ describe("jpegSize", () => {
 
   it("terminates on a malformed segment length instead of looping", () => {
     // A zero-length segment would leave the cursor stuck without the `segment < 2` guard.
-    expect(jpegSize(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x00, 0, 0, 0, 0, 0, 0]))).toBeNull();
+    expect(
+      jpegSize(
+        Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x00, 0, 0, 0, 0, 0, 0]),
+      ),
+    ).toBeNull();
   });
 });
 

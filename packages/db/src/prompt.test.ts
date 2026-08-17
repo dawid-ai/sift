@@ -15,9 +15,18 @@ import type { SiftDatabase, NewMedia } from "./index";
 
 function media(db: SiftDatabase, url = "https://y/1"): number {
   const m: NewMedia = {
-    source_url: url, platform_id: "youtube", external_id: "abc", title: "Vid",
-    uploader: "Chan", uploader_url: null, duration_s: 100, thumbnail_path: null,
-    view_count: null, like_count: null, published_at: null, metadata_json: null,
+    source_url: url,
+    platform_id: "youtube",
+    external_id: "abc",
+    title: "Vid",
+    uploader: "Chan",
+    uploader_url: null,
+    duration_s: 100,
+    thumbnail_path: null,
+    view_count: null,
+    like_count: null,
+    published_at: null,
+    metadata_json: null,
     download_status: "none",
   };
   return insertMedia(db, m).id;
@@ -25,7 +34,10 @@ function media(db: SiftDatabase, url = "https://y/1"): number {
 
 describe("prompt queries", () => {
   let db: SiftDatabase;
-  beforeEach(async () => { db = await openTestDatabase(); runMigrations(db); });
+  beforeEach(async () => {
+    db = await openTestDatabase();
+    runMigrations(db);
+  });
 
   it("returns the 3 seeded built-ins in seed order", () => {
     // listPrompts also returns the (non-builtin) creator prompt pack seeded by migration
@@ -33,7 +45,11 @@ describe("prompt queries", () => {
     // total count of every row.
     const prompts = listPrompts(db);
     const builtins = prompts.filter((p) => p.is_builtin === 1);
-    expect(builtins.map((p) => p.name)).toEqual(["Key points", "Detailed summary", "TL;DR"]);
+    expect(builtins.map((p) => p.name)).toEqual([
+      "Key points",
+      "Detailed summary",
+      "TL;DR",
+    ]);
     expect(prompts.slice(0, 3)).toEqual(builtins);
   });
 
@@ -59,7 +75,10 @@ describe("prompt queries", () => {
 
   it("updatePrompt changes name/body of a user prompt and returns it", () => {
     const created = createPrompt(db, { name: "Old name", body: "Old body" });
-    const updated = updatePrompt(db, created.id, { name: "New name", body: "New body" });
+    const updated = updatePrompt(db, created.id, {
+      name: "New name",
+      body: "New body",
+    });
     expect(updated.id).toBe(created.id);
     expect(updated.name).toBe("New name");
     expect(updated.body).toBe("New body");
@@ -68,7 +87,9 @@ describe("prompt queries", () => {
 
   it("updatePrompt on a built-in throws", () => {
     const builtin = listPrompts(db)[0]!;
-    expect(() => updatePrompt(db, builtin.id, { name: "x", body: "y" })).toThrow();
+    expect(() =>
+      updatePrompt(db, builtin.id, { name: "x", body: "y" }),
+    ).toThrow();
   });
 
   it("updatePrompt on a missing id throws", () => {
@@ -95,10 +116,15 @@ describe("prompt queries", () => {
     const created = createPrompt(db, { name: "In use", body: "body" });
     const mid = media(db);
     insertSummary(db, {
-      media_id: mid, prompt_id: created.id, provider_id: "anthropic", model: "claude-sonnet",
+      media_id: mid,
+      prompt_id: created.id,
+      provider_id: "anthropic",
+      model: "claude-sonnet",
       text: "summary text",
     });
-    expect(() => deletePrompt(db, created.id)).toThrow(/used by saved summaries/);
+    expect(() => deletePrompt(db, created.id)).toThrow(
+      /used by saved summaries/,
+    );
     expect(getPromptById(db, created.id)).toBeDefined();
   });
 });
@@ -107,7 +133,10 @@ describe("upsertPromptByName", () => {
   it("creates a prompt when the name is new, reporting created: true", async () => {
     const db = await openTestDatabase();
     runMigrations(db);
-    const { row, created } = upsertPromptByName(db, { name: "Fresh pack entry", body: "Do the thing." });
+    const { row, created } = upsertPromptByName(db, {
+      name: "Fresh pack entry",
+      body: "Do the thing.",
+    });
     expect(created).toBe(true);
     expect(row.name).toBe("Fresh pack entry");
     expect(row.is_builtin).toBe(0);
@@ -123,7 +152,9 @@ describe("upsertPromptByName", () => {
     expect(second.created).toBe(false);
     expect(second.row.id).toBe(first.row.id);
     expect(second.row.body).toBe("v2");
-    expect(listPrompts(db).filter((p) => p.name === "Pack entry")).toHaveLength(1);
+    expect(listPrompts(db).filter((p) => p.name === "Pack entry")).toHaveLength(
+      1,
+    );
   });
 
   it("updates a prompt that saved summaries reference (delete would throw here)", async () => {
@@ -132,8 +163,11 @@ describe("upsertPromptByName", () => {
     const { row: p } = upsertPromptByName(db, { name: "Used", body: "v1" });
     const mediaId = media(db);
     insertSummary(db, {
-      media_id: mediaId, prompt_id: p.id, provider_id: "anthropic",
-      model: "m", text: "a summary",
+      media_id: mediaId,
+      prompt_id: p.id,
+      provider_id: "anthropic",
+      model: "m",
+      text: "a summary",
     });
     const updated = upsertPromptByName(db, { name: "Used", body: "v2" });
     expect(updated.created).toBe(false);
@@ -143,7 +177,9 @@ describe("upsertPromptByName", () => {
   it("refuses to overwrite a built-in prompt", async () => {
     const db = await openTestDatabase();
     runMigrations(db);
-    expect(() => upsertPromptByName(db, { name: "TL;DR", body: "hijacked" })).toThrow(/built-in/i);
+    expect(() =>
+      upsertPromptByName(db, { name: "TL;DR", body: "hijacked" }),
+    ).toThrow(/built-in/i);
   });
 
   // Mirrors what `prompts:import` does with the result of each call: fold `created` across a
@@ -155,7 +191,10 @@ describe("upsertPromptByName", () => {
     const db = await openTestDatabase();
     runMigrations(db);
     // Pre-seed one prompt as if it survived from an earlier import/edit.
-    upsertPromptByName(db, { name: "YouTube chapters", body: "user-edited body" });
+    upsertPromptByName(db, {
+      name: "YouTube chapters",
+      body: "user-edited body",
+    });
 
     const pack = [
       { name: "YouTube chapters", body: "official pack body" }, // collides -> replaced
@@ -171,8 +210,11 @@ describe("upsertPromptByName", () => {
     }
     expect(created).toBe(2);
     expect(replaced).toBe(1);
-    expect(getPromptById(db, listPrompts(db).find((p) => p.name === "YouTube chapters")!.id)?.body).toBe(
-      "official pack body",
-    );
+    expect(
+      getPromptById(
+        db,
+        listPrompts(db).find((p) => p.name === "YouTube chapters")!.id,
+      )?.body,
+    ).toBe("official pack body");
   });
 });

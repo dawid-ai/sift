@@ -3,8 +3,16 @@ import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
-import type { Platform, WhisperBinarySource, WhisperModelManifest } from "@sift/binaries";
-import { downloadAndVerify, resolveWhisperBinary, WHISPER_MODEL } from "@sift/binaries";
+import type {
+  Platform,
+  WhisperBinarySource,
+  WhisperModelManifest,
+} from "@sift/binaries";
+import {
+  downloadAndVerify,
+  resolveWhisperBinary,
+  WHISPER_MODEL,
+} from "@sift/binaries";
 import type { SiftDatabase } from "@sift/db";
 import { getAsset, upsertAsset } from "@sift/db";
 import { resolveAssetPath } from "../asset-path";
@@ -43,13 +51,19 @@ export interface WhisperSetupOpts {
 
 // known Homebrew locations only (covers Apple-silicon + Intel brew prefixes);
 // a full PATH scan is upgrade path if a user's brew lives elsewhere.
-const BREW_CLI_PATHS = ["/opt/homebrew/bin/whisper-cli", "/usr/local/bin/whisper-cli"];
+const BREW_CLI_PATHS = [
+  "/opt/homebrew/bin/whisper-cli",
+  "/usr/local/bin/whisper-cli",
+];
 
 function defaultFindHomebrewCli(): string | null {
   return BREW_CLI_PATHS.find((p) => existsSync(p)) ?? null;
 }
 
-async function defaultExtract(archivePath: string, destDir: string): Promise<void> {
+async function defaultExtract(
+  archivePath: string,
+  destDir: string,
+): Promise<void> {
   mkdirSync(destDir, { recursive: true });
   // system tar handles zip (libarchive/bsdtar on Win/mac) + tar.gz/tar.xz.
   await execFileAsync("tar", ["-xf", archivePath, "-C", destDir]);
@@ -94,7 +108,9 @@ export class WhisperSetupService {
     };
   }
 
-  async install(onProgress?: (p: WhisperProgress) => void): Promise<WhisperStatus> {
+  async install(
+    onProgress?: (p: WhisperProgress) => void,
+  ): Promise<WhisperStatus> {
     const { db, whisperDir, modelsDir, platform, fetchImpl } = this.opts;
     const resolve = this.opts.resolveBinary ?? resolveWhisperBinary;
     const source = resolve(platform);
@@ -131,7 +147,9 @@ export class WhisperSetupService {
       await rm(archivePath, { force: true });
       const cli = findFileRecursive(whisperDir, source.binaryName);
       if (!cli) {
-        throw new Error(`Could not find ${source.binaryName} in the extracted whisper archive`);
+        throw new Error(
+          `Could not find ${source.binaryName} in the extracted whisper archive`,
+        );
       }
       upsertAsset(db, {
         kind: "whisper",

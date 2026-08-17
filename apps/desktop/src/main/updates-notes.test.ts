@@ -9,7 +9,9 @@ describe("stripHtml", () => {
     expect(stripHtml("<ul><li>one</li><li>two</li></ul>")).toBe("• one\n• two");
   });
   it("decodes the common HTML entities", () => {
-    expect(stripHtml("a &amp; b &lt;c&gt; &quot;d&quot; &#39;e&#39;")).toBe('a & b <c> "d" \'e\'');
+    expect(stripHtml("a &amp; b &lt;c&gt; &quot;d&quot; &#39;e&#39;")).toBe(
+      "a & b <c> \"d\" 'e'",
+    );
   });
   it("collapses excess blank lines", () => {
     expect(stripHtml("<p>a</p><p></p><p></p><p>b</p>")).toBe("a\n\nb");

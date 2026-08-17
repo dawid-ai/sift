@@ -14,9 +14,13 @@ describe("extractLinks", () => {
     ]);
   });
   it("dedupes and preserves first-seen order", () => {
-    expect(extractLinks("https://a.com then https://a.com again")).toEqual(["https://a.com"]);
+    expect(extractLinks("https://a.com then https://a.com again")).toEqual([
+      "https://a.com",
+    ]);
   });
   it("trims trailing sentence punctuation", () => {
-    expect(extractLinks("visit https://a.com/path.")).toEqual(["https://a.com/path"]);
+    expect(extractLinks("visit https://a.com/path.")).toEqual([
+      "https://a.com/path",
+    ]);
   });
 });

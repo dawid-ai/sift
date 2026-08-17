@@ -1,6 +1,11 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { dialog, ipcMain, type BrowserWindow, type OpenDialogOptions } from "electron";
+import {
+  dialog,
+  ipcMain,
+  type BrowserWindow,
+  type OpenDialogOptions,
+} from "electron";
 import { LOCAL_FORMAT_ID, MEDIA_EXTENSIONS } from "@sift/core";
 import {
   listDownloadsByMediaId,
@@ -65,12 +70,19 @@ async function attachPoster(
  * Only fills a gap; a height the renderer already reported is left alone. Never throws
  * for the same reason the poster grab doesn't — a label is not worth failing an import.
  */
-function backfillHeightFromPoster(db: SiftDatabase, mediaId: number, posterPath: string): void {
-  const row = listDownloadsByMediaId(db, mediaId).find((d) => d.format_id === LOCAL_FORMAT_ID);
+function backfillHeightFromPoster(
+  db: SiftDatabase,
+  mediaId: number,
+  posterPath: string,
+): void {
+  const row = listDownloadsByMediaId(db, mediaId).find(
+    (d) => d.format_id === LOCAL_FORMAT_ID,
+  );
   if (!row || row.height) return;
   try {
     const size = jpegSize(readFileSync(posterPath));
-    if (size?.height) setDownloadFormat(db, row.id, `${size.height}p`, size.height);
+    if (size?.height)
+      setDownloadFormat(db, row.id, `${size.height}p`, size.height);
   } catch {
     /* unreadable poster — keep the container label */
   }
@@ -80,12 +92,20 @@ function backfillHeightFromPoster(db: SiftDatabase, mediaId: number, posterPath:
  * Registers `import:local` / `import:pick`. Errors are intentionally left to propagate:
  * `ipcMain.handle` turns a thrown/rejected handler into a rejected renderer-side invoke.
  */
-export function registerImportIpc(service: DownloadService, deps: ImportIpcDeps): void {
+export function registerImportIpc(
+  service: DownloadService,
+  deps: ImportIpcDeps,
+): void {
   ipcMain.handle(
     IPC.importLocal,
     async (
       _event,
-      input: { path: string; durationSec?: number | null; height?: number | null; tags?: string[] },
+      input: {
+        path: string;
+        durationSec?: number | null;
+        height?: number | null;
+        tags?: string[];
+      },
     ) => attachPoster(deps, input.path, await service.importLocal(input)),
   );
 

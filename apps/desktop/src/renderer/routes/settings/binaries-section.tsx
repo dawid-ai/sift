@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Download, Film, Terminal } from "lucide-react";
 import type { ComponentType } from "react";
-import type { BinaryKind, BinaryProgress, BinaryStatus } from "@sift/ipc-contract";
+import type {
+  BinaryKind,
+  BinaryProgress,
+  BinaryStatus,
+} from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -55,9 +59,15 @@ export function BinariesSection() {
     ffmpeg: emptyStatus("ffmpeg"),
     deno: emptyStatus("deno"),
   });
-  const [progress, setProgress] = useState<Partial<Record<BinaryKind, BinaryProgress>>>({});
-  const [busy, setBusy] = useState<Partial<Record<BinaryKind, "checking" | "installing">>>({});
-  const [errors, setErrors] = useState<Partial<Record<BinaryKind, string | null>>>({});
+  const [progress, setProgress] = useState<
+    Partial<Record<BinaryKind, BinaryProgress>>
+  >({});
+  const [busy, setBusy] = useState<
+    Partial<Record<BinaryKind, "checking" | "installing">>
+  >({});
+  const [errors, setErrors] = useState<
+    Partial<Record<BinaryKind, string | null>>
+  >({});
   const [policy, setPolicy] = useState<"auto" | "notify">("auto");
   useEffect(() => {
     let cancelled = false;
@@ -102,7 +112,10 @@ export function BinariesSection() {
       const status = await window.sift.binaries.check(kind);
       setStatuses((prev) => ({ ...prev, [kind]: status }));
     } catch (e) {
-      setErrors((prev) => ({ ...prev, [kind]: e instanceof Error ? e.message : String(e) }));
+      setErrors((prev) => ({
+        ...prev,
+        [kind]: e instanceof Error ? e.message : String(e),
+      }));
     } finally {
       setBusy((prev) => ({ ...prev, [kind]: undefined }));
     }
@@ -115,14 +128,19 @@ export function BinariesSection() {
       const status = await window.sift.binaries.install(kind);
       setStatuses((prev) => ({ ...prev, [kind]: status }));
     } catch (e) {
-      setErrors((prev) => ({ ...prev, [kind]: e instanceof Error ? e.message : String(e) }));
+      setErrors((prev) => ({
+        ...prev,
+        [kind]: e instanceof Error ? e.message : String(e),
+      }));
     } finally {
       setBusy((prev) => ({ ...prev, [kind]: undefined }));
       setProgress((prev) => ({ ...prev, [kind]: undefined }));
     }
   }
 
-  const installedCount = BINARY_KINDS.filter((kind) => statuses[kind].installed).length;
+  const installedCount = BINARY_KINDS.filter(
+    (kind) => statuses[kind].installed,
+  ).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -164,7 +182,12 @@ export function BinariesSection() {
           const stateTestId = version ? undefined : `binary-${kind}-version`;
           const percent =
             kindProgress && kindProgress.total
-              ? Math.min(100, Math.round((kindProgress.received / kindProgress.total) * 100))
+              ? Math.min(
+                  100,
+                  Math.round(
+                    (kindProgress.received / kindProgress.total) * 100,
+                  ),
+                )
               : null;
 
           return (
@@ -242,7 +265,9 @@ export function BinariesSection() {
 
               {errors[kind] && (
                 <div className="mt-3">
-                  <SettingsError data-testid={`binary-${kind}-error`}>{errors[kind]}</SettingsError>
+                  <SettingsError data-testid={`binary-${kind}-error`}>
+                    {errors[kind]}
+                  </SettingsError>
                 </div>
               )}
 
@@ -264,7 +289,11 @@ export function BinariesSection() {
                       <motion.div
                         className="h-full w-1/3 rounded-full bg-gradient-to-r from-primary to-primary-lit"
                         animate={{ x: ["-100%", "300%"] }}
-                        transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1.2,
+                          ease: "linear",
+                        }}
                       />
                     )}
                   </motion.div>

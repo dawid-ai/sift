@@ -13,9 +13,14 @@ export interface SubscriptionRow {
 
 export type NewSubscription = Omit<SubscriptionRow, "id">;
 
-export function upsertSubscription(db: SiftDatabase, s: NewSubscription): SubscriptionRow {
+export function upsertSubscription(
+  db: SiftDatabase,
+  s: NewSubscription,
+): SubscriptionRow {
   const existing = db
-    .prepare<SubscriptionRow>("SELECT * FROM subscription WHERE channel_id = @channel_id")
+    .prepare<SubscriptionRow>(
+      "SELECT * FROM subscription WHERE channel_id = @channel_id",
+    )
     .get({ channel_id: s.channel_id });
   if (!existing) {
     const r = db
@@ -32,17 +37,24 @@ export function upsertSubscription(db: SiftDatabase, s: NewSubscription): Subscr
     `UPDATE subscription SET url=@url, handle=@handle, title=@title, avatar_url=@avatar_url,
        follower_count=@follower_count, synced_at=@synced_at WHERE id=@id`,
   ).run({ ...s, id: existing.id });
-  return db.prepare<SubscriptionRow>("SELECT * FROM subscription WHERE id = @id").get({ id: existing.id })!;
+  return db
+    .prepare<SubscriptionRow>("SELECT * FROM subscription WHERE id = @id")
+    .get({ id: existing.id })!;
 }
 
 export function listSubscriptions(db: SiftDatabase): SubscriptionRow[] {
   return db
-    .prepare<SubscriptionRow>("SELECT * FROM subscription ORDER BY title COLLATE NOCASE, id")
+    .prepare<SubscriptionRow>(
+      "SELECT * FROM subscription ORDER BY title COLLATE NOCASE, id",
+    )
     .all();
 }
 
 /** Upserts every row AND deletes rows whose channel_id is absent from `rows` (feed = source of truth). */
-export function replaceSubscriptions(db: SiftDatabase, rows: NewSubscription[]): void {
+export function replaceSubscriptions(
+  db: SiftDatabase,
+  rows: NewSubscription[],
+): void {
   // No transaction wrapper: SiftDatabase exposes only exec/prepare (no `.transaction`),
   // matching every other db module (channel.ts, download.ts) which write inline.
   for (const r of rows) upsertSubscription(db, r);
@@ -52,9 +64,13 @@ export function replaceSubscriptions(db: SiftDatabase, rows: NewSubscription[]):
   } else {
     // Named params @k0,@k1,… (this codebase's Statement.run takes a named-param object, not positional ?).
     const binds: Record<string, string> = {};
-    keep.forEach((id, i) => { binds["k" + i] = id; });
+    keep.forEach((id, i) => {
+      binds["k" + i] = id;
+    });
     const clause = keep.map((_, i) => "@k" + i).join(",");
-    db.prepare(`DELETE FROM subscription WHERE channel_id NOT IN (${clause})`).run(binds);
+    db.prepare(
+      `DELETE FROM subscription WHERE channel_id NOT IN (${clause})`,
+    ).run(binds);
   }
 }
 

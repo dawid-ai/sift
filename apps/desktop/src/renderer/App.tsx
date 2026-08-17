@@ -70,7 +70,9 @@ function HomeView({
   const [summary, setSummary] = useState<SummaryRecord | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [providers, setProviders] = useState<AiProviderInfo[]>(KNOWN_PROVIDERS);
-  const [defaultProviderId, setDefaultProviderId] = useState<string | null>(null);
+  const [defaultProviderId, setDefaultProviderId] = useState<string | null>(
+    null,
+  );
   const [prompts, setPrompts] = useState<PromptInfo[]>([]);
   const requestIdRef = useRef(0);
   const transcribeRequestIdRef = useRef(0);
@@ -93,7 +95,9 @@ function HomeView({
         window.sift.aiProviders.getCustomConfig(),
         Promise.all(
           KNOWN_PROVIDERS.map((p) =>
-            p.needsKey ? window.sift.aiProviders.keyStatus(p.id) : Promise.resolve(true),
+            p.needsKey
+              ? window.sift.aiProviders.keyStatus(p.id)
+              : Promise.resolve(true),
           ),
         ),
       ]);
@@ -101,7 +105,10 @@ function HomeView({
       setProviders(
         KNOWN_PROVIDERS.map((p) =>
           p.id === "custom" && customConfig
-            ? { ...p, models: [{ id: customConfig.model, label: customConfig.model }] }
+            ? {
+                ...p,
+                models: [{ id: customConfig.model, label: customConfig.model }],
+              }
             : p,
         ),
       );
@@ -142,9 +149,11 @@ function HomeView({
   // Coarse stage progress ("extracting-audio", "transcribing", ...) for the in-flight
   // transcript job; only meaningful while `transcribing` is true (cleared on settle).
   useEffect(() => {
-    const unsubscribe = window.sift.transcript.onProgress((p: TranscriptProgress) => {
-      setTranscriptStage(p.stage);
-    });
+    const unsubscribe = window.sift.transcript.onProgress(
+      (p: TranscriptProgress) => {
+        setTranscriptStage(p.stage);
+      },
+    );
     return unsubscribe;
   }, []);
 
@@ -277,7 +286,9 @@ function HomeView({
         try {
           const lib = await window.sift.library.list();
           if (requestIdRef.current !== requestId) return;
-          setExistingItem(lib.find((it) => it.media.sourceUrl === result.sourceUrl) ?? null);
+          setExistingItem(
+            lib.find((it) => it.media.sourceUrl === result.sourceUrl) ?? null,
+          );
         } catch {
           // Lookup is a non-blocking convenience — a failure here must not affect the preview.
         }
@@ -352,13 +363,17 @@ function HomeView({
                 </h1>
                 {/* The version marker is chrome, so it takes the shared `neutral` pill rather
                     than a fifth hand-rolled one. */}
-                <Badge data-testid="app-version" variant="neutral" className="tabular-nums">
+                <Badge
+                  data-testid="app-version"
+                  variant="neutral"
+                  className="tabular-nums"
+                >
                   v{version}
                 </Badge>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Download, transcribe and summarize media from any supported site. Files and keys
-                stay on this machine.
+                Download, transcribe and summarize media from any supported
+                site. Files and keys stay on this machine.
               </p>
             </>
           )}
@@ -378,7 +393,10 @@ function HomeView({
         <section className={cn(metadata ? "panel" : "panel-lit", "px-6 py-5")}>
           <UrlInput onUrl={handleUrl} />
 
-          <p data-testid="home-drop-hint" className="mt-3.5 text-sm text-muted-foreground">
+          <p
+            data-testid="home-drop-hint"
+            className="mt-3.5 text-sm text-muted-foreground"
+          >
             …or drop an audio/video file anywhere to transcribe it —{" "}
             <button
               type="button"
@@ -418,10 +436,7 @@ function HomeView({
         )}
 
         {error && (
-          <p
-            data-testid="home-error"
-            className={ALERT_DANGER}
-          >
+          <p data-testid="home-error" className={ALERT_DANGER}>
             {error}
           </p>
         )}
@@ -435,7 +450,9 @@ function HomeView({
             progress={progress}
             onTranscribe={() => void handleTranscribe()}
             transcribing={transcribing}
-            transcriptStageLabel={transcribing ? transcriptStageLabel(transcriptStage) : null}
+            transcriptStageLabel={
+              transcribing ? transcriptStageLabel(transcriptStage) : null
+            }
             onSummarize={(providerId, model, promptId) =>
               void handleSummarize(providerId, model, promptId)
             }
@@ -473,7 +490,10 @@ function HomeView({
               variant="neutral"
               className="h-7 w-fit px-3 text-[13px] text-foreground/90"
             >
-              <ChipDot color="hsl(var(--success))" halo="hsl(var(--success) / 0.22)" />
+              <ChipDot
+                color="hsl(var(--success))"
+                halo="hsl(var(--success) / 0.22)"
+              />
               Saved to Library
             </Badge>
             {/* What the row lost and what it gained, because the trade is the point.
@@ -508,10 +528,7 @@ function HomeView({
         )}
 
         {transcriptError && (
-          <p
-            data-testid="transcript-error"
-            className={ALERT_DANGER}
-          >
+          <p data-testid="transcript-error" className={ALERT_DANGER}>
             {transcriptError}
           </p>
         )}
@@ -519,10 +536,7 @@ function HomeView({
         {transcript && <TranscriptPanel transcript={transcript} />}
 
         {summaryError && (
-          <p
-            data-testid="summary-error"
-            className={ALERT_DANGER}
-          >
+          <p data-testid="summary-error" className={ALERT_DANGER}>
             {summaryError}
           </p>
         )}
@@ -531,7 +545,8 @@ function HomeView({
           text={summaryText}
           summary={summary}
           onExport={() => {
-            if (!summary) return Promise.reject(new Error("No summary to export"));
+            if (!summary)
+              return Promise.reject(new Error("No summary to export"));
             return window.sift.summarize.export(summary.id);
           }}
         />
@@ -555,9 +570,12 @@ export function App() {
   }, []);
   // A finished import lands the user on the library list, which is also how the list
   // refreshes — same path the Library nav click takes.
-  const fileImport = useFileImport(useCallback(() => handleNavigate("library"), [handleNavigate]));
+  const fileImport = useFileImport(
+    useCallback(() => handleNavigate("library"), [handleNavigate]),
+  );
   const { state: updateState, dismiss: dismissUpdate } = useUpdates();
-  const { state: binaryUpdateState, dismiss: dismissBinaryUpdate } = useBinaryUpdates();
+  const { state: binaryUpdateState, dismiss: dismissBinaryUpdate } =
+    useBinaryUpdates();
 
   // Jumps from a channel's "Downloaded from this channel" list to that video's in-app detail.
   const handleOpenMedia = useCallback((mediaId: number) => {
@@ -606,10 +624,16 @@ export function App() {
       <div
         className={cn(
           "relative flex min-w-0 flex-1 flex-col overflow-x-auto",
-          view === "home" ? "overflow-y-scroll [scrollbar-gutter:stable]" : "overflow-y-auto",
+          view === "home"
+            ? "overflow-y-scroll [scrollbar-gutter:stable]"
+            : "overflow-y-auto",
         )}
       >
-        <DropOverlay dragging={fileImport.dragging} busy={fileImport.busy} error={fileImport.error} />
+        <DropOverlay
+          dragging={fileImport.dragging}
+          busy={fileImport.busy}
+          error={fileImport.error}
+        />
         {openChannelError && (
           <p
             data-testid="open-channel-error"
@@ -644,7 +668,10 @@ export function App() {
         {view === "settings" && <SettingsPage updateState={updateState} />}
       </div>
       <UpdateToast state={updateState} onDismiss={dismissUpdate} />
-      <BinaryUpdateToast state={binaryUpdateState} onDismiss={dismissBinaryUpdate} />
+      <BinaryUpdateToast
+        state={binaryUpdateState}
+        onDismiss={dismissBinaryUpdate}
+      />
     </div>
   );
 }

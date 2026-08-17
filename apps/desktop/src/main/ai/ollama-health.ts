@@ -19,7 +19,9 @@ export async function ollamaReachable(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetchImpl(`${baseUrl}/api/tags`, { signal: controller.signal });
+    const res = await fetchImpl(`${baseUrl}/api/tags`, {
+      signal: controller.signal,
+    });
     return res.ok;
   } catch {
     return false;
@@ -31,13 +33,18 @@ export async function ollamaReachable(
 /** Attempts to launch `ollama serve` detached. "launched" means the process spawned, not that
  * the server is up — the caller confirms with a follow-up ollamaReachable. An ENOENT (not on
  * PATH / not installed) resolves to { launched:false, reason:"not-installed" }. */
-export function startOllama(spawnImpl: SpawnFn = spawn as unknown as SpawnFn): Promise<{
+export function startOllama(
+  spawnImpl: SpawnFn = spawn as unknown as SpawnFn,
+): Promise<{
   launched: boolean;
   reason?: "not-installed";
 }> {
   return new Promise((resolve) => {
     let settled = false;
-    const child = spawnImpl("ollama", ["serve"], { detached: true, stdio: "ignore" });
+    const child = spawnImpl("ollama", ["serve"], {
+      detached: true,
+      stdio: "ignore",
+    });
     child.on("error", () => {
       if (settled) return;
       settled = true;

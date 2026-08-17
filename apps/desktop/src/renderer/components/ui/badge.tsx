@@ -74,7 +74,8 @@ export const PILL_BOX = [
 export const PILL_TONES = {
   neutral: "border-transparent bg-foreground/[0.08] text-foreground/80",
   outline: "border-foreground/20 bg-transparent text-muted-foreground",
-  count: "border-transparent bg-foreground/[0.10] text-muted-foreground tabular-nums",
+  count:
+    "border-transparent bg-foreground/[0.10] text-muted-foreground tabular-nums",
   code: "border-transparent bg-foreground/[0.08] text-muted-foreground uppercase tracking-[0.08em]",
   tag: "border-transparent bg-surface-2 text-muted-foreground",
   accent: "border-primary/30 bg-primary/14 text-[hsl(18_100%_73%)]",
@@ -98,30 +99,31 @@ export type PillTone = keyof typeof PILL_TONES;
  * `default` is the historical variant name and stays forever (every call site relies on the
  * default); it is an alias onto the closed set above, not an extra colour system.
  */
-export const badgeVariants = cva(cn(PILL_BOX, "transition-colors duration-150 ease-out"), {
-  variants: {
-    variant: {
-      default: PILL_TONES.accent,
-      outline: PILL_TONES.outline,
-      neutral: PILL_TONES.neutral,
-      count: cn(PILL_TONES.count, "min-w-5 justify-center px-1.5"),
-      code: PILL_TONES.code,
-      tag: PILL_TONES.tag,
-      accent: PILL_TONES.accent,
-      ai: PILL_TONES.ai,
-      success: PILL_TONES.success,
-      warning: PILL_TONES.warning,
-      danger: PILL_TONES.danger,
-      solid: PILL_TONES.solid,
+export const badgeVariants = cva(
+  cn(PILL_BOX, "transition-colors duration-150 ease-out"),
+  {
+    variants: {
+      variant: {
+        default: PILL_TONES.accent,
+        outline: PILL_TONES.outline,
+        neutral: PILL_TONES.neutral,
+        count: cn(PILL_TONES.count, "min-w-5 justify-center px-1.5"),
+        code: PILL_TONES.code,
+        tag: PILL_TONES.tag,
+        accent: PILL_TONES.accent,
+        ai: PILL_TONES.ai,
+        success: PILL_TONES.success,
+        warning: PILL_TONES.warning,
+        danger: PILL_TONES.danger,
+        solid: PILL_TONES.solid,
+      },
     },
+    defaultVariants: { variant: "default" },
   },
-  defaultVariants: { variant: "default" },
-});
+);
 
 export interface BadgeProps
-  extends
-    HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {
   /**
    * Leading 6px dot drawn in the pill's **own** hue (`bg-current`, so it can never drift from
    * the label). Presentational only — the pill always carries its text, so nothing here
@@ -137,8 +139,17 @@ export interface BadgeProps
 
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant, dot, children, ...props }, ref) => (
-    <span ref={ref} className={cn(badgeVariants({ variant, className }))} {...props}>
-      {dot && <span aria-hidden className="h-1.5 w-1.5 flex-none rounded-full bg-current" />}
+    <span
+      ref={ref}
+      className={cn(badgeVariants({ variant, className }))}
+      {...props}
+    >
+      {dot && (
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 flex-none rounded-full bg-current"
+        />
+      )}
       {children}
     </span>
   ),

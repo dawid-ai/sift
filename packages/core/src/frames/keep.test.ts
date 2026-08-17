@@ -15,6 +15,8 @@ describe("isDataFrame", () => {
   });
 
   it("respects caller overrides", () => {
-    expect(isDataFrame({ wordCount: 3, meanConfidence: 70 }, { minWords: 3 })).toBe(true);
+    expect(
+      isDataFrame({ wordCount: 3, meanConfidence: 70 }, { minWords: 3 }),
+    ).toBe(true);
   });
 });

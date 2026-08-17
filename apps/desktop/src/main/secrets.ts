@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 
 // Note: deliberately does NOT import `electron` — `safeStorage` is injected via
@@ -73,7 +79,9 @@ export function createSecrets(deps: SecretsDeps): {
         // treated exactly like "no key configured" so app startup degrades
         // gracefully instead of crashing. The user simply re-enters the key.
         // NEVER log the ciphertext or any key material here.
-        console.warn("Stored API key could not be decrypted; clearing is recommended.");
+        console.warn(
+          "Stored API key could not be decrypted; clearing is recommended.",
+        );
         return null;
       }
     },

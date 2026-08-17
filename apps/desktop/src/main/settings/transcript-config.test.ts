@@ -8,8 +8,12 @@ function memFs(initial?: string) {
     fs: {
       existsSync: (p: string) => p in store,
       readFileSync: (p: string) => store[p]!,
-      writeFileSync: (p: string, data: Buffer) => { store[p] = data; },
-      rmSync: (p: string) => { delete store[p]; },
+      writeFileSync: (p: string, data: Buffer) => {
+        store[p] = data;
+      },
+      rmSync: (p: string) => {
+        delete store[p];
+      },
       mkdirSync: () => {},
     },
     read: () => store["/cfg.json"]?.toString("utf8"),
@@ -19,7 +23,9 @@ function memFs(initial?: string) {
 describe("transcript-config store", () => {
   it("defaults to [en] when the file is absent", () => {
     const { fs } = memFs();
-    expect(createTranscriptConfigStore({ filePath: "/cfg.json", fs }).get()).toEqual(["en"]);
+    expect(
+      createTranscriptConfigStore({ filePath: "/cfg.json", fs }).get(),
+    ).toEqual(["en"]);
   });
   it("round-trips an ordered list", () => {
     const { fs } = memFs();
@@ -35,7 +41,9 @@ describe("transcript-config store", () => {
   });
   it("corrupt JSON → [en]", () => {
     const { fs } = memFs("{not json");
-    expect(createTranscriptConfigStore({ filePath: "/cfg.json", fs }).get()).toEqual(["en"]);
+    expect(
+      createTranscriptConfigStore({ filePath: "/cfg.json", fs }).get(),
+    ).toEqual(["en"]);
   });
   it("empty/invalid set → [en]", () => {
     const { fs } = memFs();

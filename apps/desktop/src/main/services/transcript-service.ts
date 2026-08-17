@@ -101,7 +101,9 @@ export class TranscriptService {
     // A second concurrent caller shares the first job's promise — its own onProgress is
     // intentionally not wired (the first caller / the transcript:progress broadcast drive UI).
     if (pending) return pending;
-    const p = this.runGet(input, onProgress).finally(() => this.inflight.delete(key));
+    const p = this.runGet(input, onProgress).finally(() =>
+      this.inflight.delete(key),
+    );
     this.inflight.set(key, p);
     return p;
   }
@@ -132,7 +134,8 @@ export class TranscriptService {
     if (!media) media = insertMedia(db, fromMetadata(metadata));
 
     const existing = getTranscriptsByMediaId(db, media.id);
-    if (input.force !== "whisper" && existing.length > 0) return toRecord(existing[0]!, media.id);
+    if (input.force !== "whisper" && existing.length > 0)
+      return toRecord(existing[0]!, media.id);
 
     const language = pickTranscriptLanguage({
       videoLanguage: metadata.language,
@@ -146,7 +149,9 @@ export class TranscriptService {
       (d) => d.status === "done" && d.file_path,
     );
     const cookiesFile =
-      (await (this.opts.getCookiesFile ?? (async () => null))(metadata.sourceUrl)) ?? null;
+      (await (this.opts.getCookiesFile ?? (async () => null))(
+        metadata.sourceUrl,
+      )) ?? null;
     const ctx: TranscriptContext = {
       sourceUrl: metadata.sourceUrl,
       hasCaptions: metadata.hasCaptions,
@@ -161,14 +166,19 @@ export class TranscriptService {
       // resolveTranscriptProvider("prefer_whisper") would do exactly that when Whisper
       // can't handle the video, contradicting the "Re-transcribe with Whisper" button
       // and this method's own force-re-transcribes-locally contract.
-      provider = registry.list().find((p) => p.local && p.canHandle(ctx)) ?? null;
+      provider =
+        registry.list().find((p) => p.local && p.canHandle(ctx)) ?? null;
       if (!provider) {
         throw new Error(
           "Whisper can't transcribe this video. Make sure Whisper is installed (Settings → Transcription → Whisper) and the video has been downloaded.",
         );
       }
     } else {
-      provider = resolveTranscriptProvider(registry.list(), ctx, this.opts.getMethod());
+      provider = resolveTranscriptProvider(
+        registry.list(),
+        ctx,
+        this.opts.getMethod(),
+      );
       if (!provider) {
         throw new Error(
           "No captions found. Install Whisper (Settings → Transcription → Whisper) to transcribe downloaded videos locally.",
@@ -180,7 +190,10 @@ export class TranscriptService {
     try {
       result = await provider.transcribe(ctx, onProgress ?? (() => {}));
     } catch (err) {
-      if (cookiesFile && isAuthError(err instanceof Error ? err.message : String(err))) {
+      if (
+        cookiesFile &&
+        isAuthError(err instanceof Error ? err.message : String(err))
+      ) {
         this.opts.reportAuthFailure?.(metadata.sourceUrl);
       }
       throw err;
@@ -199,7 +212,10 @@ export class TranscriptService {
       const downloadsDir = this.opts.downloadsDir();
       const base = buildOutputBaseName(media.uploader, media.title);
       // provider in the name keeps captions vs whisper distinct for the same video.
-      const path = join(downloadsDir, `${sanitizeFilename(`${base}__transcript-${result.providerId}`)}.txt`);
+      const path = join(
+        downloadsDir,
+        `${sanitizeFilename(`${base}__transcript-${result.providerId}`)}.txt`,
+      );
       mkdirSync(downloadsDir, { recursive: true });
       writeFileSync(path, result.text, "utf8");
       setTranscriptFilePath(db, row.id, path);
@@ -224,14 +240,22 @@ export class TranscriptService {
     const { db } = this.opts;
     const row = getTranscriptById(db, transcriptId);
     if (!row) throw new Error("Transcript not found.");
-    const segments = row.segments_json ? (JSON.parse(row.segments_json) as TranscriptSegment[]) : [];
+    const segments = row.segments_json
+      ? (JSON.parse(row.segments_json) as TranscriptSegment[])
+      : [];
     const srt = segmentsToSrt(segments);
-    if (!srt) throw new Error("This transcript has no timestamps, so it can't be exported as subtitles.");
+    if (!srt)
+      throw new Error(
+        "This transcript has no timestamps, so it can't be exported as subtitles.",
+      );
     const media = getMediaById(db, row.media_id);
     if (!media) throw new Error("Media not found.");
     const dir = this.opts.downloadsDir();
     const base = buildOutputBaseName(media.uploader, media.title);
-    const path = join(dir, `${sanitizeFilename(`${base}__transcript-${row.provider_id}`)}.srt`);
+    const path = join(
+      dir,
+      `${sanitizeFilename(`${base}__transcript-${row.provider_id}`)}.srt`,
+    );
     mkdirSync(dir, { recursive: true });
     writeFileSync(path, srt, "utf8");
     return path;

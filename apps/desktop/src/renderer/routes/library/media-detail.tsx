@@ -92,11 +92,18 @@ export interface MediaDetailPageProps {
 
 /** Reads a single media item's downloads, transcripts, and summaries, with per-capture remove
  * (plus per-summary export and per-download reveal-in-folder). */
-export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaDetailPageProps) {
+export function MediaDetailPage({
+  id,
+  onBack,
+  onRemoved,
+  onOpenChannel,
+}: MediaDetailPageProps) {
   const [detail, setDetail] = useState<MediaDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
+  const [downloadingFormat, setDownloadingFormat] = useState<string | null>(
+    null,
+  );
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
@@ -119,7 +126,9 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   const [cropEditing, setCropEditing] = useState(false);
   const [exportingDoc, setExportingDoc] = useState(false);
   const [documentPath, setDocumentPath] = useState<string | null>(null);
-  const [exportStage, setExportStage] = useState<FrameExportProgress | null>(null);
+  const [exportStage, setExportStage] = useState<FrameExportProgress | null>(
+    null,
+  );
   // Document AI-polish selection ("" provider = No AI / raw). Separate from the summary picker.
   const [polishProviderId, setPolishProviderId] = useState("");
   const [polishModel, setPolishModel] = useState("");
@@ -143,17 +152,25 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   const pickers = useAiPickers();
 
   // Models for the chosen document-polish provider; keep the selected model valid.
-  const polishModels = pickers.providers.find((p) => p.id === polishProviderId)?.models ?? [];
+  const polishModels =
+    pickers.providers.find((p) => p.id === polishProviderId)?.models ?? [];
   useEffect(() => {
     if (!polishProviderId) {
       setPolishModel("");
       return;
     }
-    setPolishModel((prev) => (polishModels.some((m) => m.id === prev) ? prev : (polishModels[0]?.id ?? "")));
+    setPolishModel((prev) =>
+      polishModels.some((m) => m.id === prev)
+        ? prev
+        : (polishModels[0]?.id ?? ""),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [polishProviderId, pickers.providers]);
 
-  useEffect(() => window.sift.frames.onExportProgress((p) => setExportStage(p)), []);
+  useEffect(
+    () => window.sift.frames.onExportProgress((p) => setExportStage(p)),
+    [],
+  );
 
   useEffect(() => {
     const unsub = window.sift.download.onProgress((p) => {
@@ -257,7 +274,8 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     if (downloadingFormat !== null) return;
     try {
       const meta = await ensureMetadata();
-      const option = meta.formats.find((o) => o.id === d.formatId) ?? meta.formats[0];
+      const option =
+        meta.formats.find((o) => o.id === d.formatId) ?? meta.formats[0];
       if (!option) {
         setError("No downloadable formats found for this video.");
         return;
@@ -325,7 +343,12 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
 
   async function handleSummarize() {
     const { selectedProviderId, selectedModel, selectedPromptId } = pickers;
-    if (summarizing || selectedProviderId === "" || selectedModel === "" || selectedPromptId === "")
+    if (
+      summarizing ||
+      selectedProviderId === "" ||
+      selectedModel === "" ||
+      selectedPromptId === ""
+    )
       return;
     setSummarizing(true);
     setActionError(null);
@@ -376,7 +399,9 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     setCapturingFrame(true);
     setActionError(null);
     try {
-      const tsMs = Math.round((playerRef.current?.getCurrentTime() ?? 0) * 1000);
+      const tsMs = Math.round(
+        (playerRef.current?.getCurrentTime() ?? 0) * 1000,
+      );
       await window.sift.frames.capture(id, tsMs);
       setFrames(await window.sift.frames.list(id));
     } catch (e) {
@@ -387,11 +412,15 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   }
 
   async function handleToggleInclude(frameId: number, included: boolean) {
-    setFrames((fs) => fs.map((f) => (f.id === frameId ? { ...f, included } : f))); // optimistic
+    setFrames((fs) =>
+      fs.map((f) => (f.id === frameId ? { ...f, included } : f)),
+    ); // optimistic
     try {
       await window.sift.frames.setIncluded(frameId, included);
     } catch (e) {
-      setFrames((fs) => fs.map((f) => (f.id === frameId ? { ...f, included: !included } : f)));
+      setFrames((fs) =>
+        fs.map((f) => (f.id === frameId ? { ...f, included: !included } : f)),
+      );
       setActionError(e instanceof Error ? e.message : String(e));
     }
   }
@@ -420,13 +449,17 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   function handleCropDraw(c: FrameCrop) {
     setCrop(c);
     setCropEditing(false);
-    window.sift.frames.setCrop(id, c).catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
+    window.sift.frames
+      .setCrop(id, c)
+      .catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
   }
 
   function handleClearCrop() {
     setCrop(null);
     setCropEditing(false);
-    window.sift.frames.setCrop(id, null).catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
+    window.sift.frames
+      .setCrop(id, null)
+      .catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
   }
 
   function copyUrl() {
@@ -451,7 +484,10 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     setExportingDoc(true);
     setExportStage(null);
     setActionError(null);
-    const polish = polishProviderId && polishModel ? { providerId: polishProviderId, model: polishModel } : undefined;
+    const polish =
+      polishProviderId && polishModel
+        ? { providerId: polishProviderId, model: polishModel }
+        : undefined;
     try {
       setDocumentPath(await window.sift.frames.export(id, format, polish));
       await reload(); // surface the new document in the Files tab
@@ -522,7 +558,12 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
           >
             {error}
           </p>
-          <Button variant="outline" data-testid="media-detail-back" onClick={onBack} className="mt-4">
+          <Button
+            variant="outline"
+            data-testid="media-detail-back"
+            onClick={onBack}
+            className="mt-4"
+          >
             Back to library
           </Button>
         </div>
@@ -538,7 +579,10 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
             aria-hidden
             className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary motion-reduce:animate-none"
           />
-          <p data-testid="media-detail-loading" className="text-sm text-muted-foreground">
+          <p
+            data-testid="media-detail-loading"
+            className="text-sm text-muted-foreground"
+          >
             Loading…
           </p>
         </div>
@@ -553,7 +597,8 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
   // Channel tracking is keyed on a YouTube channel_id (yt-dlp flat-playlist listing) — it can't
   // list an X/Twitter/etc. profile. Only offer "Open channel" for YouTube media; others use Live URL.
   const isYouTube = /(?:youtube\.com|youtu\.be)/i.test(media.sourceUrl);
-  const playable = downloads.find((d) => d.status === "done" && d.filePath) ?? null;
+  const playable =
+    downloads.find((d) => d.status === "done" && d.filePath) ?? null;
   const hasPlayer = playable !== null;
   // With a local player, clicking a transcript line seeks it; otherwise fall back to
   // opening the source in the browser at that timestamp (the pre-player behavior).
@@ -562,7 +607,9 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
     else
       window.sift.library
         .openExternal(appendTimeParam(media.sourceUrl, sec))
-        .catch((e) => setActionError(e instanceof Error ? e.message : String(e)));
+        .catch((e) =>
+          setActionError(e instanceof Error ? e.message : String(e)),
+        );
   };
 
   return (
@@ -583,7 +630,12 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
               surface encoding an affordance as a typed character, three buttons away from the
               "Live URL" that had just stopped doing exactly that. Same 14px glyph, same gap, and
               the accessible name is still "Library". */}
-          <Button variant="outline" size="sm" data-testid="media-detail-back" onClick={onBack}>
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="media-detail-back"
+            onClick={onBack}
+          >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Library
           </Button>
@@ -595,14 +647,24 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
               source platform, `Tv` is the Channels view's own nav glyph and this button stays
               in-app (handleOpenChannel resolves the channel and switches views). */}
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" data-testid="media-detail-open-source"
-              onClick={() => void window.sift.library.openExternal(media.sourceUrl)}>
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="media-detail-open-source"
+              onClick={() =>
+                void window.sift.library.openExternal(media.sourceUrl)
+              }
+            >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               Live URL
             </Button>
             {onOpenChannel && isYouTube && (
-              <Button variant="outline" size="sm" data-testid="media-detail-open-channel"
-                onClick={() => onOpenChannel(media.id)}>
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="media-detail-open-channel"
+                onClick={() => onOpenChannel(media.id)}
+              >
                 <Tv className="h-3.5 w-3.5" aria-hidden />
                 Open channel
               </Button>
@@ -616,12 +678,28 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
             <span aria-hidden className="mx-2 h-6 w-px flex-none bg-white/10" />
             {confirmingRemove ? (
               <>
-                <Button size="sm" variant="danger" data-testid="media-detail-remove-confirm" onClick={() => void handleRemove()}>Confirm remove</Button>
-                <Button size="sm" variant="ghost" onClick={() => setConfirmingRemove(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  data-testid="media-detail-remove-confirm"
+                  onClick={() => void handleRemove()}
+                >
+                  Confirm remove
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmingRemove(false)}
+                >
+                  Cancel
+                </Button>
               </>
             ) : (
               <Button
-                variant="ghost" size="icon" aria-label="Remove" title="Remove from library"
+                variant="ghost"
+                size="icon"
+                aria-label="Remove"
+                title="Remove from library"
                 data-testid="media-detail-remove"
                 className="rounded-lg border border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:border-danger/30 hover:bg-danger/10 hover:text-danger"
                 onClick={() => setConfirmingRemove(true)}
@@ -668,18 +746,34 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
             {/* The one pill in the row: clicking the URL copies it, and so does the inset
                 button — one action, two targets, one visible seam. */}
             <span className="inline-flex min-w-0 max-w-full items-stretch rounded-full border border-white/[0.08] bg-white/[0.04]">
-              <button type="button" data-testid="media-detail-source"
+              <button
+                type="button"
+                data-testid="media-detail-source"
                 onClick={copyUrl}
                 className="flex min-w-0 items-center gap-1.5 rounded-l-full py-1 pl-2.5 pr-2 text-[13px] leading-5 text-fg-secondary transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
-                title="Click to copy">
-                <Link2 aria-hidden className="h-3.5 w-3.5 flex-none text-primary" />
-                <span className="min-w-0 max-w-[24rem] truncate">{sourceDisplay}</span>
+                title="Click to copy"
+              >
+                <Link2
+                  aria-hidden
+                  className="h-3.5 w-3.5 flex-none text-primary"
+                />
+                <span className="min-w-0 max-w-[24rem] truncate">
+                  {sourceDisplay}
+                </span>
               </button>
               <span className="relative flex-none border-l border-white/[0.08]">
-                <button type="button" data-testid="media-detail-source-copy" aria-label="Copy URL"
+                <button
+                  type="button"
+                  data-testid="media-detail-source-copy"
+                  aria-label="Copy URL"
                   onClick={copyUrl}
-                  className="grid h-full w-8 place-items-center rounded-r-full text-fg-subtle transition-colors hover:bg-foreground/[0.06] hover:text-foreground">
-                  {urlCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  className="grid h-full w-8 place-items-center rounded-r-full text-fg-subtle transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+                >
+                  {urlCopied ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
                 </button>
                 {urlCopied && (
                   <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 -translate-x-1/2 rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-foreground shadow-pop">
@@ -729,14 +823,22 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
               shared component (its popover's "Existing tags" head sits deeper and is untouched).
               flex-none + mt-auto: it is present and the same height on every tab, pinned to the
               column's baseline so both halves of the page terminate on one line. */}
-          <div className={`${CARD} mt-auto flex-none p-5 [&>[data-testid=tag-editor]>div>p]:text-fg-subtle`}>
-            <TagEditor mediaId={media.id} tags={detail.tags} onChange={reload} />
+          <div
+            className={`${CARD} mt-auto flex-none p-5 [&>[data-testid=tag-editor]>div>p]:text-fg-subtle`}
+          >
+            <TagEditor
+              mediaId={media.id}
+              tags={detail.tags}
+              onChange={reload}
+            />
           </div>
         </div>
 
         {/* One panel, not a floating tab strip above a card: the tabs are the panel's header, so
             the right column's first surface starts on exactly the same y as the player card. */}
-        <section className={`${PANEL} relative flex min-w-0 flex-col overflow-hidden lg:min-h-0`}>
+        <section
+          className={`${PANEL} relative flex min-w-0 flex-col overflow-hidden lg:min-h-0`}
+        >
           <div className="flex flex-none items-center gap-5 border-b border-white/[0.07] px-5">
             {TABS.map((key) => {
               // Files: one term per section, and each artifact belongs to exactly one section —
@@ -750,7 +852,10 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                     ? summaries.length
                     : key === "slides"
                       ? frames.length
-                      : documents.length + transcripts.length + summaries.length + downloads.length;
+                      : documents.length +
+                        transcripts.length +
+                        summaries.length +
+                        downloads.length;
               const active = tab === key;
               return (
                 <button
@@ -759,14 +864,19 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                   data-testid={`media-detail-tab-${key}`}
                   onClick={() => setTab(key)}
                   className={`relative flex h-12 items-center gap-1.5 text-[13px] font-medium tracking-tight transition-colors ${
-                    active ? "text-foreground" : "text-muted-foreground hover:text-foreground/85"
+                    active
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground/85"
                   }`}
                 >
                   {TAB_META[key].label}
                   {/* The shared pill primitive's `count` tone — the same box every section head
                       in the Files tab renders, one step brighter on the selected tab. */}
                   {count > 0 && (
-                    <Badge variant="count" className={active ? COUNT_ACTIVE : undefined}>
+                    <Badge
+                      variant="count"
+                      className={active ? COUNT_ACTIVE : undefined}
+                    >
                       {count}
                     </Badge>
                   )}
@@ -774,7 +884,11 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                     <motion.span
                       layoutId="media-detail-tab-underline"
                       className="absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-gradient-to-r from-primary to-primary-lit"
-                      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 32,
+                      }}
                     />
                   )}
                 </button>
@@ -801,8 +915,13 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 while being aria-hidden decoration that only restates the tab you just clicked —
                 an ambiguous affordance in the panel's most prominent row. */}
             <div className="mb-4 flex flex-none items-center justify-between gap-3">
-              <h3 className="text-sm font-medium text-foreground">{activeTab.title}</h3>
-              <activeTab.Icon aria-hidden className="h-4 w-4 flex-none text-fg-subtle" />
+              <h3 className="text-sm font-medium text-foreground">
+                {activeTab.title}
+              </h3>
+              <activeTab.Icon
+                aria-hidden
+                className="h-4 w-4 flex-none text-fg-subtle"
+              />
             </div>
             {tab === "transcript" && (
               <TranscriptPanel
@@ -812,7 +931,9 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 transcribeMode={transcribeMode}
                 transcriptStage={transcriptStage}
                 transcriptRatio={transcriptRatio}
-                canRetranscribe={downloads.some((d) => d.status === "done" && d.filePath)}
+                canRetranscribe={downloads.some(
+                  (d) => d.status === "done" && d.filePath,
+                )}
                 onSeek={seek}
                 onGetTranscript={() => void handleGetTranscript()}
                 onRetranscribe={() => void handleRetranscribe()}
@@ -859,12 +980,16 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                 onExtract={() => void handleExtractFrames()}
                 onCapture={() => void handleCaptureFrame()}
                 onToggleAutoplay={toggleAutoplay}
-                onToggleInclude={(fid, inc) => void handleToggleInclude(fid, inc)}
+                onToggleInclude={(fid, inc) =>
+                  void handleToggleInclude(fid, inc)
+                }
                 onToggleCropEditing={() => setCropEditing((v) => !v)}
                 onClearCrop={handleClearCrop}
                 onSeek={(sec) => seek(sec, autoplayOnClick)}
                 onExport={(format) => void handleExportDocument(format)}
-                onRevealDocument={(path) => void window.sift.library.reveal(path)}
+                onRevealDocument={(path) =>
+                  void window.sift.library.reveal(path)
+                }
                 onSaveSlides={() => void handleSaveSlides()}
               />
             )}
@@ -882,10 +1007,16 @@ export function MediaDetailPage({ id, onBack, onRemoved, onOpenChannel }: MediaD
                     filling whatever is left. */}
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-center gap-2.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">Downloads</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">
+                      Downloads
+                    </p>
                     <Badge
                       variant="count"
-                      className={downloads.length > 0 ? "flex-none" : `flex-none ${COUNT_ZERO}`}
+                      className={
+                        downloads.length > 0
+                          ? "flex-none"
+                          : `flex-none ${COUNT_ZERO}`
+                      }
                     >
                       {downloads.length}
                     </Badge>

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveWhisperBinary, WHISPER_MODEL, WHISPER_VERSION } from "./whisper-source";
+import {
+  resolveWhisperBinary,
+  WHISPER_MODEL,
+  WHISPER_VERSION,
+} from "./whisper-source";
 
 const HEX64 = /^[0-9a-f]{64}$/;
 
@@ -18,7 +22,8 @@ describe("resolveWhisperBinary", () => {
   it("linux resolves per-arch tarballs and the bare cli name", () => {
     const x = resolveWhisperBinary("linux-x64");
     const a = resolveWhisperBinary("linux-arm64");
-    if (x.kind !== "archive" || a.kind !== "archive") throw new Error("unreachable");
+    if (x.kind !== "archive" || a.kind !== "archive")
+      throw new Error("unreachable");
     expect(x.assetUrl).toContain("whisper-bin-ubuntu-x64.tar.gz");
     expect(a.assetUrl).toContain("whisper-bin-ubuntu-arm64.tar.gz");
     expect(x.binaryName).toBe("whisper-cli");

@@ -8,14 +8,20 @@ describe("assembleSummaryContent", () => {
     );
   });
   it("trims leading/trailing whitespace from both arguments", () => {
-    expect(assembleSummaryContent("  Summarize this.  \n", "\n  hello world  ")).toBe(
-      "Summarize this.\n\n----- TRANSCRIPT -----\nhello world",
-    );
+    expect(
+      assembleSummaryContent("  Summarize this.  \n", "\n  hello world  "),
+    ).toBe("Summarize this.\n\n----- TRANSCRIPT -----\nhello world");
   });
   it("is unchanged when frames is empty or all-blank", () => {
     const base = "Summarize this.\n\n----- TRANSCRIPT -----\nhello world";
-    expect(assembleSummaryContent("Summarize this.", "hello world", [])).toBe(base);
-    expect(assembleSummaryContent("Summarize this.", "hello world", [{ tsMs: 0, text: "  " }])).toBe(base);
+    expect(assembleSummaryContent("Summarize this.", "hello world", [])).toBe(
+      base,
+    );
+    expect(
+      assembleSummaryContent("Summarize this.", "hello world", [
+        { tsMs: 0, text: "  " },
+      ]),
+    ).toBe(base);
   });
   it("appends a timestamped slides section when frames carry text", () => {
     expect(
@@ -45,14 +51,19 @@ describe("assembleSummaryContent with {{TIMESTAMPS}}", () => {
   ];
 
   it("ignores segments when the prompt does not opt in", () => {
-    expect(assembleSummaryContent("Summarize this.", "flat text", [], segments)).toBe(
-      "Summarize this.\n\n----- TRANSCRIPT -----\nflat text",
-    );
+    expect(
+      assembleSummaryContent("Summarize this.", "flat text", [], segments),
+    ).toBe("Summarize this.\n\n----- TRANSCRIPT -----\nflat text");
   });
 
   it("renders a timestamped transcript and strips the marker from the prompt", () => {
     expect(
-      assembleSummaryContent("List chapters. {{TIMESTAMPS}}", "flat text", [], segments),
+      assembleSummaryContent(
+        "List chapters. {{TIMESTAMPS}}",
+        "flat text",
+        [],
+        segments,
+      ),
     ).toBe(
       "List chapters.\n\n----- TRANSCRIPT -----\n" +
         "[00:00] Intro and hello\n[01:12] The first real point\n[1:02:03] Wrapping up",
@@ -60,9 +71,14 @@ describe("assembleSummaryContent with {{TIMESTAMPS}}", () => {
   });
 
   it("falls back to the flat text when the transcript has no segments", () => {
-    expect(assembleSummaryContent("List chapters. {{TIMESTAMPS}}", "flat text", [], [])).toBe(
-      "List chapters.\n\n----- TRANSCRIPT -----\nflat text",
-    );
+    expect(
+      assembleSummaryContent(
+        "List chapters. {{TIMESTAMPS}}",
+        "flat text",
+        [],
+        [],
+      ),
+    ).toBe("List chapters.\n\n----- TRANSCRIPT -----\nflat text");
   });
 
   it("still appends the slides section when timestamps are on", () => {
@@ -82,10 +98,15 @@ describe("assembleSummaryContent with {{TIMESTAMPS}}", () => {
 
   it("skips blank segments", () => {
     expect(
-      assembleSummaryContent("Chapters {{TIMESTAMPS}}", "flat", [], [
-        { start: 0, text: "Kept" },
-        { start: 5, text: "   " },
-      ]),
+      assembleSummaryContent(
+        "Chapters {{TIMESTAMPS}}",
+        "flat",
+        [],
+        [
+          { start: 0, text: "Kept" },
+          { start: 5, text: "   " },
+        ],
+      ),
     ).toBe("Chapters\n\n----- TRANSCRIPT -----\n[00:00] Kept");
   });
 });

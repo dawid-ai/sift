@@ -25,7 +25,10 @@ function fakeFetch(): typeof fetch {
 }
 
 /** A fake plain-binary source (no archive extension) whose version can be bumped mid-test. */
-function makeFakeSource(): { source: BinarySource; setVersion: (v: string) => void } {
+function makeFakeSource(): {
+  source: BinarySource;
+  setVersion: (v: string) => void;
+} {
   let version = "1.0.0";
   const source: BinarySource = {
     kind: "ytdlp",

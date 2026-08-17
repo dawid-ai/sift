@@ -32,10 +32,14 @@ test("media detail: tag suggestions stay on screen and follow the term after a c
 
   try {
     await window.waitForSelector("h1", { timeout: 30_000 });
-    await expect(window.getByTestId("db-ready")).toHaveText("db-ok", { timeout: 30_000 });
+    await expect(window.getByTestId("db-ready")).toHaveText("db-ok", {
+      timeout: 30_000,
+    });
 
     // Seed tags so the suggestion list has something to show.
-    const userDataPath = await app.evaluate(({ app: a }) => a.getPath("userData"));
+    const userDataPath = await app.evaluate(({ app: a }) =>
+      a.getPath("userData"),
+    );
     execFileSync(
       electronBinaryPath as unknown as string,
       [join(__dirname, "seed-shots.cjs"), join(userDataPath, "sift.db")],
@@ -69,7 +73,9 @@ test("media detail: tag suggestions stay on screen and follow the term after a c
     await expect(popover).toBeVisible();
     await expect(popover.getByRole("button", { name: "sqlite" })).toBeVisible();
     // …and the tag already typed one segment to the left is not offered again.
-    await expect(popover.getByRole("button", { name: "systems", exact: true })).toHaveCount(0);
+    await expect(
+      popover.getByRole("button", { name: "systems", exact: true }),
+    ).toHaveCount(0);
 
     // Picking replaces the term, not the field.
     await popover.getByRole("button", { name: "sqlite" }).click();

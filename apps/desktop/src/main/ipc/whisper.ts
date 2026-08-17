@@ -12,7 +12,8 @@ export function registerWhisperIpc(
   ipcMain.handle(IPC.whisperStatus, () => service.status());
   ipcMain.handle(IPC.whisperInstall, () =>
     service.install((p) => {
-      for (const win of getWindows()) win.webContents.send(IPC.whisperProgress, p);
+      for (const win of getWindows())
+        win.webContents.send(IPC.whisperProgress, p);
     }),
   );
 }

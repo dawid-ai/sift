@@ -8,7 +8,11 @@ import type { AssetRow, SiftDatabase } from "@sift/db";
 import { getAsset, touchAssetChecked, upsertAsset } from "@sift/db";
 import type { BinarySource, Platform } from "@sift/binaries";
 import { downloadAndVerify } from "@sift/binaries";
-import type { BinaryKind, BinaryProgress, BinaryStatus } from "@sift/ipc-contract";
+import type {
+  BinaryKind,
+  BinaryProgress,
+  BinaryStatus,
+} from "@sift/ipc-contract";
 import { resolveAssetPath } from "../asset-path";
 
 // Note: deliberately does NOT import `../paths` (which imports `electron`) — this
@@ -33,7 +37,11 @@ export interface BinariesServiceOpts {
 
 const KINDS: BinaryKind[] = ["ytdlp", "ffmpeg", "deno"];
 
-function statusFromAsset(kind: BinaryKind, row: AssetRow | undefined, binariesDir: string): BinaryStatus {
+function statusFromAsset(
+  kind: BinaryKind,
+  row: AssetRow | undefined,
+  binariesDir: string,
+): BinaryStatus {
   return {
     kind,
     installed: row !== undefined,
@@ -68,14 +76,21 @@ export class BinariesService {
   /** Reads current install status for both managed binaries. No network calls. */
   async list(): Promise<BinaryStatus[]> {
     return KINDS.map((kind) =>
-      statusFromAsset(kind, getAsset(this.opts.db, kind), this.opts.binariesDir),
+      statusFromAsset(
+        kind,
+        getAsset(this.opts.db, kind),
+        this.opts.binariesDir,
+      ),
     );
   }
 
   /** Resolves the latest upstream release and compares it against what's installed. */
   async check(kind: BinaryKind): Promise<BinaryStatus> {
     const source = this.opts.sources[kind];
-    const latest = await source.resolveLatest(this.opts.platform, this.opts.fetchImpl);
+    const latest = await source.resolveLatest(
+      this.opts.platform,
+      this.opts.fetchImpl,
+    );
     const row = getAsset(this.opts.db, kind);
     if (row) {
       touchAssetChecked(this.opts.db, kind, Date.now());
@@ -153,7 +168,9 @@ export class BinariesService {
       await execFileAsync("tar", ["-xf", archivePath, "-C", extractDir]);
       const found = findFileRecursive(extractDir, binaryName);
       if (!found) {
-        throw new Error(`Could not locate "${binaryName}" inside ${archivePath}`);
+        throw new Error(
+          `Could not locate "${binaryName}" inside ${archivePath}`,
+        );
       }
       try {
         await rename(found, destPath);

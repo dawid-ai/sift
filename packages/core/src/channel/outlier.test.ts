@@ -3,15 +3,30 @@ import { medianViews, outlierScore, OUTLIER_THRESHOLD } from "./outlier";
 
 describe("medianViews", () => {
   it("returns the middle value for an odd count", () => {
-    expect(medianViews([{ viewCount: 10 }, { viewCount: 100 }, { viewCount: 30 }])).toBe(30);
+    expect(
+      medianViews([{ viewCount: 10 }, { viewCount: 100 }, { viewCount: 30 }]),
+    ).toBe(30);
   });
 
   it("averages the two middle values for an even count", () => {
-    expect(medianViews([{ viewCount: 10 }, { viewCount: 20 }, { viewCount: 30 }, { viewCount: 60 }])).toBe(25);
+    expect(
+      medianViews([
+        { viewCount: 10 },
+        { viewCount: 20 },
+        { viewCount: 30 },
+        { viewCount: 60 },
+      ]),
+    ).toBe(25);
   });
 
   it("ignores videos with no view count", () => {
-    expect(medianViews([{ viewCount: null }, { viewCount: 40 }, { viewCount: null }])).toBe(40);
+    expect(
+      medianViews([
+        { viewCount: null },
+        { viewCount: 40 },
+        { viewCount: null },
+      ]),
+    ).toBe(40);
   });
 
   it("returns null when nothing has a view count", () => {
