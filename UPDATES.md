@@ -1,5 +1,27 @@
 # Updates
 
+## v0.5.0 — 2026-08-17
+
+- **A new look, everywhere.** Every screen has been redesigned: a warm, lit dark canvas
+  instead of flat black, an announced heading on every section, and panels that read as
+  layers rather than stacked boxes. The library table is denser and easier to scan —
+  the sorted column is marked, numbers line up, and rows separate with a hairline
+  instead of stripes.
+- **Inter and JetBrains Mono now ship with Sift.** Before, the app asked for them and
+  quietly fell back to whatever your system had, so it looked different on every
+  machine. They're bundled locally, so nothing is fetched and it still works offline.
+- **Tag colours are calmer.** Tags used to take a different hue each, which turned a
+  library with thirty tags into a paint chart. They now draw from a small, consistent
+  set, and colour is kept for things that mean something — like the transcript language.
+- **Tag suggestions are fixed on the details page.** They opened off the bottom of the
+  window and were cut off; now they open upward when there's no room below. They also
+  follow what you're typing after a comma, so "systems, sq" suggests `sqlite` instead of
+  nothing, and picking one keeps the tags you already typed.
+- "Add to queue" is now disabled until there's something to add, rather than looking
+  ready and doing nothing when you click it.
+- Several labels in Settings were too dim to read comfortably and have been brightened
+  to meet contrast guidelines.
+
 ## v0.4.0 — 2026-08-16
 
 - **Import files you already have.** Drop an audio or video file anywhere on the window
