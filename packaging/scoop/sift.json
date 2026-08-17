@@ -1,17 +1,11 @@
 {
   "##": [
-    "Installs by unpacking the NSIS installer rather than running it, so the app is",
-    "self-contained under the Scoop app dir and `scoop uninstall` is a clean directory",
-    "removal.",
-    "",
-    "electron-builder wraps the whole app as $PLUGINSDIR/app-64.7z inside the NSIS",
-    "installer, and that holds for assisted (nsis.oneClick: false) builds too — the",
-    "payload layout is an electron-builder detail, not a one-click one. So it is two",
-    "extractions: installer -> app-64.7z -> app. Verified end to end on a clean machine:",
-    "`scoop install sift` yields a `sift` shim, a Start Menu shortcut, and a launching app.",
-    "",
-    "Sift keeps its library and settings in %APPDATA%/Sift, outside the Scoop dir, so",
-    "nothing needs persisting across upgrades."
+    "Unpacks the NSIS installer rather than running it, so the app is self-contained under",
+    "the Scoop dir and uninstall is a directory removal. The `#/dl.7z` fragment makes Scoop",
+    "extract the installer on download; pre_install then unpacks electron-builder's",
+    "$PLUGINSDIR/app-64.7z payload into the app dir. Same shape as extras/obsidian.",
+    "Sift keeps its library in %APPDATA%/Sift, outside the Scoop dir, so nothing needs",
+    "persisting across upgrades."
   ],
   "version": "0.5.0",
   "description": "Turns any video into a searchable, transcribed, summarized library — 100% local.",
@@ -19,15 +13,12 @@
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/dawid-ai/sift/releases/download/v0.5.0/Sift-Setup.exe#/dl.exe",
-      "hash": "a15a01051e83a51306b9f7d1b07244b3146cbc85eddc4076a4e109f37015d7c9"
+      "url": "https://github.com/dawid-ai/sift/releases/download/v0.5.0/Sift-Setup.exe#/dl.7z",
+      "hash": "a15a01051e83a51306b9f7d1b07244b3146cbc85eddc4076a4e109f37015d7c9",
+      "pre_install": "Expand-7zipArchive \"$dir\\`$PLUGINSDIR\\app-64.7z\" \"$dir\""
     }
   },
-  "pre_install": [
-    "Expand-7zipArchive \"$dir\\dl.exe\" \"$dir\\_nsis\" -Removal",
-    "Expand-7zipArchive \"$dir\\_nsis\\`$PLUGINSDIR\\app-64.7z\" \"$dir\" -Removal",
-    "Remove-Item \"$dir\\_nsis\" -Recurse -Force"
-  ],
+  "post_install": "Remove-Item \"$dir\\`$PLUGINSDIR\", \"$dir\\`$R0\" -Force -Recurse -ErrorAction SilentlyContinue",
   "bin": "Sift.exe",
   "shortcuts": [["Sift.exe", "Sift"]],
   "checkver": {
@@ -36,7 +27,7 @@
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "https://github.com/dawid-ai/sift/releases/download/v$version/Sift-Setup.exe#/dl.exe"
+        "url": "https://github.com/dawid-ai/sift/releases/download/v$version/Sift-Setup.exe#/dl.7z"
       }
     }
   }
