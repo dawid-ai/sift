@@ -11,14 +11,14 @@
     "Do not open the Extras PR until a real install stanza exists and `scoop install sift`",
     "has been verified to produce a working, launchable app on a clean machine."
   ],
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Turns any video into a searchable, transcribed, summarized library — 100% local.",
   "homepage": "https://github.com/dawid-ai/sift",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/dawid-ai/sift/releases/download/v0.4.0/Sift-Setup.exe#/dl.exe",
-      "hash": "33dabc73bb136b870f0b8442908108ab31c0e9122170c1737998fe3264cbfcbd"
+      "url": "https://github.com/dawid-ai/sift/releases/download/v0.5.0/Sift-Setup.exe#/dl.exe",
+      "hash": "a15a01051e83a51306b9f7d1b07244b3146cbc85eddc4076a4e109f37015d7c9"
     }
   },
   "innosetup": false,
