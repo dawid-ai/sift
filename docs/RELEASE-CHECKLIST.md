@@ -44,15 +44,23 @@ version you're about to submit upstream.
 - **winget — ready.** `packaging/winget/` (3 manifests) validates clean
   (`winget validate`) and is submittable to `microsoft/winget-pkgs` once bumped to the
   version actually being released.
-- **Scoop — blocked, do not submit.** `packaging/scoop/sift.json` has no `bin`/
-  `shortcuts`/`installer`/`pre_install` stanza, so `scoop install sift` would only cache
-  the installer with nothing runnable — no shim, no shortcut, no invocation. The usual
-  `Expand-7zipArchive` workaround for electron-builder NSIS apps needs **one-click** NSIS
-  packaging; Sift's installer is **assisted** (`nsis.oneClick: false` in
-  `apps/desktop/electron-builder.yml`), so that workaround does not apply, and there is
-  no established Scoop pattern for assisted-mode NSIS installers
-  (see `ScoopInstaller/Extras#1531`, open since 2018). The manifest's `##` field carries
-  the same note. **Do not open the Scoop Extras PR until someone has verified a real
-  `scoop install sift` produces a working, launchable app on a clean machine** — keep
-  bumping `packaging/scoop/sift.json`'s version/hash alongside winget's so it stays
-  accurate as a starting point, but treat the actual submission as on hold.
+- **Scoop — unblocked as of v0.5.0, verified.** `packaging/scoop/sift.json` now installs by
+  unpacking the NSIS installer instead of running it: `pre_install` extracts
+  `$PLUGINSDIR/app-64.7z` out of the installer and then extracts that into the app dir,
+  leaving a self-contained app with a `bin` shim and a Start Menu shortcut.
+
+  This entry previously said the `Expand-7zipArchive` approach needs **one-click** NSIS and
+  so could not work for Sift's **assisted** installer (`nsis.oneClick: false`), citing
+  `ScoopInstaller/Extras#1531`. **That was wrong, and it was never actually tested.**
+  electron-builder wraps the app as `$PLUGINSDIR/app-64.7z` regardless of one-click vs
+  assisted — the payload layout is an electron-builder detail, not a mode detail. Confirmed
+  by listing the real v0.5.0 installer with `7z l`.
+
+  Verified end to end before submitting: clean `scoop install`, `sift` shim resolves, Start
+  Menu shortcut created, and the launched process was confirmed by executable path to be the
+  Scoop copy (`~/scoop/apps/sift/current/Sift.exe`) rather than an already-running system
+  install — the two coexist, so a naive "a window appeared" check would have been a false pass.
+
+  Keep bumping the version/URL/hash alongside winget's. Sift stores its library in
+  `%APPDATA%/Sift`, outside the Scoop dir, so no `persist` stanza is needed and an upgrade
+  keeps the library.

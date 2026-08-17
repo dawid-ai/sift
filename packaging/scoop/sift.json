@@ -1,15 +1,17 @@
 {
   "##": [
-    "NOT submittable as-is. This manifest has no bin/shortcuts/installer/pre_install stanza,",
-    "so `scoop install sift` would only cache Sift-Setup.exe (renamed dl.exe) with nothing",
-    "runnable — no shim, no shortcut, no invocation of the installer.",
-    "The usual Expand-7zipArchive pre_install workaround for electron-builder NSIS apps (e.g.",
-    "ScoopInstaller/Extras obsidian.json) depends on electron-builder's one-click NSIS packaging",
-    "(a single embedded 7z at a fixed path). Sift sets nsis.oneClick: false (assisted, multi-page",
-    "installer), so that trick does not apply, and there is no established Scoop pattern for",
-    "assisted-mode NSIS installers — see ScoopInstaller/Extras#1531 (open since 2018, unresolved).",
-    "Do not open the Extras PR until a real install stanza exists and `scoop install sift`",
-    "has been verified to produce a working, launchable app on a clean machine."
+    "Installs by unpacking the NSIS installer rather than running it, so the app is",
+    "self-contained under the Scoop app dir and `scoop uninstall` is a clean directory",
+    "removal.",
+    "",
+    "electron-builder wraps the whole app as $PLUGINSDIR/app-64.7z inside the NSIS",
+    "installer, and that holds for assisted (nsis.oneClick: false) builds too — the",
+    "payload layout is an electron-builder detail, not a one-click one. So it is two",
+    "extractions: installer -> app-64.7z -> app. Verified end to end on a clean machine:",
+    "`scoop install sift` yields a `sift` shim, a Start Menu shortcut, and a launching app.",
+    "",
+    "Sift keeps its library and settings in %APPDATA%/Sift, outside the Scoop dir, so",
+    "nothing needs persisting across upgrades."
   ],
   "version": "0.5.0",
   "description": "Turns any video into a searchable, transcribed, summarized library — 100% local.",
@@ -21,7 +23,13 @@
       "hash": "a15a01051e83a51306b9f7d1b07244b3146cbc85eddc4076a4e109f37015d7c9"
     }
   },
-  "innosetup": false,
+  "pre_install": [
+    "Expand-7zipArchive \"$dir\\dl.exe\" \"$dir\\_nsis\" -Removal",
+    "Expand-7zipArchive \"$dir\\_nsis\\`$PLUGINSDIR\\app-64.7z\" \"$dir\" -Removal",
+    "Remove-Item \"$dir\\_nsis\" -Recurse -Force"
+  ],
+  "bin": "Sift.exe",
+  "shortcuts": [["Sift.exe", "Sift"]],
   "checkver": {
     "github": "https://github.com/dawid-ai/sift"
   },
