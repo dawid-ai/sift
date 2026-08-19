@@ -1,5 +1,10 @@
 # Release checklist
 
+> **Package-manager submissions (winget, Scoop) are parked.** Not happening for now;
+> do not raise them at release time. The manifests in `packaging/` are deliberately
+> left to go stale and point at v0.6.0. Re-bump and re-hash from the published asset
+> before any future submission.
+
 ## One-time repo setup (owner action — not run by any automation)
 
 Set the repo's description, homepage, and topics so link unfurls and GitHub search

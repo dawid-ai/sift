@@ -22,7 +22,7 @@ searchable library — on your machine, with no subscription.
 
 Or browse [all releases](https://github.com/dawid-ai/sift/releases). The installer is unsigned,
 so Windows SmartScreen shows an "unknown publisher" prompt — choose _More info → Run anyway_.
-The app offers you updates after that (it always asks). Both points are explained in the [FAQ](./docs/FAQ.md).
+Sift notifies you when a new version is available. Both points are explained in the [FAQ](./docs/FAQ.md).
 
 ## Features
 

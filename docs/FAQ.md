@@ -5,8 +5,8 @@
 The installer isn't code-signed (a signing certificate costs money and this is an
 unfunded solo project), so Windows SmartScreen shows an "unknown publisher" warning on
 first run. That's expected, not a sign of anything wrong. Click **More info → Run
-anyway**. After that Sift offers you its own updates — it always asks first and never
-installs one behind your back — so you should only see this warning once. If it bothers you, read the source — the whole repo is here — or build it
+anyway**. Sift notifies you when a new version is available, so you should only see
+this warning once. If it bothers you, read the source — the whole repo is here — or build it
 yourself with the commands in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 A `winget` manifest is planned but **not published yet** — check
