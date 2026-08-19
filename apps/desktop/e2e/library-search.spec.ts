@@ -71,8 +71,13 @@ test("search filters the library and shows a snippet", async () => {
     await expect(libraryTable).toBeVisible();
     await expect(window.getByTestId("library-row")).toHaveCount(2);
 
-    // 3. Type the unique transcript word into the search box.
+    // 3. Type the unique transcript word into the search box. It appears only in
+    //    the transcript, so with the box in its default title-and-channel mode it
+    //    must find nothing -- assert that first, then switch transcript search on.
     await window.getByTestId("library-search-input").fill("photosynthesis");
+    await expect(window.getByTestId("library-row")).toHaveCount(0);
+
+    await window.getByTestId("library-search-text-toggle").click();
 
     // 4. Search is debounced (~200ms) + async — wait for the terminal state via
     // auto-retrying assertions rather than a fixed sleep. Only the seeded row remains,

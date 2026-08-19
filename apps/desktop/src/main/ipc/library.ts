@@ -32,8 +32,10 @@ export function registerLibraryIpc(service: DownloadService): void {
   ipcMain.handle(IPC.libraryOpenExternal, (_e, url: string) =>
     shell.openExternal(url),
   );
-  ipcMain.handle(IPC.librarySearch, (_e, query: string) =>
-    service.search(query),
+  ipcMain.handle(
+    IPC.librarySearch,
+    (_e, query: string, includeText?: boolean) =>
+      service.search(query, includeText ?? false),
   );
   ipcMain.handle(
     IPC.libraryExportPlaylist,

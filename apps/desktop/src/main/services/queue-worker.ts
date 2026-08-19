@@ -5,11 +5,13 @@ import {
   getQueueItem,
   insertQueueItem,
   listQueueItems,
+  listQueueItemsWithMedia,
   maxQueueOrder,
   resetRunningToQueued,
   setQueueOrder,
   updateQueueItem,
   type QueueItemRow,
+  type QueueItemWithMedia,
 } from "@sift/db";
 import type {
   MediaMetadata,
@@ -65,7 +67,10 @@ function safeParse<T>(json: string | null, fallback: T): T {
   }
 }
 
-function toItem(row: QueueItemRow, progress: number | null): QueueItem {
+function toItem(
+  row: QueueItemRow & { media_title?: string | null },
+  progress: number | null,
+): QueueItem {
   const spec = safeParse<QueueSpec>(
     row.spec_json,
     null as unknown as QueueSpec,
@@ -82,6 +87,9 @@ function toItem(row: QueueItemRow, progress: number | null): QueueItem {
         ? null
         : safeParse<QueueOps | null>(row.ops_json, null),
     mediaId: row.media_id,
+    // Present only on the joined listing (`listQueueItemsWithMedia`); the mutation paths
+    // reuse `toItem` with a bare row, and a row with no resolved media has none either.
+    title: row.media_title ?? null,
     queueOrder: row.queue_order,
     error: row.error,
     progress: row.status === "running" ? progress : null,
@@ -139,7 +147,7 @@ export class QueueWorker {
   }
 
   list(): QueueItem[] {
-    return listQueueItems(this.deps.db).map((r) =>
+    return listQueueItemsWithMedia(this.deps.db).map((r: QueueItemWithMedia) =>
       toItem(r, r.id === this.runningId ? this.runningProgress : null),
     );
   }

@@ -6,6 +6,7 @@ import { useAiPickers } from "@/lib/use-ai-pickers";
 // The Files tab owns the one label+timestamp grammar for an AI run; this card renders the same
 // records, so it borrows those helpers rather than re-deriving a second wording for them.
 import { aiLabel, Caption } from "./files-panel";
+import { AiProse } from "@/components/ai-prose";
 
 // Native <select> kept (the e2e suite drives these with selectOption); `appearance-none` plus
 // an absolutely-positioned chevron is what stops Chromium's default arrow looking pasted on.
@@ -200,9 +201,19 @@ export function SummariesPanel({
             </div>
             <Caption note={aiLabel(s.providerId, s.model)} at={s.createdAt} />
           </div>
-          <p className="scroll-thin max-h-96 overflow-y-auto whitespace-pre-wrap border-l-2 border-l-white/10 pl-4 text-sm leading-relaxed text-foreground/90">
-            {s.text}
-          </p>
+          {/* The result is rendered, not dumped. `AiProse` turns the model's Markdown into
+              real headings, bullets and a chapter column; before, `##` and `-` reached the
+              screen as literal characters in one undifferentiated run of pre-wrapped text.
+              NO INNER SCROLLER. It used to be `max-h-96 overflow-y-auto`, which put a second
+              scrollbar inside a panel that already has one — two tracks within ~50px of each
+              other — and, more importantly, guaranteed that the visible text ended mid-word
+              against the card's rounded bottom edge no matter how much room the panel had.
+              The panel is the one scroller; a long result makes the card tall, which is what
+              a document does. */}
+          <AiProse
+            text={s.text}
+            className="border-l-2 border-l-white/10 pl-4"
+          />
         </article>
       ))}
 

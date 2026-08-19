@@ -5,6 +5,7 @@ export const TESTED_PLATFORMS: Record<string, string> = {
   twitch: "Twitch",
   tiktok: "TikTok",
   twitter: "X (Twitter)",
+  linkedin: "LinkedIn",
   soundcloud: "SoundCloud",
   dailymotion: "Dailymotion",
   facebook: "Facebook",

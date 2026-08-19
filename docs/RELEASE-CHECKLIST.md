@@ -39,6 +39,20 @@ The manifests checked into `packaging/` right now pin whatever version they were
 bumped to — treat them as stale until the skill's manifest-bump step has run for the
 version you're about to submit upstream.
 
+### The marketing site
+
+`web/index.html` states the current version and date in two places, lists the five most
+recent releases, and counts them ("Twenty-one releases since 16 July 2026"). All of it is
+generated from `UPDATES.md` — after the entry is written, run:
+
+```sh
+node web/tools/sync-release.cjs
+```
+
+It is idempotent and exits non-zero if a marker has gone missing, so it is safe to run
+at any point. Skipping it is how the page ends up advertising an old version in four
+places at once while its own argument is "look how actively this is maintained".
+
 ### Package manager submission status
 
 - **winget — ready.** `packaging/winget/` (3 manifests) validates clean

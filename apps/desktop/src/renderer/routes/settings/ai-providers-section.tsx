@@ -37,7 +37,9 @@ function ProviderPanel({
   children?: ReactNode;
 }) {
   return (
-    <div className={cn(NESTED_SURFACE, "p-4")}>
+    // Addressable as a unit: the panel is the repeating object on this page, so anything that
+    // needs to reason about "one provider card" (tests, capture framing) has a handle on it.
+    <div data-testid="ai-provider-card" className={cn(NESTED_SURFACE, "p-4")}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span

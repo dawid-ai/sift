@@ -1060,9 +1060,12 @@ const TAB_META: Record<DetailTab, TabMeta> = {
     title: "Every line, timestamped.",
     Icon: Captions,
   },
-  // Label only — the key stays "summary" so `media-detail-tab-summary` keeps resolving.
+  // The key, the testid (`media-detail-tab-summary`), this tab's own title copy and every
+  // record it holds all say "summary"; the label said "Tools", which was the one name in the
+  // set that did not describe what is on the tab. A reader looking for the AI write-up had to
+  // guess, and anything referring to this surface by name disagreed with the app.
   summary: {
-    label: "Tools",
+    label: "Summary",
     title: "Run a prompt over the transcript.",
     Icon: Sparkles,
   },

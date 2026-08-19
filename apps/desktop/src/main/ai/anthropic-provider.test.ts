@@ -45,7 +45,7 @@ describe("anthropic provider", () => {
     });
 
     expect(provider.id).toBe(ANTHROPIC_ID);
-    expect(provider.label).toBe("Anthropic (Claude)");
+    expect(provider.label).toBe("Anthropic");
     expect(provider.needsKey).toBe(true);
     expect(provider.models().map((m) => m.id)).toContain("claude-opus-4-8");
   });

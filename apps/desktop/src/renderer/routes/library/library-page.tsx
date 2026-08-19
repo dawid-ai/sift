@@ -32,6 +32,7 @@ import { TagChip } from "@/components/tag-chip";
 import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   getLibraryView,
@@ -39,6 +40,8 @@ import {
   getPageSize,
   setPageSize,
   PAGE_SIZE_OPTIONS,
+  getSearchText,
+  setSearchText,
   type LibraryView,
 } from "@/lib/library-view";
 import { pageWindow } from "@/lib/page-window";
@@ -578,6 +581,10 @@ export function LibraryPage({
   );
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<LibraryView>(getLibraryView());
+  // Whether the box also searches inside transcripts and summaries. Persisted,
+  // because a search preference that resets every launch is one the user has to
+  // re-make every launch.
+  const [searchText, setSearchTextState] = useState(getSearchText());
   // Tag filters. Positive tags AND together (each click narrows); right-clicking a tag
   // instead hides everything carrying it. A tag is in at most one of the two lists.
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -716,12 +723,12 @@ export function LibraryPage({
       return;
     }
     const t = setTimeout(() => {
-      void window.sift.library.search(q).then((hits) => {
+      void window.sift.library.search(q, searchText).then((hits) => {
         setSearchHits(new Map(hits.map((h) => [h.mediaId, h])));
       });
     }, 200);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, searchText]);
 
   // Any filter/search change returns to the first page.
   useEffect(() => {
@@ -936,12 +943,28 @@ export function LibraryPage({
                 <Input
                   data-testid="library-search-input"
                   type="search"
-                  placeholder="Search title, transcript, summary…"
+                  placeholder={
+                    searchText
+                      ? "Search titles and everything said…"
+                      : "Search titles and channels…"
+                  }
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-9 pl-11 text-[13px]"
                 />
               </div>
+              <label className="flex shrink-0 items-center gap-2 text-[13px] text-muted-foreground">
+                <Switch
+                  checked={searchText}
+                  onChange={(next) => {
+                    setSearchTextState(next);
+                    setSearchText(next);
+                  }}
+                  data-testid="library-search-text-toggle"
+                  aria-label="Search inside transcripts and summaries"
+                />
+                <span className="whitespace-nowrap">Search transcripts</span>
+              </label>
               <FilterSelect
                 testId="library-channel-filter"
                 allLabel="All channels"
@@ -989,7 +1012,7 @@ export function LibraryPage({
                 onClick={handleExportM3U}
               >
                 <ListMusic aria-hidden className="h-4 w-4" />
-                Export M3U
+                Export playlist
               </Button>
             </div>
 

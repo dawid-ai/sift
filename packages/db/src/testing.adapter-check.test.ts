@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { openTestDatabase } from "./testing";
 
-describe("sql.js test driver adapter", () => {
+describe("WASM test driver adapter", () => {
   it("handles DDL, named + positional params, upsert, and PRAGMA", async () => {
     const db = await openTestDatabase();
     db.exec(
@@ -41,6 +41,49 @@ describe("sql.js test driver adapter", () => {
       .map((c) => c.name);
     expect(cols).toContain("kind");
 
+    db.close();
+  });
+
+  // better-sqlite3 ignores named keys the statement does not declare, and call
+  // sites lean on that: `.run({ ...row, id })` against an UPDATE that sets only
+  // some of row's columns is the common shape. Verified against the Electron
+  // build. The driver's own bind() throws on the surplus, so the adapter filters
+  // by getParamIndex — if that emulation regresses, a dozen CRUD tests fail with
+  // an opaque bind error rather than pointing here.
+  it("ignores named params the statement does not declare", async () => {
+    const db = await openTestDatabase();
+    db.exec("CREATE TABLE t (id INTEGER PRIMARY KEY, a TEXT)");
+    db.prepare("INSERT INTO t (id, a) VALUES (@id, @a)").run({ id: 1, a: "x" });
+
+    expect(() =>
+      db
+        .prepare("UPDATE t SET a = @a WHERE id = @id")
+        .run({ id: 1, a: "z", notAColumn: "surplus" }),
+    ).not.toThrow();
+
+    expect(db.prepare<{ a: string }>("SELECT a FROM t").get()?.a).toBe("z");
+    db.close();
+  });
+
+  // The reason this driver replaced sql.js: sql.js has no fts5 module, so any
+  // full-text search work was untestable under Node.
+  it("has FTS5, with bm25() and snippet()", async () => {
+    const db = await openTestDatabase();
+    db.exec("CREATE VIRTUAL TABLE fts USING fts5(title, body)");
+    db.prepare("INSERT INTO fts VALUES (@t, @b)").run({
+      t: "Backpressure",
+      b: "gives you twenty times the queue depth, and you got twenty times slower.",
+    });
+
+    const hit = db
+      .prepare<{ title: string; s: string }>(
+        `SELECT title, snippet(fts, 1, '[', ']', '…', 6) AS s
+           FROM fts WHERE fts MATCH @q ORDER BY bm25(fts)`,
+      )
+      .get({ q: "queue AND slower" });
+
+    expect(hit?.title).toBe("Backpressure");
+    expect(hit?.s).toContain("[queue]");
     db.close();
   });
 });

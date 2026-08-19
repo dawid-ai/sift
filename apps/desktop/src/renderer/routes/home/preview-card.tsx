@@ -251,7 +251,7 @@ export function formatDuration(sec: number | null): string {
   return hours > 0 ? `${hours}:${mm}:${ss}` : `${minutes}:${ss}`;
 }
 
-const DEFAULT_MODEL_ID = "claude-opus-4-8";
+const DEFAULT_MODEL_ID = "claude-opus-5";
 
 // Stable empty-array reference so the models-sync effect doesn't re-fire every
 // render while no provider is selected yet (before `defaultProviderId` resolves).
@@ -307,6 +307,13 @@ const SELECT_CLASS = cn(
   "appearance-none pl-3.5 pr-9",
   "bg-[#211E1E] hover:bg-[#282526]",
   "[&>option]:bg-[#211E1E] [&>option]:text-foreground",
+  // A native <select> hard-cuts an option label that doesn't fit its box — no ellipsis, no
+  // hint that anything is missing. At the 3-of-12 column these sit in, the closed control is
+  // ~121px of text width, and the two longest provider labels overflow it: PROVIDER rendered
+  // "Anthropic (Claude" with the paren unclosed, and "Claude Code CLI (subscription)" is
+  // longer still. Chromium honours text-overflow on the select's own rendering, so the
+  // control now degrades to "Anthropic (Clau…" — visibly truncated rather than silently wrong.
+  "truncate [text-overflow:ellipsis]",
 );
 
 /**
@@ -877,7 +884,17 @@ export function PreviewCard({
                 else onDownload(selected, tags);
               }}
             >
-              <Download aria-hidden className="h-4 w-4" />
+              {/* THE ICON IS THE FIRST THING TO GO WHEN THE LABEL GROWS.
+                  This button owns 3 of the CAPTURE row's 12 columns, which at the route's own
+                  `max-w-3xl` column is ~170px: enough for "Download" with its glyph and 4px short
+                  of "Re-download 1080p" with it. So the spent state — the only state whose label
+                  names a format — rendered "Re-download 10…", a primary control truncating its
+                  own text mid-number at the width the app is designed around, with the ellipsis
+                  sitting in visibly unused button. Dropping the mark in that state buys the 24px
+                  the words need. Nothing is lost: `downloadSpent` already restyles the button
+                  from filled to outline, so the state is carried by the shell as well as the
+                  label, and the glyph is redundant beside the verb. */}
+              {!downloadSpent && <Download aria-hidden className="h-4 w-4" />}
               <span className="truncate">
                 {downloading
                   ? "Downloading…"

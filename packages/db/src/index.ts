@@ -80,13 +80,14 @@ export {
   insertQueueItem,
   getQueueItem,
   listQueueItems,
+  listQueueItemsWithMedia,
   updateQueueItem,
   deleteQueueItem,
   setQueueOrder,
   maxQueueOrder,
   resetRunningToQueued,
 } from "./queue";
-export type { QueueItemRow, NewQueueItem } from "./queue";
+export type { QueueItemRow, QueueItemWithMedia, NewQueueItem } from "./queue";
 export {
   addTag,
   removeTag,

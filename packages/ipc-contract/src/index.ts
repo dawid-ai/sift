@@ -527,6 +527,16 @@ export interface QueueItem {
   status: "queued" | "running" | "done" | "canceled";
   ops: QueueOps | null;
   mediaId: number | null;
+  /**
+   * Title of the media this item resolved to, once it has one; `null` until the metadata
+   * fetch lands (and forever for an item that never downloaded).
+   *
+   * The row already carried `mediaId` and threw the rest away, so a queue that had finished
+   * eight real videos still printed eight opaque URL fragments — "/watch?v=Qr7dK2mVzXc" —
+   * which is the least informative thing the row could say about work it has already done.
+   * Read from the joined `media` row, never stored on `queue_item`.
+   */
+  title: string | null;
   queueOrder: number;
   error: string | null;
   progress: number | null;
@@ -714,8 +724,14 @@ export interface SiftApi {
     removeSummary(id: number): Promise<void>;
     /** Opens a URL in the user's default browser (the original video page). */
     openExternal(url: string): Promise<void>;
-    /** Substring search over title/uploader/transcript/summary; hit per media with a snippet for text hits. */
-    search(query: string): Promise<SearchHit[]>;
+    /**
+     * Search the library; one hit per media, with a snippet for text hits.
+     *
+     * Matches title and uploader only. Pass `includeText` to widen it to
+     * transcripts and summaries — off by default because the box runs on every
+     * keystroke and full-text hits bury the video whose title is the answer.
+     */
+    search(query: string, includeText?: boolean): Promise<SearchHit[]>;
     /** Writes an .m3u of the given media (those with an on-disk download) to the playlists folder. */
     exportPlaylist(
       mediaIds: number[],

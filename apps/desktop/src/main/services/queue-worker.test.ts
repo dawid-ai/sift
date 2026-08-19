@@ -13,7 +13,7 @@ import { QueueWorker, type QueueWorkerDeps } from "./queue-worker";
 // `queue_item.media_id` and the real DownloadService/TranscriptService/SummarizeService all
 // carry a FK to `media(id)`. The mocked services here don't do real inserts, so any op that
 // "returns" a media/transcript/summary id must reference a row we actually seeded, or
-// persisting it via updateQueueItem trips the FK constraint (sql.js enforces it just like
+// persisting it via updateQueueItem trips the FK constraint (the WASM test driver enforces it just like
 // real SQLite). Deviation from the brief's literal `id: 10` placeholders — those don't
 // correspond to any row and fail under FK enforcement.
 function seedMedia(db: SiftDatabase): number {

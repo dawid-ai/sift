@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowDown, ExternalLink, Sparkles, Trash2 } from "lucide-react";
 import { LOCAL_PLATFORM_ID } from "@sift/core";
 import type { MediaListItem, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
@@ -211,7 +211,7 @@ export function LibraryTable({
               Left-aligned, like Platform and Transcript beside it: the two centred columns were
               a third alignment rule sitting between the left-aligned pills and the right-aligned
               numerals, so four adjacent columns ran on three different axes. */}
-          <th className={cn(TH, "text-left")}>Assets</th>
+          <th className={cn(TH, "text-left")}>Files</th>
           {/* The list really is ordered created_at DESC, so the column it is ordered by says so
               — but quietly, and in monochrome (see TH_SORTED). The arrow is a static direction
               marker at the same 12px as the rest of the header chrome, not a caret: nothing in
@@ -560,18 +560,21 @@ function LibraryRow({
                 ·
               </span>
             )}
-            {/* Still abbreviated, and deliberately so for now: the tile says "1 summary" and
-                this says "1 sum", which is one field spelled two ways across two views of one
-                list. Spelling it out costs this column ~25px, and this table has ~11px of slack
-                left over the sum of its columns' max-content widths — the title cell would be
-                the one to pay for it, and "What every programmer should know about memory"
-                fitting whole is worth more than the column's grammar. `title` says the word. */}
+            {/* The word does not fit and the abbreviation was worse than not saying it.
+                Spelling out "1 summary" costs this column ~25px it does not have (the table
+                has ~11px of slack over its columns' max-content widths, and the title cell
+                would pay), but "1 sum" reads as a clipped word rather than as a unit — a
+                truncation artefact repeated down every row that has a summary. The sparkle
+                is the same glyph the Summarize action and the tile's summary chip already
+                use for this exact field, so the count needs no unit at all. `title` still
+                spells it for the reader who wants the word. */}
             {summaryCount > 0 && (
               <span
-                className="tabular-nums text-muted-foreground"
+                className="inline-flex items-center gap-1 tabular-nums text-muted-foreground"
                 title={`${summaryCount} ${summaryCount === 1 ? "summary" : "summaries"}`}
               >
-                {summaryCount} sum
+                <Sparkles aria-hidden className="h-3 w-3 text-ai/80" />
+                {summaryCount}
               </span>
             )}
           </span>

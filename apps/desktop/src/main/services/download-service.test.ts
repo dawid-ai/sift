@@ -755,7 +755,10 @@ describe("DownloadService", () => {
       model: null,
     });
 
-    const hits = await svc.search("kelvin");
+    // Transcript text is opt-in, so the default search must NOT see it and the
+    // widened one must.
+    expect(await svc.search("kelvin")).toEqual([]);
+    const hits = await svc.search("kelvin", true);
     expect(hits.some((h) => h.mediaId === rec.id)).toBe(true);
 
     db.close();

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { AiProviderInfo, PromptInfo } from "@sift/ipc-contract";
 import { KNOWN_PROVIDERS } from "@/lib/ai-provider-catalog";
 
-const DEFAULT_MODEL_ID = "claude-opus-4-8";
+const DEFAULT_MODEL_ID = "claude-opus-5";
 // Stable empty-array ref so the model-sync effect doesn't re-fire every render.
 const NO_MODELS: AiProviderInfo["models"] = [];
 

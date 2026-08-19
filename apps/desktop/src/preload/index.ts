@@ -105,7 +105,8 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.libraryRemoveSummary, id),
     openExternal: (url: string) =>
       ipcRenderer.invoke(IPC.libraryOpenExternal, url),
-    search: (query: string) => ipcRenderer.invoke(IPC.librarySearch, query),
+    search: (query: string, includeText?: boolean) =>
+      ipcRenderer.invoke(IPC.librarySearch, query, includeText),
     exportPlaylist: (mediaIds: number[], name: string) =>
       ipcRenderer.invoke(IPC.libraryExportPlaylist, mediaIds, name),
   },

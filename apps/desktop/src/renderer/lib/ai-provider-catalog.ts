@@ -13,11 +13,12 @@ import type { AiProviderInfo } from "@sift/ipc-contract";
 export const KNOWN_PROVIDERS: AiProviderInfo[] = [
   {
     id: "anthropic",
-    label: "Anthropic (Claude)",
+    label: "Anthropic",
     needsKey: true,
     models: [
-      { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
+      { id: "claude-opus-5", label: "Claude Opus 5" },
       { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+      { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
       { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
     ],
   },

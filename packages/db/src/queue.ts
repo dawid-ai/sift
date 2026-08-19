@@ -45,6 +45,28 @@ export function listQueueItems(db: SiftDatabase): QueueItemRow[] {
     .all();
 }
 
+/** A queue row plus the title of the media it resolved to (null while unresolved). */
+export type QueueItemWithMedia = QueueItemRow & { media_title: string | null };
+
+/**
+ * Same ordering as `listQueueItems`, with the resolved media title joined on.
+ *
+ * A LEFT JOIN rather than a per-row lookup: the list is re-emitted to every window on every
+ * progress tick, so N+1 point reads on a 200-item queue would be paid dozens of times a
+ * second. `listQueueItems` stays as-is for the callers that only mutate rows.
+ */
+export function listQueueItemsWithMedia(
+  db: SiftDatabase,
+): QueueItemWithMedia[] {
+  return db
+    .prepare<QueueItemWithMedia>(
+      `SELECT q.*, m.title AS media_title
+         FROM queue_item q LEFT JOIN media m ON m.id = q.media_id
+        ORDER BY q.queue_order ASC, q.id ASC`,
+    )
+    .all();
+}
+
 type PatchCol = "status" | "ops_json" | "media_id" | "error" | "queue_order";
 
 export function updateQueueItem(

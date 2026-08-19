@@ -16,3 +16,21 @@ docs/superpowers/
 
 # Visual-QA capture output (e2e/shots.spec.ts)
 apps/desktop/e2e-shots/
+_private/
+
+# Marketing website — lives/deploys separately, not part of the app build
+web/
+web-shots/
+
+# Marketing-site screenshot tooling and its generated fixtures. The site lives in
+# its own repo; these produce its app screenshots and are reproducible from the
+# generators, so ~18 MB of PNGs stays out of history.
+apps/desktop/e2e/fixture-posters/
+apps/desktop/e2e/fixture-avatars/
+apps/desktop/e2e/fixture-slides/
+apps/desktop/e2e/make-posters.cjs
+apps/desktop/e2e/make-avatars.cjs
+apps/desktop/e2e/make-slides.cjs
+apps/desktop/e2e/seed-web-shots.cjs
+apps/desktop/e2e/web-shots.spec.ts
+docs/web-build-notes.md

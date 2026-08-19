@@ -123,12 +123,29 @@ const nameKey = (s: string) => s.toLowerCase().replace(/[\s_<>:"/\\|?*]+/g, "");
  * a dash. `title` on the row still carries the full path either way.
  */
 function fileLabel(path: string, uploader: string | null): string {
-  const pretty = prettyFile(path);
+  const pretty = dropQualitySuffix(prettyFile(path));
   if (!uploader) return pretty;
   const [head, ...rest] = pretty.split(" — ");
   if (rest.length > 0 && nameKey(head ?? "") === nameKey(uploader))
     return rest.join(" — ");
   return pretty;
+}
+
+/**
+ * Drops yt-dlp's trailing ` [1080p]` / ` [720p60]` / ` [audio]` group from a filename.
+ *
+ * The card already prints the format as its own chip on the meta line directly above, so the
+ * bracket is a second copy — and it is a second copy in the one place that cannot afford it.
+ * `splitForMiddleClip` protects the extension plus three characters, and with the bracket
+ * present those three characters are *inside it*: every downloaded row clipped to the same
+ * seven-character tail, "…0p].mp4", which reads as broken text rather than as a filename.
+ * Removing the group hands those characters back to the part of the name that identifies the
+ * file. Conservative on purpose — only a bracket immediately before the extension, only
+ * `[…]`, and never the whole name (an imported file literally called "[1080p].mp4" keeps it).
+ */
+function dropQualitySuffix(name: string): string {
+  const out = name.replace(/\s*\[[^\]]{1,16}\](?=\.[A-Za-z0-9]{1,5}$)/, "");
+  return out.startsWith(".") || out === "" ? name : out;
 }
 
 /**

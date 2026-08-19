@@ -152,9 +152,17 @@ export function ChannelsPage({
   const [openId, setOpenId] = useState<number | null>(null);
   const [tab, setTab] = useState<"channels" | "subs">("channels");
 
+  // Just the count — the Subscribed tab owns the records themselves and loads them when it
+  // mounts. The header has to be able to label both tabs before either one is opened.
+  const [subCount, setSubCount] = useState(0);
+
   const reload = () => window.sift.channels.list().then(setChannels);
   useEffect(() => {
     void reload();
+    void window.sift.subscriptions
+      .list()
+      .then((s) => setSubCount(s.length))
+      .catch(() => setSubCount(0));
   }, []);
   useEffect(() => {
     if (focusChannel) {
@@ -304,9 +312,14 @@ export function ChannelsPage({
                     report was a second, weaker copy of that signal. */}
                 <Icon aria-hidden className="h-3.5 w-3.5" />
                 {label}
-                {key === "channels" && channels.length > 0 && (
+                {/* BOTH tabs report, or neither does. A count on Channels alone said
+                    "Channels 9 / Subscribed" — which reads as "the other one is empty"
+                    rather than "the other one hasn't been counted", and it is the wrong
+                    answer whenever it isn't. The subscription count is one cheap list call
+                    the page already has an IPC surface for. */}
+                {(key === "channels" ? channels.length : subCount) > 0 && (
                   <span className="rounded-full bg-foreground/10 px-1.5 text-xs tabular-nums text-foreground/70">
-                    {channels.length}
+                    {key === "channels" ? channels.length : subCount}
                   </span>
                 )}
               </button>
@@ -332,9 +345,11 @@ export function ChannelsPage({
                 TRACK A CHANNEL
               </p>
               {/* The heading is the card's only heading slot, so it may not spend it repeating
-                  the field's own placeholder 40px below it. */}
+                  the field's own placeholder 40px below it — nor the eyebrow 20px above it.
+                  "TRACK A CHANNEL" over "Track a creator" was the same sentence stacked
+                  twice; the eyebrow names the section, the heading says what tracking does. */}
               <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.01em] text-foreground">
-                Track a creator
+                Watch a creator for new uploads
               </h2>
               {/* Field, then the action pair. One 12px step everywhere in the row — field to
                   buttons and button to button — which is the same step the Queue route's

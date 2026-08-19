@@ -512,9 +512,10 @@ export class DownloadService {
     deleteSummary(this.opts.db, id);
   }
 
-  /** Substring search across title/uploader/transcript/summary. No network. */
-  async search(query: string): Promise<SearchHit[]> {
-    return searchMedia(this.opts.db, query);
+  /** Search the library. Title/uploader only unless `includeText`, which widens
+   * it to transcripts and summaries. No network. */
+  async search(query: string, includeText = false): Promise<SearchHit[]> {
+    return searchMedia(this.opts.db, query, { includeText });
   }
 
   /** Writes an .m3u of the given media that have an on-disk download, to

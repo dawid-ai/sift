@@ -13,6 +13,7 @@ import {
   useVerticalOverflow,
 } from "@/routes/home/preview-card";
 import { cn } from "@/lib/utils";
+import { AiProse } from "@/components/ai-prose";
 
 export interface SummaryPanelProps {
   /** Live-accumulating streamed text for the in-flight request. */
@@ -113,18 +114,31 @@ export function SummaryPanel({ text, summary, onExport }: SummaryPanelProps) {
               "max-h-80 overflow-y-auto px-4 py-3.5 [scrollbar-gutter:stable]",
             )}
           >
-            <p
+            {/* Two renderings of the same text, and the split is deliberate. WHILE STREAMING
+                the panel stays a pre-wrapped run so the caret sits at the true end of the
+                partial token and the text does not reflow under the reader as half-written
+                Markdown resolves into headings. ONCE THE RESULT LANDS it is structured
+                prose — the same `AiProse` the media-detail panel uses — because a finished
+                summary full of literal `##` and `-` characters reads as unrendered markup. */}
+            <div
               data-testid="summary-content"
-              className="whitespace-pre-wrap text-[13.5px] leading-[1.7] text-foreground/85"
+              className="text-[13.5px] leading-[1.7] text-foreground/85"
             >
-              {content}
-              {!summary && (
-                <span
-                  aria-hidden
-                  className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] bg-primary motion-safe:animate-pulse"
+              {summary ? (
+                <AiProse
+                  text={content}
+                  className="text-[13.5px] leading-[1.7]"
                 />
+              ) : (
+                <p className="whitespace-pre-wrap">
+                  {content}
+                  <span
+                    aria-hidden
+                    className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] bg-primary motion-safe:animate-pulse"
+                  />
+                </p>
               )}
-            </p>
+            </div>
           </div>
           {/* Same rule as the transcript well: gated on real overflow, and 32px so it can
               never cover a full line box. A gradient painted over the last readable line of a

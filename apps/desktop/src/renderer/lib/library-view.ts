@@ -16,3 +16,15 @@ export function getPageSize(): number {
 export function setPageSize(n: number): void {
   localStorage.setItem(PAGE_SIZE_KEY, String(n));
 }
+
+// Whether the library search box also looks inside transcripts and summaries.
+// Off by default: the box runs on every keystroke, and against the full spoken
+// text a plain title lookup comes back buried under videos that said the word
+// once in passing.
+const SEARCH_TEXT_KEY = "sift.librarySearchText";
+export function getSearchText(): boolean {
+  return localStorage.getItem(SEARCH_TEXT_KEY) === "1"; // default off
+}
+export function setSearchText(on: boolean): void {
+  localStorage.setItem(SEARCH_TEXT_KEY, on ? "1" : "0");
+}

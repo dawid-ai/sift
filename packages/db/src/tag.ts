@@ -55,7 +55,7 @@ export function tagsForMediaIds(
   const map = new Map<number, string[]>();
   if (ids.length === 0) return map;
   // Named params (the repo's convention) — works on both better-sqlite3 and the
-  // sql.js test driver. Build @id0,@id1,… placeholders + a matching params object.
+  // WASM test driver. Build @id0,@id1,… placeholders + a matching params object.
   const params: Record<string, number> = {};
   const placeholders = ids
     .map((id, i) => {

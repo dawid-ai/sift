@@ -1,5 +1,27 @@
 # Updates
 
+## v0.6.0 — 2026-08-19
+
+- **Search actually finds things now.** Typing two words you half-remember works even
+  when they aren't next to each other, or you got the order wrong — "queue slower" finds
+  the video that says "the queue depth... you got twenty times slower" a sentence apart.
+  Before, search only matched an exact run of characters, so that found nothing.
+- **Results are ordered by how well they match**, not by what you added last. The video a
+  phrase is actually about comes first instead of being buried.
+- **New "Search transcripts" switch in the library**, off by default. Leave it off and
+  search covers titles and channels. Turn it on to search inside everything that was said
+  and every summary. It remembers your choice.
+- Search no longer matches inside the middle of a longer word — "cat" stops turning up
+  every video that mentions "application". Partial words you're still typing keep working.
+- **The queue shows what it's working on.** Finished items used to read as a raw address
+  like `/watch?v=Qr7dK2mVzXc`; they now show the video's title. Work in progress also has
+  its own colour instead of borrowing the one used for buttons.
+- The library table has a **Files** column, and filenames drop the trailing quality tag
+  (`[1080p]`) that pushed the useful part of the name off the edge.
+- Channels and Subscriptions both show a count, instead of only one of them doing it.
+- AI summaries render more readably on both the home and library panels.
+- LinkedIn is now in the list of platforms Sift is tested against.
+
 ## v0.5.0 — 2026-08-17
 
 - **A new look, everywhere.** Every screen has been redesigned: a warm, lit dark canvas

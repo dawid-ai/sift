@@ -3,9 +3,13 @@ import type { AiModelInfo, AiProvider } from "@sift/core";
 
 export const ANTHROPIC_ID = "anthropic";
 
+// Kept in the order Anthropic ships them, newest tier first — the first entry is what the
+// model select shows before the user picks. Opus 5 is the current flagship; 4.8 stays because
+// it is still served and is the documented fallback target for Opus 5 refusals.
 export const ANTHROPIC_MODELS: AiModelInfo[] = [
-  { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
+  { id: "claude-opus-5", label: "Claude Opus 5" },
   { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+  { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
 ];
 
@@ -36,7 +40,7 @@ export function createAnthropicProvider(deps: {
 
   return {
     id: ANTHROPIC_ID,
-    label: "Anthropic (Claude)",
+    label: "Anthropic",
     needsKey: true,
     models() {
       return ANTHROPIC_MODELS;

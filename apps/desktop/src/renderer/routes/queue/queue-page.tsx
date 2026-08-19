@@ -96,18 +96,23 @@ type Tone = "queued" | "running" | "done" | "issues" | "failed" | "canceled";
    chip on *every* row, the progress bar, its percentage, and the CTA. Five passive signals
    out-voting one button is how an accent stops meaning "act here".
 
-   So "work is happening" gets a hue of its own. `globals.css` owns the token ladder and is not
-   this route's to edit, and it has no `--info` rung yet, so the value is spelled out once here
-   — hsl(210 90% 58%), 5.3:1 on the card fill, the value the review asked for — and every
-   running signal on the page (tile, row pill, progress fill, percentage) reads from these four
-   constants instead of re-mixing it per call site. When `--info` lands in globals.css these
-   become `border-info/30` / `text-info` / `bg-info/15` and nothing else moves.
+   So "work is happening" gets a hue of its own — but it has to be a hue the palette OWNS.
+   The first cut spelled out hsl(210 90% 58%), a saturated azure, on the grounds that
+   globals.css had no `--info` rung. That solved the coral problem by inventing a sixth hue:
+   Ember is bg/rail/surface/border/fg plus coral, violet, green, amber and rose, and a blue
+   progress bar made this one route read as a different product.
+
+   `--accent-muted` is the rung that already exists for exactly this job: hsl(20 58% 55%),
+   documented as "the brand's warmth without spending the CTA hue", used by the eyebrow on
+   this route's own composer. Every running signal (tile, row pill, progress fill, percentage)
+   reads from these four constants, so the page raises one hue for "in progress" and keeps
+   full-saturation coral for the one button that acts.
    ------------------------------------------------------------------------------------------ */
-const INFO_TEXT = "text-[hsl(210_90%_58%)]";
-const INFO_BORDER = "border-[hsl(210_90%_58%/0.3)]";
-const INFO_FILL = "bg-[hsl(210_90%_58%/0.14)]";
+const INFO_TEXT = "text-accent-muted";
+const INFO_BORDER = "border-accent-muted/30";
+const INFO_FILL = "bg-accent-muted/[0.14]";
 const INFO_BAR =
-  "bg-[linear-gradient(90deg,hsl(210_90%_58%),hsl(203_92%_68%))]";
+  "bg-[linear-gradient(90deg,hsl(var(--accent-muted)),hsl(28_70%_64%))]";
 
 function itemTone(it: QueueItem): Tone {
   if (it.status === "canceled") return "canceled";
@@ -218,7 +223,7 @@ const STAT_TONES: Record<
   running: {
     border: INFO_BORDER,
     label: INFO_TEXT,
-    wash: "bg-[radial-gradient(125%_92%_at_50%_0%,hsl(210_90%_58%/0.13),transparent_70%)]",
+    wash: "bg-[radial-gradient(125%_92%_at_50%_0%,hsl(var(--accent-muted)/0.13),transparent_70%)]",
     chip: `${INFO_FILL} ${INFO_TEXT}`,
   },
   done: {
@@ -805,12 +810,25 @@ export function QueuePage() {
                       </span>
                     </div>
 
+                    {/* The row's headline is the TITLE once the item has resolved one, with
+                        the URL demoted to a mono second line. Before, every row printed only
+                        `displayUrl` — so a queue that had already downloaded, transcribed and
+                        summarised eight talks still read as a stack of opaque IDs
+                        ("/watch?v=Qr7dK2mVzXc"), and four rows carrying identical chip sets
+                        were indistinguishable from each other. `title` is null until the
+                        metadata fetch lands, and for anything that never downloaded, so the
+                        URL keeps the headline slot whenever there is nothing better to say. */}
                     <p
                       className="mt-2 truncate text-sm font-medium text-foreground/85 transition-colors group-hover:text-foreground"
-                      title={it.sourceUrl}
+                      title={it.title ?? it.sourceUrl}
                     >
-                      {displayUrl(it.sourceUrl)}
+                      {it.title ?? displayUrl(it.sourceUrl)}
                     </p>
+                    {it.title && (
+                      <p className="mt-0.5 truncate font-mono text-[11px] leading-4 text-fg-subtle">
+                        {displayUrl(it.sourceUrl)}
+                      </p>
+                    )}
 
                     {it.spec && (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -903,7 +921,35 @@ export function QueuePage() {
                       batch, was under the 3:1 floor for a functional control until you hovered
                       it. The primitive's own `hover:text-foreground` is the emphasis; an
                       opacity multiplier on top of it was never anything but a contrast bug. */}
+                  {/* The text actions (Cancel / Retry) live in a fixed-width slot that is
+                      reserved on every row, so the three icon buttons land on the same x
+                      down the whole list. Inline, they pushed the icons ~100px left on
+                      exactly the rows that had one, and the right edge of the list visibly
+                      stepped in and out between "queued" and "done" rows. */}
                   <div className="flex flex-none items-center gap-1">
+                    <div className="flex w-[74px] flex-none justify-end">
+                      {(it.status === "queued" || it.status === "running") && (
+                        <Button
+                          data-testid="queue-item-cancel"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.sift.queue.cancel(it.id)}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                      {it.status === "done" && hasError(it) && (
+                        <Button
+                          data-testid="queue-item-retry"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.sift.queue.retry(it.id)}
+                        >
+                          <RotateCw aria-hidden className="h-3.5 w-3.5" />
+                          Retry
+                        </Button>
+                      )}
+                    </div>
                     <Button
                       data-testid="queue-item-up"
                       size="icon-sm"
@@ -924,27 +970,6 @@ export function QueuePage() {
                     >
                       <ArrowDown aria-hidden className="h-3.5 w-3.5" />
                     </Button>
-                    {(it.status === "queued" || it.status === "running") && (
-                      <Button
-                        data-testid="queue-item-cancel"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => window.sift.queue.cancel(it.id)}
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                    {it.status === "done" && hasError(it) && (
-                      <Button
-                        data-testid="queue-item-retry"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => window.sift.queue.retry(it.id)}
-                      >
-                        <RotateCw aria-hidden className="h-3.5 w-3.5" />
-                        Retry
-                      </Button>
-                    )}
                     <Button
                       data-testid="queue-item-remove"
                       size="icon-sm"

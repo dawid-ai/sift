@@ -155,7 +155,7 @@ export function registerSummarizeIpc(
     // the true post-failure state instead of going stale. It's also safe to retry —
     // upsert-by-name means re-running import after fixing the pack does not duplicate the
     // entries that already landed. Upgrade path: add `.transaction` to the SiftDatabase
-    // interface (both the better-sqlite3 and sql.js drivers support it) and wrap this loop
+    // interface (both the native and WASM drivers support it) and wrap this loop
     // if packs grow large enough for partial-apply to matter beyond this messaging.
     let imported = 0;
     let created = 0;

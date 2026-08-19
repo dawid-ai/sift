@@ -372,8 +372,8 @@ function HomeView({
                 </Badge>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Download, transcribe and summarize media from any supported
-                site. Files and keys stay on this machine.
+                Save videos from any supported site, write down every word, and
+                get a summary. It all stays on this machine.
               </p>
             </>
           )}
@@ -397,7 +397,7 @@ function HomeView({
             data-testid="home-drop-hint"
             className="mt-3.5 text-sm text-muted-foreground"
           >
-            …or drop an audio/video file anywhere to transcribe it —{" "}
+            …or drop a video or audio file anywhere —{" "}
             <button
               type="button"
               data-testid="home-pick-file"
