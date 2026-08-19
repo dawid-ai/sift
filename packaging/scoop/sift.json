@@ -7,14 +7,14 @@
     "Sift keeps its library in %APPDATA%/Sift, outside the Scoop dir, so nothing needs",
     "persisting across upgrades."
   ],
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Turns any video into a searchable, transcribed, summarized library — 100% local.",
   "homepage": "https://github.com/dawid-ai/sift",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/dawid-ai/sift/releases/download/v0.5.0/Sift-Setup.exe#/dl.7z",
-      "hash": "a15a01051e83a51306b9f7d1b07244b3146cbc85eddc4076a4e109f37015d7c9",
+      "url": "https://github.com/dawid-ai/sift/releases/download/v0.6.0/Sift-Setup.exe#/dl.7z",
+      "hash": "8d00b2b22dbfe00f35ca2e3601abfb54f5017330ebc83133f129c8ad5274d9f5",
       "pre_install": "Expand-7zipArchive \"$dir\\`$PLUGINSDIR\\app-64.7z\" \"$dir\""
     }
   },
