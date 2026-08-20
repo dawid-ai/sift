@@ -1,5 +1,11 @@
 # Updates
 
+## v0.6.1 — 2026-08-20
+
+- The update popup's release notes read normally again. Line breaks inherited from how
+  the notes are written no longer land mid-sentence — text flows naturally and only real
+  bullets start a new line.
+
 ## v0.6.0 — 2026-08-19
 
 - **Search actually finds things now.** Typing two words you half-remember works even

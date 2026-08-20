@@ -13,6 +13,15 @@ describe("stripHtml", () => {
       "a & b <c> \"d\" 'e'",
     );
   });
+  it("unwraps hard-wrapped lines (<br> and raw newlines) inside a bullet", () => {
+    expect(
+      stripHtml(
+        "<ul>\n<li>Typing two<br>\nwords you half-remember works even<br>\nwhen they aren't next to each other.</li>\n<li>Results are ordered by\nhow well they match.</li>\n</ul>",
+      ),
+    ).toBe(
+      "• Typing two words you half-remember works even when they aren't next to each other.\n• Results are ordered by how well they match.",
+    );
+  });
   it("collapses excess blank lines", () => {
     expect(stripHtml("<p>a</p><p></p><p></p><p>b</p>")).toBe("a\n\nb");
   });
