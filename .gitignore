@@ -18,7 +18,9 @@ docs/superpowers/
 apps/desktop/e2e-shots/
 _private/
 
-# Marketing website — lives/deploys separately, not part of the app build
+# Marketing website — its own repo (dawid-ai/sift-web), checked out here at web/ and
+# published to sift.dawid.ai by GitHub Pages. Commit and push it from inside web/;
+# `/release-update` step 3b does both.
 web/
 web-shots/
 
