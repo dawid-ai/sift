@@ -101,9 +101,23 @@ export function normalizeChannel(raw: unknown): NormalizedChannel {
     avatarUrl: pickAvatar(thumbs),
     bannerUrl: pickBanner(thumbs),
     followerCount: int(r.channel_follower_count),
+    // Only meaningful when `raw` is a real playlist — see `uploadsPlaylistUrl`.
     videoCount: int(r.playlist_count),
     newestVideoId: str(entries[0]?.id),
   };
+}
+
+/**
+ * Uploads-playlist URL for a YouTube channel (`UC…` → `UU…`), or null for anything else.
+ *
+ * yt-dlp only reports a real `playlist_count` for a playlist. A channel URL's `playlist_count`
+ * is the number of *tabs* it has (2 for most channels), and a `/videos` tab reports none at
+ * all — so the uploads playlist is the only cheap source of a channel's video total.
+ */
+export function uploadsPlaylistUrl(channelId: string): string | null {
+  return /^UC[\w-]{22}$/.test(channelId)
+    ? `https://www.youtube.com/playlist?list=UU${channelId.slice(2)}`
+    : null;
 }
 
 export function isShort(

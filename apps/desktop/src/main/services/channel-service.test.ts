@@ -145,6 +145,33 @@ describe("ChannelService", () => {
     expect(after.newCount).toBe(1);
   });
 
+  it("add takes the video count from the uploads playlist, not the channel URL", async () => {
+    // A channel URL's `playlist_count` is its *tab* count (2), which is what used to end up
+    // in the Videos stat for every channel. The uploads playlist (UC…→UU…) has the real one.
+    const id = "UCHnyfMqiRRG1u-2MsSQLbXA";
+    const flat = vi.fn(async (url: string) =>
+      url.includes("list=UU")
+        ? { ...channelRaw([{ id: "v1" }]), playlist_count: 528 }
+        : { ...channelRaw([{ id: "v1" }]), channel_id: id, playlist_count: 2 },
+    );
+    const svc = new ChannelService({ db, runner: { flatPlaylist: flat } });
+    const c = await svc.add("https://youtube.com/@chan");
+    expect(flat).toHaveBeenCalledWith(
+      `https://www.youtube.com/playlist?list=UU${id.slice(2)}`,
+      { items: "1:1" },
+      undefined,
+    );
+    expect(c.videoCount).toBe(528);
+  });
+
+  it("add keeps a plain playlist's own count and skips the uploads fetch", async () => {
+    const flat = vi.fn(async () => channelRaw([{ id: "v1" }])); // channel_id "UC1" — not a UC id
+    const svc = new ChannelService({ db, runner: { flatPlaylist: flat } });
+    const c = await svc.add("https://youtube.com/playlist?list=PL1");
+    expect(c.videoCount).toBe(100);
+    expect(flat).toHaveBeenCalledTimes(1);
+  });
+
   it("listVideos latest requests items 1:count", async () => {
     const flat = vi.fn(async () => channelRaw([{ id: "v2" }, { id: "v1" }]));
     const svc = new ChannelService({ db, runner: { flatPlaylist: flat } });

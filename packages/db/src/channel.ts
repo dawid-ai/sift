@@ -78,11 +78,12 @@ export function updateChannelRefresh(
   patch: {
     last_seen_video_id: string | null;
     new_count: number;
+    video_count: number | null;
     last_checked: number;
   },
 ): void {
   db.prepare(
-    "UPDATE channel SET last_seen_video_id=@last_seen_video_id, new_count=@new_count, last_checked=@last_checked WHERE id=@id",
+    "UPDATE channel SET last_seen_video_id=@last_seen_video_id, new_count=@new_count, video_count=@video_count, last_checked=@last_checked WHERE id=@id",
   ).run({ id, ...patch });
 }
 

@@ -21,6 +21,7 @@ import {
   normalizeChannel,
   normalizeChannelEntries,
   normalizeSubscriptions,
+  uploadsPlaylistUrl,
 } from "@sift/core";
 import type {
   ChannelContentType,
@@ -100,6 +101,27 @@ export class ChannelService {
     }
   }
 
+  /**
+   * The channel's real video total, or null when it can't be read.
+   *
+   * yt-dlp reports `playlist_count` for playlists only: the channel URL we fetch in `add`
+   * answers with its *tab* count (2), which is why every channel used to show "Videos 2".
+   * The uploads playlist has the true number. Failure is non-fatal — the stat renders as an
+   * em dash rather than blocking an add or a refresh.
+   */
+  private async uploadsCount(channelId: string): Promise<number | null> {
+    const url = uploadsPlaylistUrl(channelId);
+    if (!url) return null;
+    try {
+      const raw = (await this.flat(url, "1:1")) as { playlist_count?: unknown };
+      return typeof raw?.playlist_count === "number"
+        ? raw.playlist_count
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
   async add(url: string): Promise<ChannelRecord> {
     let raw;
     try {
@@ -119,6 +141,13 @@ export class ChannelService {
     // Re-adding an already-tracked channel (e.g. via openForMedia) must NOT reset its
     // "N new" tracking. Refresh display metadata only; preserve tracking columns.
     const existing = getChannelByChannelId(this.deps.db, n.channelId);
+    // A non-YouTube-channel URL (a plain playlist) keeps the count normalize read off it.
+    const videoCount =
+      uploadsPlaylistUrl(n.channelId) === null
+        ? n.videoCount
+        : ((await this.uploadsCount(n.channelId)) ??
+          existing?.video_count ??
+          null);
     const nc: NewChannel = {
       channel_id: n.channelId,
       url: n.url,
@@ -129,7 +158,7 @@ export class ChannelService {
       avatar_url: n.avatarUrl,
       banner_url: n.bannerUrl,
       follower_count: n.followerCount,
-      video_count: n.videoCount,
+      video_count: videoCount,
       last_seen_video_id: existing
         ? existing.last_seen_video_id
         : n.newestVideoId,
@@ -161,6 +190,7 @@ export class ChannelService {
     updateChannelRefresh(this.deps.db, id, {
       last_seen_video_id: newest,
       new_count: newCount,
+      video_count: (await this.uploadsCount(row.channel_id)) ?? row.video_count,
       last_checked: Date.now(),
     });
     return toRecord(getChannelById(this.deps.db, id)!);

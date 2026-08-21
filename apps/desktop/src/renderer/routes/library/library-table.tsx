@@ -373,6 +373,17 @@ function LibraryRow({
                 className="absolute inset-0 h-full w-full object-cover"
               />
             )}
+            {/* The poster opens Details, same as the title beside it. A transparent overlay
+                button keeps the focus ring, the keyboard activation and the accessible name
+                without turning the whole row into a control — the row already carries tag
+                chips, a channel link and its own buttons. */}
+            <button
+              type="button"
+              data-testid="media-open-poster"
+              onClick={() => onOpen(media.id)}
+              aria-label={`Open ${media.title}`}
+              className="absolute inset-0 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/70"
+            />
           </div>
           {/* Capped so one long title can't take the whole auto-layout table hostage — but at
               34rem, not 28rem: the ~85px reclaimed by folding Formats and Summaries into one
@@ -396,9 +407,14 @@ function LibraryRow({
               {/* Tier 1 of the row: the only line at full weight. `leading-5` is the shared line
                   box — every cell in the row uses the same one (TD_LINE), which is what puts
                   them all on one axis. */}
-              <p className="line-clamp-1 min-w-0 text-[13px] font-medium leading-5 text-foreground/90 transition-colors duration-150 group-hover:text-foreground">
+              <button
+                type="button"
+                data-testid="media-open-title"
+                onClick={() => onOpen(media.id)}
+                className="line-clamp-1 min-w-0 rounded-sm text-left text-[13px] font-medium leading-5 text-foreground/90 underline-offset-4 transition-colors duration-150 hover:underline group-hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              >
                 {media.title}
-              </p>
+              </button>
               {tags.length > 0 && (
                 <span className="flex shrink-0 items-center gap-1">
                   {shownTags.map((t) => (

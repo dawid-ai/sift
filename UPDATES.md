@@ -1,5 +1,17 @@
 # Updates
 
+## v0.6.2 — 2026-08-21
+
+- **A channel's video count is real now.** Every channel used to show "Videos 2" — the
+  number came from the channel page itself, which reports how many tabs it has, not how
+  many videos. Channels you already track pick up the true count the next time you
+  refresh them.
+- **Thumbnails and titles open the video.** In both the library grid and the list, click
+  the poster or the title to go straight to the details page instead of hunting for the
+  Details button.
+- **The slides filmstrip scrolls with a plain mouse wheel again.** Scrolling with the
+  pointer over the strip moves it sideways; it had been snapping back to where it started.
+
 ## v0.6.1 — 2026-08-20
 
 - The update popup's release notes read normally again. Line breaks inherited from how

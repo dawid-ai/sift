@@ -171,7 +171,7 @@ export function SlidesPanel({
     const onWheel = (e: WheelEvent) => {
       if (e.deltaY === 0 || e.shiftKey) return; // shift-wheel / trackpad already scroll sideways
       e.preventDefault();
-      el.scrollLeft += e.deltaY;
+      el.scrollLeft += e.deltaY * 2; // one notch ≈ one 204px card, not half of one
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -399,14 +399,12 @@ export function SlidesPanel({
             </Button>
           </div>
           {/* Horizontal filmstrip: slides can run to dozens, and a grid pushed the export
-              controls off-screen. Scrolls sideways with snap so the panel keeps a fixed height. */}
-          {/* snap-proximity, not mandatory: mandatory fights the incremental scrollLeft the
-              wheel handler applies, snapping back mid-gesture. */}
+              controls off-screen. Scrolls sideways so the panel keeps a fixed height. */}
+          {/* No scroll-snap. Chromium re-snaps after a *programmatic* scrollLeft too, and a
+              wheel notch (100px) is well inside proximity range of a 204px card pitch — so
+              every notch snapped straight back and the strip looked frozen. */}
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-            <div
-              ref={stripRef}
-              className="flex snap-x snap-proximity gap-3 overflow-x-auto pb-2"
-            >
+            <div ref={stripRef} className="flex gap-3 overflow-x-auto pb-2">
               {frames.map((f) => (
                 <div
                   key={f.id}
@@ -416,7 +414,7 @@ export function SlidesPanel({
                     e.preventDefault();
                     onToggleInclude(f.id, !f.included);
                   }}
-                  className={`flex w-48 flex-none snap-start flex-col overflow-hidden rounded-lg border bg-white/[0.03] transition-colors ${
+                  className={`flex w-48 flex-none flex-col overflow-hidden rounded-lg border bg-white/[0.03] transition-colors ${
                     f.included ? "border-white/[0.16]" : "border-white/[0.06]"
                   }`}
                   title={`${f.ocrText ?? ""}\n(right-click to ${f.included ? "exclude" : "include"})`.trim()}

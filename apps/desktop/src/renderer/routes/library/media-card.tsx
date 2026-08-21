@@ -339,6 +339,17 @@ export function MediaCard({
             {duration}
           </span>
         )}
+        {/* The whole poster opens Details. A transparent overlay button rather than a click
+            handler on the poster div: it keeps the real focus ring, the keyboard activation
+            and the accessible name for free, and the chips underneath stay unclickable
+            decoration. */}
+        <button
+          type="button"
+          data-testid="media-open-poster"
+          onClick={() => onOpen(media.id)}
+          aria-label={`Open ${media.title}`}
+          className="absolute inset-0 cursor-pointer rounded-t-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/70"
+        />
       </div>
 
       {/* Card body on a 6px / 10px rhythm. It used to be a uniform 20px between four
@@ -348,11 +359,17 @@ export function MediaCard({
           the 10px step. */}
       <div className="flex flex-1 flex-col p-4">
         <div className="flex-1">
-          <CardTitle
-            data-testid="media-title"
-            className="line-clamp-2 text-[15px] leading-snug"
-          >
-            {media.title}
+          {/* The title opens Details too. `line-clamp-2` moves onto the button — the clamp
+              needs `display:-webkit-box` on the element that holds the text, and a block
+              child inside a clamped parent doesn't clamp. */}
+          <CardTitle data-testid="media-title" className="text-[15px]">
+            <button
+              type="button"
+              onClick={() => onOpen(media.id)}
+              className="line-clamp-2 rounded-sm text-left text-[15px] leading-snug underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            >
+              {media.title}
+            </button>
           </CardTitle>
 
           {/* Tier 2: who it came from. The platform is a 14px monochrome mark in front of the
