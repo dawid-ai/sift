@@ -188,7 +188,14 @@ export class DownloadService {
    * path for the same format) or "error" (rethrowing) on completion.
    */
   async start(
-    input: { metadata: MediaMetadata; option: DownloadOption; tags?: string[] },
+    input: {
+      metadata: MediaMetadata;
+      option: DownloadOption;
+      tags?: string[];
+      /** Aborting kills the yt-dlp process. The download row lands on "error" with the
+       * cancellation message, which is what the queue's cancel path relies on. */
+      signal?: AbortSignal;
+    },
     onProgress?: (p: DownloadProgress) => void,
   ): Promise<MediaRecord> {
     const { db, runner } = this.opts;
@@ -245,6 +252,7 @@ export class DownloadService {
           outputTemplate,
           ffmpegLocation,
           cookiesFile,
+          signal: input.signal,
         },
         (p) => onProgress?.({ mediaId: media.id, downloadId: dl.id, ...p }),
       );

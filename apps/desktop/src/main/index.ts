@@ -105,6 +105,7 @@ import { createTranscriptConfigStore } from "./settings/transcript-config";
 import { createTranscriptMethodStore } from "./settings/transcript-method-config";
 import { createAutoTranscriptStore } from "./settings/auto-transcript-config";
 import { createDownloadsConfigStore } from "./settings/downloads-config";
+import { createQueueConfigStore } from "./settings/queue-config";
 import { createBinaryUpdatesConfigStore } from "./settings/binary-updates-config";
 import { runStartupBinaryMaintenance } from "./services/binary-update-orchestrator";
 import { createSecrets } from "./secrets";
@@ -118,6 +119,7 @@ import {
   aiDefaultConfigFile,
   downloadsConfigFile,
   downloadsDir,
+  queueConfigFile,
   framesDir,
   tessdataDir,
   tesseractCacheDir,
@@ -1314,6 +1316,7 @@ app.whenReady().then(() => {
           win.webContents.send(IPC.queueUpdate, items);
         }
       },
+      config: createQueueConfigStore({ filePath: queueConfigFile() }),
     });
     registerQueueIpc(queueWorker);
     // Re-queue anything left 'running' by a crash, then drain in the background.

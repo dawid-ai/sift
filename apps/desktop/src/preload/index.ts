@@ -11,6 +11,7 @@ import {
   type ChannelVideosQuery,
   type DownloadProgress,
   type MediaFilter,
+  type QueueConfig,
   type QueueItem,
   type QueueSpec,
   type SiftApi,
@@ -162,6 +163,10 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.queueReorder, id, dir),
     retry: (id: number) => ipcRenderer.invoke(IPC.queueRetry, id),
     cancel: (id: number) => ipcRenderer.invoke(IPC.queueCancel, id),
+    retryFailed: () => ipcRenderer.invoke(IPC.queueRetryFailed),
+    getConfig: () => ipcRenderer.invoke(IPC.queueGetConfig),
+    setConfig: (config: QueueConfig) =>
+      ipcRenderer.invoke(IPC.queueSetConfig, config),
     pause: () => ipcRenderer.invoke(IPC.queuePause),
     resume: () => ipcRenderer.invoke(IPC.queueResume),
     isPaused: () => ipcRenderer.invoke(IPC.queueIsPaused),

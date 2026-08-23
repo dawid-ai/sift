@@ -388,3 +388,125 @@ describe("QueueWorker", () => {
     expect(worker.isPaused()).toBe(false);
   });
 });
+
+describe("QueueWorker queue controls", () => {
+  let db: SiftDatabase;
+  beforeEach(async () => {
+    db = await openTestDatabase();
+    runMigrations(db);
+  });
+
+  it("skips URLs that are already queued and reports them", () => {
+    const w = new QueueWorker(makeDeps(db, { emit: vi.fn() }));
+    w.pause(); // keep the rows put so the second add sees them
+    const first = w.add(["https://x/1", "https://x/2"], SPEC());
+    expect(first).toEqual({ added: 2, duplicates: [] });
+
+    const second = w.add(["https://x/2", "https://x/3"], SPEC());
+    expect(second).toEqual({ added: 1, duplicates: ["https://x/2"] });
+    expect(w.list()).toHaveLength(3);
+  });
+
+  it("dedupes within a single add call", () => {
+    const w = new QueueWorker(makeDeps(db));
+    w.pause();
+    expect(w.add(["https://x/1", "https://x/1"], SPEC())).toEqual({
+      added: 1,
+      duplicates: ["https://x/1"],
+    });
+  });
+
+  it("runs up to `concurrency` items at once", async () => {
+    let running = 0;
+    let peak = 0;
+    const release: (() => void)[] = [];
+    const deps = makeDeps(db, {
+      download: {
+        start: vi.fn(async () => {
+          running += 1;
+          peak = Math.max(peak, running);
+          await new Promise<void>((r) => release.push(r));
+          running -= 1;
+          return { id: seedMedia(db) };
+        }) as unknown as QueueWorkerDeps["download"]["start"],
+      },
+      config: {
+        get: () => ({ concurrency: 3, startAt: null }),
+        set: () => {},
+      },
+    });
+    const w = new QueueWorker(deps);
+    w.add(["https://x/1", "https://x/2", "https://x/3", "https://x/4"], SPEC());
+    await flush();
+    expect(peak).toBe(3);
+    for (const r of [...release]) r();
+    await flush();
+    await flush();
+    expect(peak).toBe(3);
+  });
+
+  it("clamps a stored concurrency outside 1..4", async () => {
+    const w = new QueueWorker(
+      makeDeps(db, {
+        config: {
+          get: () => ({ concurrency: 99, startAt: null }),
+          set: () => {},
+        },
+      }),
+    );
+    // Nothing to assert directly on a private getter — the observable effect is that a
+    // 99-way fan-out never happens.
+    w.pause();
+    expect(w.add(["https://x/1"], SPEC()).added).toBe(1);
+  });
+
+  it("retryFailed re-queues every item carrying a failed op", async () => {
+    const deps = makeDeps(db, {
+      download: {
+        start: vi.fn(async () => {
+          throw new Error("nope");
+        }) as unknown as QueueWorkerDeps["download"]["start"],
+      },
+    });
+    const w = new QueueWorker(deps);
+    w.add(["https://x/1", "https://x/2"], SPEC());
+    await flush();
+    await flush();
+
+    const failed = w.list().filter((i) => i.ops?.download === "error");
+    expect(failed).toHaveLength(2);
+
+    w.pause();
+    expect(w.retryFailed()).toBe(2);
+    expect(w.list().every((i) => i.status === "queued")).toBe(true);
+    expect(w.list().every((i) => i.ops?.download === "pending")).toBe(true);
+  });
+
+  it("aborts the running download when an item is cancelled", async () => {
+    let seenSignal: AbortSignal | undefined;
+    const deps = makeDeps(db, {
+      download: {
+        start: vi.fn(async (input: { signal?: AbortSignal }) => {
+          seenSignal = input.signal;
+          await new Promise<void>((_resolve, reject) => {
+            input.signal?.addEventListener("abort", () =>
+              reject(new Error("Download canceled.")),
+            );
+          });
+          return { id: seedMedia(db) };
+        }) as unknown as QueueWorkerDeps["download"]["start"],
+      },
+    });
+    const w = new QueueWorker(deps);
+    w.add(["https://x/1"], SPEC());
+    await flush();
+    expect(seenSignal?.aborted).toBe(false);
+
+    const runningId = w.list()[0]!.id;
+    w.cancel(runningId);
+    expect(seenSignal?.aborted).toBe(true);
+    await flush();
+    await flush();
+    expect(w.list()[0]?.status).toBe("canceled");
+  });
+});

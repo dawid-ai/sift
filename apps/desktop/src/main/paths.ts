@@ -30,6 +30,11 @@ export function downloadsConfigFile(): string {
   return join(app.getPath("userData"), "settings", "downloads.json");
 }
 
+/** Path to the persisted queue settings (concurrency + scheduled start, non-secret). */
+export function queueConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "queue.json");
+}
+
 /** Path to the persisted binary auto-update policy (auto|notify, non-secret). */
 export function binaryUpdatesConfigFile(): string {
   return join(app.getPath("userData"), "settings", "binary-updates.json");

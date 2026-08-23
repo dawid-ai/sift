@@ -32,6 +32,18 @@ export interface DownloadOpts {
   outputTemplate: string; // absolute -o template, e.g. "<dir>/<base>.%(ext)s"
   ffmpegLocation?: string; // path to the managed ffmpeg binary, so yt-dlp can merge video+audio
   cookiesFile?: string; // path to a Netscape-format cookies file for authenticated requests
+  /** Aborting kills the yt-dlp process. Without it "cancel" only stops the queue at the
+   * next op boundary, so a cancelled 2 GB download keeps running to completion. */
+  signal?: AbortSignal;
+}
+
+/** Thrown when `signal` aborts a download. Distinct from a yt-dlp failure so callers can
+ * tell "the user stopped this" from "this broke". */
+export class DownloadCanceledError extends Error {
+  constructor() {
+    super("Download canceled.");
+    this.name = "DownloadCanceledError";
+  }
 }
 
 /** Minimal shape of a Node ChildProcess that `download()` depends on. */
@@ -40,6 +52,8 @@ export interface SpawnedProcess {
   stderr: { on(ev: "data", cb: (chunk: Buffer | string) => void): void };
   on(ev: "close", cb: (code: number | null) => void): void;
   on(ev: "error", cb: (err: Error) => void): void;
+  /** Optional so existing test fakes stay valid; the real ChildProcess has it. */
+  kill?(signal?: NodeJS.Signals | number): boolean;
 }
 
 export type SpawnFn = (file: string, args: string[]) => SpawnedProcess;
@@ -288,10 +302,31 @@ export function createYtDlpRunner(deps: {
       ];
 
       return new Promise((resolve, reject) => {
+        if (opts.signal?.aborted) {
+          reject(new DownloadCanceledError());
+          return;
+        }
         // yt-dlp stream/flag behavior (which stream carries which line) is
         // verified on first real download — parsing is unit-tested; wiring needs one
         // human-run tuning pass (see Phase 3 follow-ups).
         const proc = spawnProcess(path, args);
+
+        // ponytail: `kill()` reaches yt-dlp, not the ffmpeg it may have spawned to merge
+        // streams. That child exits on its own once its stdin closes; a process-tree kill
+        // would need a Windows-specific taskkill, which is not worth it for a cancel.
+        let canceled = false;
+        const onAbort = (): void => {
+          canceled = true;
+          try {
+            proc.kill?.();
+          } catch {
+            /* already gone */
+          }
+          reject(new DownloadCanceledError());
+        };
+        opts.signal?.addEventListener("abort", onAbort, { once: true });
+        const detach = (): void =>
+          opts.signal?.removeEventListener("abort", onAbort);
 
         let filePathCandidate: string | null = null;
         let lastStderr = "";
@@ -336,10 +371,15 @@ export function createYtDlpRunner(deps: {
         });
 
         proc.on("error", (err) => {
+          detach();
           reject(err);
         });
 
         proc.on("close", (code) => {
+          detach();
+          // A cancel already rejected with DownloadCanceledError; the non-zero exit that
+          // follows the kill must not overwrite it with "yt-dlp download failed".
+          if (canceled) return;
           if (code === 0 && filePathCandidate) {
             resolve({ filePath: filePathCandidate });
             return;

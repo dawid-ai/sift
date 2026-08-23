@@ -84,6 +84,9 @@ export const IPC = {
   queuePause: "queue:pause",
   queueResume: "queue:resume",
   queueIsPaused: "queue:isPaused",
+  queueGetConfig: "queue:getConfig",
+  queueSetConfig: "queue:setConfig",
+  queueRetryFailed: "queue:retryFailed",
   queueUpdate: "queue:update",
   channelAdd: "channel:add",
   channelList: "channel:list",
@@ -510,6 +513,20 @@ export interface QueueSpec {
   tags: string[];
 }
 
+/** Persisted queue behaviour. `startAt` is an absolute epoch ms so the main process never
+ * does clock arithmetic; the renderer resolves "start at 02:00" to the next occurrence. */
+export interface QueueConfig {
+  /** How many items run at once, 1..4. */
+  concurrency: number;
+  startAt: number | null;
+}
+
+/** What `queue.add` did: how many went in, and which URLs were already waiting. */
+export interface QueueAddResult {
+  added: number;
+  duplicates: string[];
+}
+
 export type QueueOpKey = "download" | "transcript" | "summarize";
 export type OpOutcome = "pending" | "running" | "done" | "error" | "skipped";
 
@@ -791,8 +808,9 @@ export interface SiftApi {
     removeSite(domain: string): Promise<void>;
   };
   queue: {
-    /** Enqueues one item per URL with a shared spec. */
-    add(urls: string[], spec: QueueSpec): Promise<void>;
+    /** Enqueues one item per URL with a shared spec, skipping URLs already queued or
+     * running. Reports what went in and what was already there. */
+    add(urls: string[], spec: QueueSpec): Promise<QueueAddResult>;
     /** Current queue snapshot, in order. */
     list(): Promise<QueueItem[]>;
     /** Deletes a queue item (keeps any downloaded files). */
@@ -801,8 +819,13 @@ export interface SiftApi {
     reorder(id: number, dir: "up" | "down"): Promise<void>;
     /** Re-queues an item, re-running only its errored ops. */
     retry(id: number): Promise<void>;
-    /** Cancels a queued item (running item stops at the next op boundary). */
+    /** Cancels an item. A running download is killed, not left to finish. */
     cancel(id: number): Promise<void>;
+    /** Re-queues every item with a failed op. Returns how many were re-queued. */
+    retryFailed(): Promise<number>;
+    /** Concurrency and scheduled start. */
+    getConfig(): Promise<QueueConfig>;
+    setConfig(config: QueueConfig): Promise<void>;
     /** Stops picking new items (running item finishes). */
     pause(): Promise<void>;
     /** Resumes draining. */

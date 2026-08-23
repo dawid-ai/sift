@@ -12,6 +12,7 @@ import type {
   DownloadOption,
   MediaFilter,
   MediaMetadata,
+  QueueConfig,
   QueueSpec,
 } from "@sift/ipc-contract";
 import type { FrameCrop } from "@sift/db";
@@ -238,5 +239,18 @@ export function channelVideosQuery(
       "most_viewed",
     ] as const),
     count: int(q.count, `${name}.count`, 1, 5000),
+  };
+}
+
+/** Queue behaviour. `startAt` is an absolute epoch ms; a value in the past is a valid (if
+ * odd) request, so only the type and a sane bound are enforced. */
+export function queueConfig(v: unknown, name = "config"): QueueConfig {
+  const c = obj(v, name);
+  return {
+    concurrency: int(c.concurrency, `${name}.concurrency`, 1, 4),
+    startAt:
+      c.startAt == null
+        ? null
+        : int(c.startAt, `${name}.startAt`, 0, Number.MAX_SAFE_INTEGER),
   };
 }

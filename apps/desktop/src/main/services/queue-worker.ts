@@ -15,6 +15,7 @@ import {
 } from "@sift/db";
 import type {
   MediaMetadata,
+  QueueConfig,
   QueueItem,
   QueueOpKey,
   QueueOps,
@@ -37,7 +38,22 @@ export interface QueueWorkerDeps {
   transcript: Pick<TranscriptService, "get">;
   summarize: Pick<SummarizeService, "start">;
   emit: (items: QueueItem[]) => void;
+  /** Persisted queue settings. Optional so the Vitest suite can build a worker without
+   * a settings store; it then runs one item at a time and never schedules. */
+  config?: {
+    get(): QueueConfig;
+    set(config: QueueConfig): void;
+  };
 }
+
+/** Result of adding URLs: what went in, and what was already there. Returned so the UI can
+ * say "3 added, 1 already queued" instead of silently dropping the duplicate. */
+export interface QueueAddResult {
+  added: number;
+  duplicates: string[];
+}
+
+export const MAX_CONCURRENCY = 4;
 
 const OP_KEYS: QueueOpKey[] = ["download", "transcript", "summarize"];
 
@@ -98,15 +114,71 @@ function toItem(
 }
 
 export class QueueWorker {
-  private processing = false;
   private paused = false;
-  // cancel is cooperative — a running item is flagged here and stops at the
-  // next op boundary; yt-dlp is not hard-killed mid-download.
+  /** Cancel is both cooperative and forceful: the id is flagged here so the pipeline stops
+   * at the next op boundary, AND the item's AbortController fires, which kills the yt-dlp
+   * process. Before that, cancelling a 2 GB download left it running to completion. */
   private readonly canceled = new Set<number>();
-  private runningId: number | null = null;
-  private runningProgress: number | null = null;
+  /** In-flight items → their latest download percentage. Sized by `concurrency`. */
+  private readonly running = new Map<number, number | null>();
+  private readonly aborts = new Map<number, AbortController>();
+  private scheduleTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly deps: QueueWorkerDeps) {}
+  constructor(private readonly deps: QueueWorkerDeps) {
+    this.applySchedule();
+  }
+
+  /** How many items may run at once. Clamped: past a handful, concurrent yt-dlp processes
+   * on one connection make every download slower, not the batch faster. */
+  private get concurrency(): number {
+    const n = this.deps.config?.get().concurrency ?? 1;
+    return Math.min(Math.max(Math.trunc(n) || 1, 1), MAX_CONCURRENCY);
+  }
+
+  getConfig(): QueueConfig {
+    return this.deps.config?.get() ?? { concurrency: 1, startAt: null };
+  }
+
+  setConfig(config: QueueConfig): void {
+    this.deps.config?.set(config);
+    this.applySchedule();
+    this.emit();
+    void this.tick();
+  }
+
+  /**
+   * Arms (or clears) the scheduled start. `startAt` is an absolute epoch ms — the renderer
+   * turns "start at 02:00" into the next occurrence, so this side has no clock arithmetic
+   * and no timezone or DST edge to get wrong.
+   */
+  private applySchedule(): void {
+    if (this.scheduleTimer) {
+      clearTimeout(this.scheduleTimer);
+      this.scheduleTimer = null;
+    }
+    const startAt = this.getConfig().startAt;
+    if (startAt == null) return;
+    const delay = startAt - Date.now();
+    if (delay <= 0) {
+      // Already past: treat it as "start now" and clear it, rather than firing repeatedly.
+      this.deps.config?.set({ ...this.getConfig(), startAt: null });
+      this.paused = false;
+      void this.tick();
+      return;
+    }
+    this.paused = true;
+    this.scheduleTimer = setTimeout(() => {
+      this.scheduleTimer = null;
+      this.deps.config?.set({ ...this.getConfig(), startAt: null });
+      this.resume();
+    }, delay);
+  }
+
+  /** Releases the schedule timer. Call before dropping the worker (tests, shutdown). */
+  dispose(): void {
+    if (this.scheduleTimer) clearTimeout(this.scheduleTimer);
+    this.scheduleTimer = null;
+  }
 
   /** Startup: re-queue any item left 'running' by a crash, then drain. */
   recover(): void {
@@ -128,10 +200,31 @@ export class QueueWorker {
     void this.tick();
   }
 
-  add(urls: string[], spec: QueueSpec): void {
+  /**
+   * Queues `urls`, skipping any that are already waiting or running.
+   *
+   * Pasting a list twice — or re-pasting after adding one more line — used to queue every
+   * URL again, and the second copy downloaded the same video over the first. Finished and
+   * cancelled rows are NOT treated as duplicates: re-queueing something that failed, or
+   * that you cancelled, is a deliberate act.
+   */
+  add(urls: string[], spec: QueueSpec): QueueAddResult {
+    const active = new Set(
+      listQueueItems(this.deps.db)
+        .filter((r) => r.status === "queued" || r.status === "running")
+        .map((r) => r.source_url),
+    );
     let order = maxQueueOrder(this.deps.db);
+    const duplicates: string[] = [];
+    let added = 0;
     for (const url of urls) {
+      if (active.has(url)) {
+        duplicates.push(url);
+        continue;
+      }
+      active.add(url);
       order += 1;
+      added += 1;
       insertQueueItem(this.deps.db, {
         source_url: url,
         spec_json: JSON.stringify(spec),
@@ -144,11 +237,12 @@ export class QueueWorker {
     }
     this.emit();
     void this.tick();
+    return { added, duplicates };
   }
 
   list(): QueueItem[] {
     return listQueueItemsWithMedia(this.deps.db).map((r: QueueItemWithMedia) =>
-      toItem(r, r.id === this.runningId ? this.runningProgress : null),
+      toItem(r, this.running.get(r.id) ?? null),
     );
   }
 
@@ -164,6 +258,8 @@ export class QueueWorker {
     if (!row) return;
     if (row.status === "running") {
       this.canceled.add(id);
+      // Kills the yt-dlp process rather than waiting for the current op to finish.
+      this.aborts.get(id)?.abort();
     } else if (row.status === "queued") {
       updateQueueItem(this.deps.db, id, { status: "canceled" });
       this.emit();
@@ -184,6 +280,17 @@ export class QueueWorker {
     });
     this.emit();
     void this.tick();
+  }
+
+  /** Re-queues every item carrying a failed op. Returns how many were re-queued. */
+  retryFailed(): number {
+    const failed = listQueueItems(this.deps.db).filter((row) => {
+      if (row.status === "running") return false;
+      const ops = safeParse<QueueOps | null>(row.ops_json, null);
+      return !!row.error || (!!ops && OP_KEYS.some((k) => ops[k] === "error"));
+    });
+    for (const row of failed) this.retry(row.id);
+    return failed.length;
   }
 
   reorder(id: number, dir: "up" | "down"): void {
@@ -218,16 +325,25 @@ export class QueueWorker {
     this.deps.emit(this.list());
   }
 
-  private async tick(): Promise<void> {
-    if (this.processing || this.paused) return;
-    const next = listQueueItems(this.deps.db).find(
-      (r) => r.status === "queued",
-    );
-    if (!next) return;
-    this.processing = true;
-    this.runningId = next.id;
+  /** Starts as many queued items as `concurrency` allows. Each runs its own pipeline; the
+   * `running` map is claimed synchronously so two ticks can never pick the same row. */
+  private tick(): void {
+    if (this.paused) return;
+    while (this.running.size < this.concurrency) {
+      const next = listQueueItems(this.deps.db).find(
+        (r) => r.status === "queued" && !this.running.has(r.id),
+      );
+      if (!next) return;
+      this.running.set(next.id, null);
+      void this.runOne(next.id);
+    }
+  }
+
+  private async runOne(id: number): Promise<void> {
+    const abort = new AbortController();
+    this.aborts.set(id, abort);
     try {
-      await this.process(next.id);
+      await this.process(id, abort.signal);
     } catch (err) {
       // Unattended-drain resilience: every op (and metadata.fetch) is individually
       // guarded inside process(), but an UNEXPECTED throw outside those guards
@@ -235,13 +351,12 @@ export class QueueWorker {
       // synchronously before its await) would otherwise reject here, skip the
       // recursive tick() below, and wedge the whole queue with this item stuck
       // "running". Finalize the poison item as done+error and let the drain continue.
-      this.finalizePoisonItem(next.id, err);
+      this.finalizePoisonItem(id, err);
     } finally {
-      this.processing = false;
-      this.runningId = null;
-      this.runningProgress = null;
+      this.running.delete(id);
+      this.aborts.delete(id);
     }
-    void this.tick();
+    this.tick();
   }
 
   /** Best-effort finalize of an item whose process() threw unexpectedly: mark any
@@ -278,7 +393,7 @@ export class QueueWorker {
     }
   }
 
-  private async process(id: number): Promise<void> {
+  private async process(id: number, signal?: AbortSignal): Promise<void> {
     const { db, metadata, download, transcript, summarize } = this.deps;
     const row = getQueueItem(db, id);
     if (!row) return;
@@ -317,17 +432,21 @@ export class QueueWorker {
           computeDownloadOptions(meta.raw),
           spec.format,
         );
-        const rec = await download.start({ metadata: meta, option }, (p) => {
-          this.runningProgress = p.total
-            ? Math.round((p.received / p.total) * 100)
-            : 0;
-          this.emit();
-        });
-        this.runningProgress = null;
+        const rec = await download.start(
+          { metadata: meta, option, signal },
+          (p) => {
+            this.running.set(
+              id,
+              p.total ? Math.round((p.received / p.total) * 100) : 0,
+            );
+            this.emit();
+          },
+        );
+        this.running.set(id, null);
         mediaId = rec.id;
         ops.download = "done";
       } catch (err) {
-        this.runningProgress = null;
+        this.running.set(id, null);
         ops.download = "error";
         ops.messages.download = msgOf(err);
       }

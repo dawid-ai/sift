@@ -1,8 +1,8 @@
 import { ipcMain } from "electron";
-import { IPC, type QueueSpec } from "@sift/ipc-contract";
+import { IPC, type QueueConfig, type QueueSpec } from "@sift/ipc-contract";
 import type { QueueWorker } from "../services/queue-worker";
 import { httpUrl, id, oneOf, strArray } from "./validate";
-import { queueSpec } from "./validate-payloads";
+import { queueConfig, queueSpec } from "./validate-payloads";
 
 /**
  * Registers the queue request handlers. The worker's snapshot emissions are
@@ -36,4 +36,9 @@ export function registerQueueIpc(worker: QueueWorker): void {
   ipcMain.handle(IPC.queuePause, () => worker.pause());
   ipcMain.handle(IPC.queueResume, () => worker.resume());
   ipcMain.handle(IPC.queueIsPaused, () => worker.isPaused());
+  ipcMain.handle(IPC.queueRetryFailed, () => worker.retryFailed());
+  ipcMain.handle(IPC.queueGetConfig, () => worker.getConfig());
+  ipcMain.handle(IPC.queueSetConfig, (_e, config: QueueConfig) =>
+    worker.setConfig(queueConfig(config)),
+  );
 }
