@@ -16,6 +16,9 @@ docs/superpowers/
 
 # Visual-QA capture output (e2e/shots.spec.ts)
 apps/desktop/e2e-shots/
+
+# Visual-regression baselines (e2e/visual.spec.ts) — machine-specific, regenerate locally
+apps/desktop/e2e/visual.spec.ts-snapshots/
 _private/
 
 # Marketing website — its own repo (dawid-ai/sift-web), checked out here at web/ and

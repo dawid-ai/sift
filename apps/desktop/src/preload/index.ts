@@ -23,6 +23,10 @@ const api: SiftApi = {
     getVersion: () => ipcRenderer.invoke(IPC.appGetVersion),
     quit: () => ipcRenderer.invoke(IPC.appQuit),
   },
+  diagnostics: {
+    get: () => ipcRenderer.invoke(IPC.diagnosticsGet),
+    export: () => ipcRenderer.invoke(IPC.diagnosticsExport),
+  },
   updates: {
     check: () => ipcRenderer.invoke(IPC.updateCheck),
     download: () => ipcRenderer.invoke(IPC.updateDownload),

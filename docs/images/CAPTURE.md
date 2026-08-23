@@ -1,8 +1,19 @@
 # Screenshot / GIF capture checklist
 
-Nothing in `docs/images/` exists yet — the README intentionally has no image embeds and
-no broken links. This is the checklist to produce the five files it's written to accept,
-and where they go once captured.
+`slides.png`, `library.png`, `transcript.png`, and `summary.png` are in place and embedded
+in the README. They are downscaled from the marketing capture (`SIFT_WEB_SHOTS=1`, which
+lives in the `sift-web` checkout under `web/`), which drives the real app against a seeded
+demo library — invented channel and talk names, real posters, real slide art. Regenerate
+them the same way rather than by hand, so the set stays consistent:
+
+```sh
+# from web/, per that repo's README: SIFT_WEB_SHOTS=1 playwright test e2e/web-shots.spec.ts
+# then downscale the four the README uses to 1440px wide, 8-bit palette, < 500 KB each.
+```
+
+Still missing: the GIF (section 5 below). The rest of this file is the original brief for
+capturing these by hand from a real library, kept because a hand-captured set from real
+content is still the better version if you have one.
 
 **Before you start:** run `pnpm dev` against a library that has real content — at least
 one video downloaded with a transcript, one with an AI summary, and one lecture/talk-style

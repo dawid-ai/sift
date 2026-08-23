@@ -5,6 +5,8 @@ export type { TranscriptMethod } from "@sift/core";
 export const IPC = {
   appGetVersion: "app:getVersion",
   appQuit: "app:quit",
+  diagnosticsGet: "diagnostics:get",
+  diagnosticsExport: "diagnostics:export",
   updateCheck: "update:check",
   updateDownload: "update:download",
   updateInstall: "update:install",
@@ -620,6 +622,14 @@ export interface SiftApi {
     /** Quits the app (in-app Exit button). */
     quit(): Promise<void>;
   };
+  diagnostics: {
+    /** A privacy-preserving snapshot of the install, for a bug report. Contains no keys,
+     * cookies, transcript text, media titles, or source URLs. */
+    get(): Promise<DiagnosticsReport>;
+    /** Writes the same snapshot to a file the user picks. Returns the path, or null if
+     * the save dialog was cancelled. */
+    export(): Promise<string | null>;
+  };
   updates: {
     check(): Promise<void>;
     download(): Promise<void>;
@@ -926,4 +936,39 @@ export interface SiftApi {
       content: string;
     }): Promise<string>;
   };
+}
+
+/** One recorded warning/error kept for the support bundle. Never carries user content. */
+export interface DiagnosticEvent {
+  at: string;
+  level: "warn" | "error";
+  message: string;
+}
+
+/** The support-bundle payload. See `main/diagnostics.ts` for what is deliberately left out. */
+export interface DiagnosticsReport {
+  generatedAt: string;
+  app: { version: string; packaged: boolean; locale: string };
+  runtime: {
+    electron: string;
+    chrome: string;
+    node: string;
+    v8: string;
+    arch: string;
+  };
+  os: { type: string; release: string; totalMemMb: number };
+  display: { width: number; height: number; scaleFactor: number } | null;
+  paths: { userData: string; downloads: string };
+  storage: { databaseBytes: number | null; downloadsFreeBytes: number | null };
+  binaries: { name: string; installed: boolean; version: string | null }[];
+  library: {
+    media: number;
+    downloads: number;
+    transcripts: number;
+    summaries: number;
+    frames: number;
+  } | null;
+  security: { secureStorageAvailable: boolean; keyedProviders: string[] };
+  settings: Record<string, unknown>;
+  recentEvents: DiagnosticEvent[];
 }

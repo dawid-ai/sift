@@ -1,11 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
+import { writeFileAtomicSync } from "../atomic-write";
 
 // Note: deliberately does NOT import `electron` — this module (and its Vitest suite) stay
 // loadable under plain Node, mirroring `secrets.ts`'s injectable-fs style.
@@ -33,7 +28,7 @@ export interface CustomConfigDeps {
 const defaultFs: NonNullable<CustomConfigDeps["fs"]> = {
   existsSync,
   readFileSync,
-  writeFileSync,
+  writeFileSync: writeFileAtomicSync,
   rmSync,
   mkdirSync,
 };

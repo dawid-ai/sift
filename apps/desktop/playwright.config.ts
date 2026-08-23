@@ -7,7 +7,15 @@ export default defineConfig({
   // ~15s of disk I/O and a test that passes by construction. Opt in to run it:
   //   SIFT_SHOTS=1 pnpm exec playwright test e2e/shots.spec.ts
   // (testIgnore wins over an explicit path argument, hence the env gate rather than a bare glob.)
-  testIgnore: process.env.SIFT_SHOTS ? [] : ["**/shots.spec.ts"],
+  //
+  // visual.spec.ts is opt-in for a different reason: screenshot baselines are machine-
+  // specific (GPU rasterisation, font hinting), so they are a local before/after tool
+  // rather than a shared contract. Opt in with:
+  //   SIFT_VISUAL=1 pnpm exec playwright test e2e/visual.spec.ts
+  testIgnore: [
+    ...(process.env.SIFT_SHOTS ? [] : ["**/shots.spec.ts"]),
+    ...(process.env.SIFT_VISUAL ? [] : ["**/visual.spec.ts"]),
+  ],
   // Specs share app state (one library db per fixture run), and each launches a real
   // Electron instance. `fullyParallel: false` only serializes *within* a file — without
   // workers:1 Playwright still runs files concurrently and every spec red-fails.

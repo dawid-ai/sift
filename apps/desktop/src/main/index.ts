@@ -3,7 +3,7 @@ import {
   createReadStream,
   existsSync,
   mkdirSync,
-  readFileSync,
+  statfsSync,
   statSync,
   writeFileSync,
   rmSync,
@@ -17,6 +17,7 @@ import {
   Menu,
   protocol,
   safeStorage,
+  screen,
   session,
 } from "electron";
 import { autoUpdater } from "electron-updater";
@@ -36,6 +37,7 @@ import {
   type BinarySource,
 } from "@sift/binaries";
 import { IPC, type BinaryKind } from "@sift/ipc-contract";
+import { KEYED_AI_PROVIDER_IDS } from "@sift/core";
 import {
   backfillMediaChannelIds,
   backfillPlatformTag,
@@ -49,6 +51,7 @@ import {
 import { normalizeAssetPaths, resolveAssetPath } from "./asset-path";
 import { parseRange, mediaContentType } from "./media-range";
 import { registerAppIpc } from "./ipc/app";
+import { registerDiagnosticsIpc } from "./ipc/diagnostics";
 import { registerUpdatesIpc } from "./ipc/updates";
 import { registerOllamaIpc } from "./ipc/ollama";
 import { registerDbIpc } from "./ipc/db";
@@ -105,6 +108,7 @@ import { createDownloadsConfigStore } from "./settings/downloads-config";
 import { createBinaryUpdatesConfigStore } from "./settings/binary-updates-config";
 import { runStartupBinaryMaintenance } from "./services/binary-update-orchestrator";
 import { createSecrets } from "./secrets";
+import { createDiagnostics } from "./diagnostics";
 import { resetStaleDownloads } from "./maintenance";
 import {
   binariesDir,
@@ -589,6 +593,135 @@ function fixtureWhisperSetup(
 let dbReady = false;
 let db: SiftDatabase | null = null;
 
+/**
+ * The support-bundle collector. Built here (not inside `whenReady`) so the console capture
+ * below is installed before any startup warning is emitted.
+ *
+ * Everything it reads is injected, and every accessor is defensive: a bundle is requested
+ * precisely when something is broken, so a throw from one field must not lose the rest.
+ */
+const diagnostics = createDiagnostics({
+  appVersion: () => app.getVersion(),
+  isPackaged: () => app.isPackaged,
+  locale: () => app.getLocale(),
+  versions: () => process.versions,
+  userDataDir: () => app.getPath("userData"),
+  downloadsDir: () => {
+    try {
+      return diagnosticsSources?.downloadsPath() ?? downloadsDir();
+    } catch {
+      return downloadsDir();
+    }
+  },
+  databaseFile: () => join(app.getPath("userData"), "sift.db"),
+  primaryDisplay: () => {
+    try {
+      const d = screen.getPrimaryDisplay();
+      return {
+        width: d.size.width,
+        height: d.size.height,
+        scaleFactor: d.scaleFactor,
+      };
+    } catch {
+      return null;
+    }
+  },
+  freeDiskBytes: (path) => {
+    try {
+      return statfsSync(path).bavail * statfsSync(path).bsize;
+    } catch {
+      return null;
+    }
+  },
+  binaries: () => {
+    try {
+      return (["ytdlp", "ffmpeg", "deno"] as AssetKind[]).map((kind) => {
+        const asset = db ? getAsset(db, kind) : undefined;
+        return {
+          name: kind,
+          installed: !!asset,
+          version: asset?.version ?? null,
+        };
+      });
+    } catch {
+      return [];
+    }
+  },
+  libraryCounts: () => {
+    if (!db) return null;
+    try {
+      const count = (table: string): number =>
+        db!.prepare<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`).get()
+          ?.n ?? 0;
+      return {
+        media: count("media"),
+        downloads: count("download"),
+        transcripts: count("transcript"),
+        summaries: count("summary"),
+        frames: count("frame"),
+      };
+    } catch {
+      return null;
+    }
+  },
+  secureStorageAvailable: () => {
+    try {
+      return safeStorage.isEncryptionAvailable();
+    } catch {
+      return false;
+    }
+  },
+  // Which providers have a key stored — never the keys themselves.
+  keyedProviders: () => {
+    try {
+      return KEYED_AI_PROVIDER_IDS.filter((id) =>
+        existsSync(secretsFile(id)),
+      ) as string[];
+    } catch {
+      return [];
+    }
+  },
+  settings: () => {
+    try {
+      return diagnosticsSources?.settings() ?? {};
+    } catch {
+      return {};
+    }
+  },
+});
+
+/**
+ * The settings stores are constructed inside `whenReady`, after `diagnostics` exists, so
+ * they are handed over here once they are available. Before that (and if startup fails
+ * early) a bundle simply reports no settings, which is itself the useful signal.
+ */
+let diagnosticsSources: {
+  downloadsPath: () => string;
+  settings: () => Record<string, unknown>;
+} | null = null;
+
+// Console capture: main-process warnings and errors are the single most useful thing in a
+// bug report, and the app has no log file. Wrapping the two console methods keeps every
+// existing call site as-is instead of threading a logger through every service.
+// ponytail: swap for a real logger if per-module levels or on-disk rotation are ever needed.
+for (const level of ["warn", "error"] as const) {
+  const original = console[level].bind(console);
+  console[level] = (...args: unknown[]): void => {
+    try {
+      diagnostics.record(level, args.map(String).join(" "));
+    } catch {
+      /* never let diagnostics break logging */
+    }
+    original(...args);
+  };
+}
+process.on("uncaughtException", (err) => {
+  diagnostics.record("error", `uncaughtException: ${err.stack ?? err.message}`);
+});
+process.on("unhandledRejection", (reason) => {
+  diagnostics.record("error", `unhandledRejection: ${String(reason)}`);
+});
+
 /** Accessor for the app-lifetime database handle. Available once db:isReady is true. */
 export function getDb(): SiftDatabase {
   if (!db) throw new Error("Database not initialized yet");
@@ -742,7 +875,7 @@ app.whenReady().then(() => {
 
   // Serve extracted slide frames. sift-frame://file/<encodeURIComponent(abs path)>.
   // Same allowlist posture as sift-media: only paths we actually stored in `frame`.
-  protocol.handle("sift-frame", (req) => {
+  protocol.handle("sift-frame", async (req) => {
     const filePath = decodeURIComponent(
       new URL(req.url).pathname.replace(/^\/+/, ""),
     );
@@ -754,14 +887,16 @@ app.whenReady().then(() => {
     ) {
       return new Response(null, { status: 404 });
     }
-    return new Response(new Uint8Array(readFileSync(filePath)), {
+    // `readFile`, not `readFileSync`: this handler runs once per visible frame, and a
+    // slides grid asks for dozens at once — a sync read stalls the whole main process.
+    return new Response(new Uint8Array(await readFile(filePath)), {
       headers: { "content-type": "image/jpeg", "cache-control": "no-cache" },
     });
   });
 
   // Serve poster frames for imported local files. sift-poster://file/<encodeURIComponent(abs path)>.
   // Same allowlist posture as sift-frame: only paths a media row actually points at.
-  protocol.handle("sift-poster", (req) => {
+  protocol.handle("sift-poster", async (req) => {
     const filePath = decodeURIComponent(
       new URL(req.url).pathname.replace(/^\/+/, ""),
     );
@@ -773,13 +908,16 @@ app.whenReady().then(() => {
     ) {
       return new Response(null, { status: 404 });
     }
-    return new Response(new Uint8Array(readFileSync(filePath)), {
+    // `readFile`, not `readFileSync`: this handler runs once per visible frame, and a
+    // slides grid asks for dozens at once — a sync read stalls the whole main process.
+    return new Response(new Uint8Array(await readFile(filePath)), {
       headers: { "content-type": "image/jpeg", "cache-control": "no-cache" },
     });
   });
 
   initDb();
   registerAppIpc();
+  registerDiagnosticsIpc(diagnostics, () => BrowserWindow.getAllWindows());
   registerUpdatesIpc(() => BrowserWindow.getAllWindows());
   registerOllamaIpc(!!e2eFixtureDir);
   registerDbIpc(() => dbReady);
@@ -933,6 +1071,7 @@ app.whenReady().then(() => {
         ? e2eDownloadsDir
         : () => downloadsConfigStore.get(),
       binariesDir: binariesDir(),
+      framesDir,
       getCookiesFile: authManager.cookiesFileForUrl,
       reportAuthFailure: authManager.reportAuthFailure,
     });
@@ -1187,6 +1326,20 @@ app.whenReady().then(() => {
       customConfigStore,
       aiDefaultStore,
     );
+
+    // Everything the support bundle reports about configuration. Non-secret values only —
+    // see the contract in `main/diagnostics.ts`.
+    diagnosticsSources = {
+      downloadsPath: () => downloadsConfigStore.get(),
+      settings: () => ({
+        transcriptMethod: transcriptMethodStore.get(),
+        transcriptLanguages: transcriptConfigStore.get(),
+        autoTranscript: autoTranscriptStore.get(),
+        aiDefault: aiDefaultStore.get(),
+        customEndpointConfigured: !!customConfigStore.get(),
+        downloadsPathIsDefault: downloadsConfigStore.get() === downloadsDir(),
+      }),
+    };
   }
   createWindow();
 

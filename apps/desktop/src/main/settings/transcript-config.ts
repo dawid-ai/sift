@@ -1,11 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
+import { writeFileAtomicSync } from "../atomic-write";
 import { baseLangCode } from "@sift/core";
 
 // Note: no `electron` import — this module + its Vitest suite stay Node-loadable,
@@ -27,7 +22,7 @@ export interface TranscriptConfigDeps {
 const defaultFs: NonNullable<TranscriptConfigDeps["fs"]> = {
   existsSync,
   readFileSync,
-  writeFileSync,
+  writeFileSync: writeFileAtomicSync,
   rmSync,
   mkdirSync,
 };

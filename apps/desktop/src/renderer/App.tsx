@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { motion } from "framer-motion";
 import { branding } from "@sift/core";
 import type {
@@ -14,14 +21,10 @@ import type {
   TranscriptRecord,
 } from "@sift/ipc-contract";
 import { Sidebar, type View } from "@/components/app-shell";
-import { SettingsPage } from "@/routes/settings/settings-page";
 import { UrlInput } from "@/routes/home/url-input";
 import { PreviewCard } from "@/routes/home/preview-card";
 import { TranscriptPanel } from "@/routes/home/transcript-panel";
 import { SummaryPanel } from "@/routes/home/summary-panel";
-import { LibraryPage } from "@/routes/library/library-page";
-import { QueuePage } from "@/routes/queue/queue-page";
-import { ChannelsPage } from "@/routes/channels/channels-page";
 import { useUpdates } from "@/routes/updates/use-updates";
 import { UpdateToast } from "@/routes/updates/update-toast";
 import { useBinaryUpdates } from "@/routes/updates/use-binary-updates";
@@ -33,6 +36,35 @@ import { Badge } from "@/components/ui/badge";
 import { ChipDot } from "@/components/tag-chip";
 import { useFileImport } from "@/lib/use-file-import";
 import { cn } from "@/lib/utils";
+
+// Home is the landing view, so it stays in the entry bundle; the other four routes are
+// split out and fetched from disk the first time the user opens them. That keeps the
+// initial parse off the startup path — Settings alone drags in the whole provider,
+// prompt-pack, and binary-management UI.
+const LibraryPage = lazy(() =>
+  import("@/routes/library/library-page").then((m) => ({
+    default: m.LibraryPage,
+  })),
+);
+const QueuePage = lazy(() =>
+  import("@/routes/queue/queue-page").then((m) => ({ default: m.QueuePage })),
+);
+const ChannelsPage = lazy(() =>
+  import("@/routes/channels/channels-page").then((m) => ({
+    default: m.ChannelsPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import("@/routes/settings/settings-page").then((m) => ({
+    default: m.SettingsPage,
+  })),
+);
+
+/** Placeholder while a route chunk loads. The chunks come off local disk, so this is a
+ * frame or two — deliberately not a spinner, which would flash. */
+function RouteFallback() {
+  return <div data-testid="route-loading" className="min-h-[60vh]" />;
+}
 
 /**
  * The one inline-alert shell on this view. Four hand-rolled copies of "tinted danger block"
@@ -649,23 +681,25 @@ export function App() {
             onOpenLibrary={() => handleNavigate("library")}
           />
         )}
-        {view === "library" && (
-          <LibraryPage
-            onOpenChannel={handleOpenChannel}
-            focusMediaId={focusMediaId}
-            onFocusMediaHandled={() => setFocusMediaId(null)}
-            homeSignal={libraryHome}
-          />
-        )}
-        {view === "queue" && <QueuePage />}
-        {view === "channels" && (
-          <ChannelsPage
-            focusChannel={focusChannel}
-            onFocusHandled={() => setFocusChannel(null)}
-            onOpenMedia={handleOpenMedia}
-          />
-        )}
-        {view === "settings" && <SettingsPage updateState={updateState} />}
+        <Suspense fallback={<RouteFallback />}>
+          {view === "library" && (
+            <LibraryPage
+              onOpenChannel={handleOpenChannel}
+              focusMediaId={focusMediaId}
+              onFocusMediaHandled={() => setFocusMediaId(null)}
+              homeSignal={libraryHome}
+            />
+          )}
+          {view === "queue" && <QueuePage />}
+          {view === "channels" && (
+            <ChannelsPage
+              focusChannel={focusChannel}
+              onFocusHandled={() => setFocusChannel(null)}
+              onOpenMedia={handleOpenMedia}
+            />
+          )}
+          {view === "settings" && <SettingsPage updateState={updateState} />}
+        </Suspense>
       </div>
       <UpdateToast state={updateState} onDismiss={dismissUpdate} />
       <BinaryUpdateToast
