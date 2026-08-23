@@ -7,6 +7,7 @@ import type {
 } from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/copy-button";
 // Downloads is one section of the Files tab, so it renders the Files tab's row — imported, not
 // re-typed. The two lists had drifted into different paddings, different leading chips and
 // different orderings of the same two parts while claiming to be one list.
@@ -143,6 +144,14 @@ export function DownloadsPanel({
                       <FolderOpen className="h-3.5 w-3.5" aria-hidden />
                       Open
                     </Button>
+                  )}
+                  {d.filePath && d.status === "done" && (
+                    <CopyButton
+                      testId="media-detail-download-copy-path"
+                      className={GHOST_BUTTON}
+                      label="Copy path"
+                      value={d.filePath}
+                    />
                   )}
                   {d.status === "error" && (
                     <Button

@@ -8,6 +8,7 @@ import type {
 } from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/copy-button";
 import { KNOWN_PROVIDERS } from "@/lib/ai-provider-catalog";
 import { transcriptProviderLabel } from "@/lib/transcript-provider-label";
 
@@ -180,15 +181,23 @@ export function FilesPanel({
               <Caption note={aiLabel(d.providerId, d.model)} at={d.createdAt} />
             }
             actions={
-              <Button
-                size="sm"
-                variant="ghost"
-                className={GHOST_BUTTON}
-                onClick={() => onReveal(d.path)}
-              >
-                <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-                Open
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={GHOST_BUTTON}
+                  onClick={() => onReveal(d.path)}
+                >
+                  <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+                  Open
+                </Button>
+                <CopyButton
+                  testId="files-document-copy-path"
+                  className={GHOST_BUTTON}
+                  label="Copy path"
+                  value={d.path}
+                />
+              </>
             }
           />
         ))}
@@ -218,16 +227,30 @@ export function FilesPanel({
             actions={
               <>
                 {t.filePath && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className={GHOST_BUTTON}
-                    onClick={() => onReveal(t.filePath!)}
-                  >
-                    <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-                    Open
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={GHOST_BUTTON}
+                      onClick={() => onReveal(t.filePath!)}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+                      Open
+                    </Button>
+                    <CopyButton
+                      testId="files-transcript-copy-path"
+                      className={GHOST_BUTTON}
+                      label="Copy path"
+                      value={t.filePath}
+                    />
+                  </>
                 )}
+                <CopyButton
+                  testId="files-transcript-copy-text"
+                  className={GHOST_BUTTON}
+                  label="Copy text"
+                  value={() => t.text}
+                />
                 <Button
                   size="sm"
                   variant="ghost"
@@ -260,16 +283,30 @@ export function FilesPanel({
             actions={
               <>
                 {s.filePath && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className={GHOST_BUTTON}
-                    onClick={() => onReveal(s.filePath!)}
-                  >
-                    <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-                    Open
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={GHOST_BUTTON}
+                      onClick={() => onReveal(s.filePath!)}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+                      Open
+                    </Button>
+                    <CopyButton
+                      testId="files-summary-copy-path"
+                      className={GHOST_BUTTON}
+                      label="Copy path"
+                      value={s.filePath}
+                    />
+                  </>
                 )}
+                <CopyButton
+                  testId="files-summary-copy-text"
+                  className={GHOST_BUTTON}
+                  label="Copy text"
+                  value={() => s.text}
+                />
                 <Button
                   size="sm"
                   variant="ghost"

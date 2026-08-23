@@ -3,10 +3,22 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { motion } from "framer-motion";
+import {
+  ClipboardPaste,
+  Download,
+  FolderOpen,
+  Home as HomeIcon,
+  Library as LibraryIcon,
+  ListVideo,
+  Search as SearchIcon,
+  Settings as SettingsIcon,
+  Tv,
+} from "lucide-react";
 import { branding } from "@sift/core";
 import type {
   AiProviderInfo,
@@ -35,6 +47,8 @@ import { DropOverlay } from "@/components/drop-overlay";
 import { Badge } from "@/components/ui/badge";
 import { ChipDot } from "@/components/tag-chip";
 import { useFileImport } from "@/lib/use-file-import";
+import { useUrlIntake, firstUrl } from "@/lib/use-url-intake";
+import { CommandPalette, type Command } from "@/components/command-palette";
 import { cn } from "@/lib/utils";
 
 // Home is the landing view, so it stays in the entry bundle; the other four routes are
@@ -78,11 +92,14 @@ function HomeView({
   onPickFiles,
   busy,
   onOpenLibrary,
+  urlIntake,
 }: {
   onPickFiles: () => void;
   busy: boolean;
   /** Same route change the rail's Library button makes — see the download-done row below. */
   onOpenLibrary: () => void;
+  /** Dropped and clipboard URLs. Owned by App so the listeners survive route changes. */
+  urlIntake: ReturnType<typeof useUrlIntake>;
 }) {
   const [version, setVersion] = useState("…");
   const [dbReady, setDbReady] = useState(false);
@@ -423,13 +440,48 @@ function HomeView({
             holding the title, the format picker and the primary CTA got the dimmest rim of
             the three. It steps down to `.panel` here; the preview card takes the light. */}
         <section className={cn(metadata ? "panel" : "panel-lit", "px-6 py-5")}>
-          <UrlInput onUrl={handleUrl} />
+          <UrlInput onUrl={handleUrl} fill={urlIntake.fill} />
+
+          {/* A URL already in the clipboard, offered rather than pasted. The app must not
+              start fetching metadata because of something copied in another window, so this
+              is a button and never a side effect. */}
+          {urlIntake.clipboardUrl && !metadata && (
+            <div
+              data-testid="clipboard-suggestion"
+              className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.07] px-3 py-2"
+            >
+              <ClipboardPaste
+                aria-hidden
+                className="h-3.5 w-3.5 flex-none text-primary"
+              />
+              <span className="min-w-0 flex-1 truncate text-[13px] text-foreground/75">
+                {urlIntake.clipboardUrl}
+              </span>
+              <button
+                type="button"
+                data-testid="clipboard-suggestion-use"
+                onClick={() => urlIntake.accept(urlIntake.clipboardUrl!)}
+                className="rounded-md px-2 py-1 text-[13px] font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              >
+                Use it
+              </button>
+              <button
+                type="button"
+                data-testid="clipboard-suggestion-dismiss"
+                onClick={urlIntake.dismissClipboard}
+                aria-label="Dismiss clipboard suggestion"
+                className="rounded-md px-2 py-1 text-[13px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              >
+                Not now
+              </button>
+            </div>
+          )}
 
           <p
             data-testid="home-drop-hint"
             className="mt-3.5 text-sm text-muted-foreground"
           >
-            …or drop a video or audio file anywhere —{" "}
+            …or drop a video, audio file, or link anywhere —{" "}
             <button
               type="button"
               data-testid="home-pick-file"
@@ -605,7 +657,163 @@ export function App() {
   const fileImport = useFileImport(
     useCallback(() => handleNavigate("library"), [handleNavigate]),
   );
+  // Window-level, so a link dropped while Library is open still lands in Home's field.
+  const urlIntake = useUrlIntake();
   const { state: updateState, dismiss: dismissUpdate } = useUpdates();
+  // A link dropped (or chosen from the palette) is a Home action, so go there — otherwise
+  // the field it just filled is on a route the user isn't looking at.
+  const fillNonce = urlIntake.fill?.nonce;
+  useEffect(() => {
+    if (fillNonce !== undefined) handleNavigate("home");
+  }, [fillNonce, handleNavigate]);
+
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState<{
+    term: string;
+    nonce: number;
+  } | null>(null);
+  const searchNonce = useRef(0);
+
+  const searchLibrary = useCallback(
+    (term: string) => {
+      searchNonce.current += 1;
+      setLibrarySearch({ term, nonce: searchNonce.current });
+      handleNavigate("library");
+    },
+    [handleNavigate],
+  );
+
+  /** Everything reachable from the palette. Each entry is the same call the corresponding
+   * click makes, so a shortcut and a button can never drift apart. */
+  const commands = useMemo<Command[]>(
+    () => [
+      {
+        id: "go-home",
+        label: "Go to Home",
+        keywords: "url paste fetch",
+        shortcut: "Ctrl+1",
+        icon: <HomeIcon />,
+        run: () => handleNavigate("home"),
+      },
+      {
+        id: "go-library",
+        label: "Go to Library",
+        keywords: "media files saved",
+        shortcut: "Ctrl+2",
+        icon: <LibraryIcon />,
+        run: () => handleNavigate("library"),
+      },
+      {
+        id: "go-queue",
+        label: "Go to Queue",
+        keywords: "batch jobs",
+        shortcut: "Ctrl+3",
+        icon: <ListVideo />,
+        run: () => handleNavigate("queue"),
+      },
+      {
+        id: "go-channels",
+        label: "Go to Channels",
+        keywords: "subscriptions",
+        shortcut: "Ctrl+4",
+        icon: <Tv />,
+        run: () => handleNavigate("channels"),
+      },
+      {
+        id: "go-settings",
+        label: "Go to Settings",
+        keywords: "preferences options config",
+        shortcut: "Ctrl+5",
+        icon: <SettingsIcon />,
+        run: () => handleNavigate("settings"),
+      },
+      {
+        id: "import-file",
+        label: "Import a local file…",
+        detail: "Audio or video already on this machine",
+        keywords: "open add drop",
+        shortcut: "Ctrl+O",
+        icon: <FolderOpen />,
+        run: () => void fileImport.pick(),
+      },
+      {
+        id: "search-library",
+        label: "Search the library",
+        detail: "Type after opening the palette to search",
+        keywords: "find",
+        icon: <SearchIcon />,
+        run: () => handleNavigate("library"),
+      },
+    ],
+    [fileImport, handleNavigate],
+  );
+
+  /** Commands the query itself implies. A pasted URL is the single most likely thing to
+   * type here, so it leads the list. */
+  const dynamicCommands = useCallback(
+    (query: string): Command[] => {
+      const trimmed = query.trim();
+      if (!trimmed) return [];
+      const url = firstUrl(trimmed);
+      if (url)
+        return [
+          {
+            id: "fetch-url",
+            label: "Fetch this URL",
+            detail: url,
+            icon: <Download />,
+            run: () => urlIntake.accept(url),
+          },
+        ];
+      return [
+        {
+          id: "search-for",
+          label: `Search the library for “${trimmed}”`,
+          // Below the matching commands: typing "queue" should still reach the Queue route
+          // on the first Enter.
+          position: "trail",
+          icon: <SearchIcon />,
+          run: () => searchLibrary(trimmed),
+        },
+      ];
+    },
+    [searchLibrary, urlIntake],
+  );
+
+  // Global shortcuts. Registered once on the window rather than per-route, so they work
+  // wherever the user is — except inside a text field, where Ctrl+1 is not a navigation.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod || e.altKey) return;
+      // No "is the user typing?" guard: none of these chords edit text, and a shortcut that
+      // stops working because the caret is in the search box is worse than no shortcut.
+      if (e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+        return;
+      }
+      if (e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        void fileImport.pick();
+        return;
+      }
+      const byNumber: Record<string, View> = {
+        "1": "home",
+        "2": "library",
+        "3": "queue",
+        "4": "channels",
+        "5": "settings",
+      };
+      const view = byNumber[e.key];
+      if (view) {
+        e.preventDefault();
+        handleNavigate(view);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [fileImport, handleNavigate]);
   const { state: binaryUpdateState, dismiss: dismissBinaryUpdate } =
     useBinaryUpdates();
 
@@ -679,6 +887,7 @@ export function App() {
             onPickFiles={() => void fileImport.pick()}
             busy={fileImport.busy !== null}
             onOpenLibrary={() => handleNavigate("library")}
+            urlIntake={urlIntake}
           />
         )}
         <Suspense fallback={<RouteFallback />}>
@@ -688,6 +897,7 @@ export function App() {
               focusMediaId={focusMediaId}
               onFocusMediaHandled={() => setFocusMediaId(null)}
               homeSignal={libraryHome}
+              initialSearch={librarySearch ?? undefined}
             />
           )}
           {view === "queue" && <QueuePage />}
@@ -701,6 +911,12 @@ export function App() {
           {view === "settings" && <SettingsPage updateState={updateState} />}
         </Suspense>
       </div>
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={commands}
+        dynamic={dynamicCommands}
+      />
       <UpdateToast state={updateState} onDismiss={dismissUpdate} />
       <BinaryUpdateToast
         state={binaryUpdateState}

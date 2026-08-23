@@ -14,6 +14,7 @@ import {
 } from "@/routes/home/preview-card";
 import { cn } from "@/lib/utils";
 import { AiProse } from "@/components/ai-prose";
+import { CopyButton } from "@/components/copy-button";
 
 export interface SummaryPanelProps {
   /** Live-accumulating streamed text for the in-flight request. */
@@ -98,6 +99,13 @@ export function SummaryPanel({ text, summary, onExport }: SummaryPanelProps) {
               />
               Streaming
             </span>
+          )}
+          {summary && (
+            <CopyButton
+              testId="summary-copy"
+              label="Copy"
+              value={() => content}
+            />
           )}
         </div>
       </header>

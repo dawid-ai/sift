@@ -558,6 +558,9 @@ export interface LibraryPageProps {
   onFocusMediaHandled?: () => void;
   /** Increments when the Library nav is clicked — closes any open detail, back to the list. */
   homeSignal?: number;
+  /** A search to run on arrival, e.g. from the command palette. `nonce` re-applies it when
+   * the same term is asked for twice. */
+  initialSearch?: { term: string; nonce: number };
 }
 
 export function LibraryPage({
@@ -565,6 +568,7 @@ export function LibraryPage({
   focusMediaId,
   onFocusMediaHandled,
   homeSignal,
+  initialSearch,
 }: LibraryPageProps) {
   const [items, setItems] = useState<MediaListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -590,6 +594,16 @@ export function LibraryPage({
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [excludedTags, setExcludedTags] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  // A search handed in from outside (command palette). Keyed on the nonce so asking for the
+  // same term twice re-runs it, and so typing in the field afterwards is never clobbered.
+  const searchNonce = initialSearch?.nonce;
+  const searchTerm = initialSearch?.term;
+  useEffect(() => {
+    if (searchNonce === undefined) return;
+    setSearch(searchTerm ?? "");
+    setSelectedId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchNonce]);
   const [searchHits, setSearchHits] = useState<Map<number, SearchHit> | null>(
     null,
   );
