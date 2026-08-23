@@ -1,5 +1,5 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import type { AiRegistry } from "@sift/core";
 import {
@@ -16,6 +16,7 @@ import {
   type DocSegment,
 } from "@sift/core";
 import type { SiftDatabase } from "@sift/db";
+import { resolveOutputPath } from "./output-path";
 import {
   getFramesByMediaId,
   getMediaById,
@@ -46,6 +47,20 @@ export interface FrameExportOpts {
 
 function imageMime(path: string): string {
   return path.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+}
+
+/**
+ * Ceiling on the images a single PDF may embed, measured before anything is read.
+ *
+ * A PDF is self-contained, so every selected frame is base64-encoded into one HTML string:
+ * peak memory is roughly 2.5x the raw bytes (buffer + base64 string + the assembled
+ * document), and a few hundred 4K slides is enough to exhaust the main process. Markdown
+ * export has no such limit — it references frames by file:// URL.
+ */
+const MAX_PDF_IMAGE_BYTES = 96 * 1024 * 1024;
+
+function mb(bytes: number): number {
+  return Math.round(bytes / (1024 * 1024));
 }
 
 /** Builds a transcript + selected-slides document (Tier 0 raw, or AI-polished): interleaves
@@ -89,10 +104,7 @@ export class FrameExportService {
             tsMs: f.ts_ms,
             src: pathToFileURL(f.image_path).href,
           }))
-        : frames.map((f) => ({
-            tsMs: f.ts_ms,
-            src: `data:${imageMime(f.image_path)};base64,${readFileSync(f.image_path).toString("base64")}`,
-          }));
+        : await this.embedFrames(frames, onProgress);
 
     let blocks: Block[] = buildDocumentBlocks(segments, docFrames);
     if (polish) blocks = await this.polish(blocks, polish, onProgress);
@@ -103,14 +115,14 @@ export class FrameExportService {
     const dir = this.opts.downloadsDir();
     mkdirSync(dir, { recursive: true });
 
-    const path = join(dir, `${base}.${format}`);
-    if (format === "md")
-      writeFileSync(path, renderMarkdownBlocks(media.title, blocks), "utf8");
-    else
-      writeFileSync(
-        path,
-        await this.opts.renderPdf(renderHtmlBlocks(media.title, blocks)),
-      );
+    // Every export inserts a document row, so every export gets its own file: a second
+    // export used to overwrite the first while both rows survived.
+    const content: string | Buffer =
+      format === "md"
+        ? renderMarkdownBlocks(media.title, blocks)
+        : await this.opts.renderPdf(renderHtmlBlocks(media.title, blocks));
+    const path = resolveOutputPath(dir, base, format, content);
+    writeFileSync(path, content);
 
     // Track it so the Files tab can list every document created for this video (persistent).
     insertDocument(db, {
@@ -121,6 +133,44 @@ export class FrameExportService {
       model: polish?.model ?? null,
     });
     return path;
+  }
+
+  /**
+   * Base64-encodes the selected frames for a self-contained PDF, refusing a selection
+   * whose images are too large to hold in memory at once and reporting progress as it
+   * goes (encoding a few hundred slides takes long enough to look like a hang).
+   *
+   * Reads are async so the main process stays responsive between frames.
+   */
+  private async embedFrames(
+    frames: { ts_ms: number; image_path: string }[],
+    onProgress?: (p: ExportProgress) => void,
+  ): Promise<DocFrame[]> {
+    let totalBytes = 0;
+    for (const f of frames) {
+      try {
+        totalBytes += statSync(f.image_path).size;
+      } catch {
+        /* a missing frame file contributes nothing and fails later, on read */
+      }
+    }
+    if (totalBytes > MAX_PDF_IMAGE_BYTES)
+      throw new Error(
+        `These ${frames.length} slides are about ${mb(totalBytes)} MB of images, over the ` +
+          `${mb(MAX_PDF_IMAGE_BYTES)} MB a PDF can embed. Export as Markdown instead, or ` +
+          `unselect some slides.`,
+      );
+
+    const out: DocFrame[] = [];
+    for (const [i, f] of frames.entries()) {
+      const buf = await readFile(f.image_path);
+      out.push({
+        tsMs: f.ts_ms,
+        src: `data:${imageMime(f.image_path)};base64,${buf.toString("base64")}`,
+      });
+      onProgress?.({ processed: i + 1, total: frames.length });
+    }
+    return out;
   }
 
   /** Distills the WHOLE transcript in one call: serialise blocks → `[[SLIDE n]]` markers →

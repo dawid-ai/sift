@@ -1,8 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync, readdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { serveThumb } from "./thumbnail-cache";
+import { serveThumb, sweepThumbCache } from "./thumbnail-cache";
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
 
@@ -73,5 +79,39 @@ describe("serveThumb", () => {
         "https://yt3.ggpht.com/x",
       ),
     ).toBeNull();
+  });
+});
+
+describe("cache limits", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sift-thumb-cap-"));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("refuses a body past the per-entry cap and caches nothing", async () => {
+    const huge = Buffer.alloc(5 * 1024 * 1024, 1);
+    huge[0] = 0xff;
+    huge[1] = 0xd8;
+    expect(
+      await serveThumb(
+        { dir, fetchImpl: fakeFetch(huge) },
+        "https://yt3.ggpht.com/huge",
+      ),
+    ).toBeNull();
+    expect(readdirSync(dir)).toHaveLength(0);
+  });
+
+  it("evicts the oldest entries when the directory is over its ceiling", () => {
+    const older = join(dir, "older");
+    const newer = join(dir, "newer");
+    writeFileSync(older, Buffer.alloc(600));
+    writeFileSync(newer, Buffer.alloc(600));
+    utimesSync(older, new Date(1), new Date(1));
+    // Ceiling 1000 bytes, target 700: dropping the older 600-byte entry is enough.
+    sweepThumbCache(dir, 1000, 700);
+    expect(readdirSync(dir)).toEqual(["newer"]);
   });
 });

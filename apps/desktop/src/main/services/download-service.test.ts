@@ -16,13 +16,18 @@ import {
   getMediaById,
   getSummariesByMediaId,
   getTranscriptsByMediaId,
+  insertDocument,
   insertDownload,
+  insertFrame,
   insertMedia,
   insertSummary,
   insertTranscript,
   listDownloadsByMediaId,
   listMedia,
   runMigrations,
+  setMediaThumbnail,
+  setSummaryFilePath,
+  setTranscriptFilePath,
   tagsForMedia,
   upsertAsset,
 } from "@sift/db";
@@ -1189,6 +1194,144 @@ describe("DownloadService", () => {
     await expect(
       service.importLocal({ path: join(dir, "nope.mp4") }),
     ).rejects.toThrow(/no longer exists/);
+
+    db.close();
+  });
+});
+
+describe("DownloadService artifact cleanup", () => {
+  it("remove() also unlinks generated transcripts, summaries, documents, frames, and the poster", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const downloadsDir = join(dir, "downloads");
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner({ filePaths: ["/dl/Chan__Vid.mp4"] });
+    const removedDirs: string[] = [];
+    const unlinked: string[] = [];
+    const service = new DownloadService({
+      db,
+      runner,
+      downloadsDir: () => downloadsDir,
+      binariesDir: "/test/binaries",
+      fileExists: () => true,
+      unlinkFile: (p) => unlinked.push(p),
+      framesDir: (id) => join("/frames", String(id)),
+      removeDir: (p) => removedDirs.push(p),
+    });
+
+    await service.start({ metadata, option: OPTION });
+    const mediaId = listMedia(db)[0]!.id;
+    setMediaThumbnail(db, mediaId, "/posters/1.jpg");
+
+    const t = insertTranscript(db, {
+      media_id: mediaId,
+      provider_id: "ytdlp-subs",
+      language: "en",
+      text: "hi",
+      segments_json: null,
+      model: null,
+    });
+    setTranscriptFilePath(db, t.id, "/dl/Chan__Vid__transcript.srt");
+    const prompt = createPrompt(db, { name: "P", body: "b {{transcript}}" });
+    const s = insertSummary(db, {
+      media_id: mediaId,
+      prompt_id: prompt.id,
+      provider_id: "anthropic",
+      model: "x",
+      text: "s",
+    });
+    setSummaryFilePath(db, s.id, "/dl/Chan__Vid__P.md");
+    insertDocument(db, {
+      media_id: mediaId,
+      format: "md",
+      path: "/dl/Chan__Vid__document.md",
+      provider_id: null,
+      model: null,
+    });
+    insertFrame(db, {
+      media_id: mediaId,
+      ts_ms: 0,
+      image_path: "/frames/1/frame-0001.jpg",
+      ocr_text: null,
+      ocr_confidence: null,
+      phash: null,
+      kind: "slide",
+    });
+
+    await service.remove(mediaId);
+
+    expect(unlinked.sort()).toEqual(
+      [
+        "/dl/Chan__Vid.mp4",
+        "/dl/Chan__Vid__P.md",
+        "/dl/Chan__Vid__document.md",
+        "/dl/Chan__Vid__transcript.srt",
+        "/frames/1/frame-0001.jpg",
+        "/posters/1.jpg",
+      ].sort(),
+    );
+    expect(removedDirs).toEqual([join("/frames", String(mediaId))]);
+    expect(getMediaById(db, mediaId)).toBeUndefined();
+
+    db.close();
+  });
+
+  it("removeTranscript()/removeSummary() unlink the exported file too", async () => {
+    dir = mkdtempSync(join(tmpdir(), "sift-dlsvc-"));
+    const db = await openTestDatabase();
+    runMigrations(db);
+    const { runner } = makeFakeRunner();
+    const unlinked: string[] = [];
+    const service = new DownloadService({
+      db,
+      runner,
+      downloadsDir: () => join(dir, "downloads"),
+      binariesDir: "/test/binaries",
+      fileExists: () => true,
+      unlinkFile: (p) => unlinked.push(p),
+    });
+    const mediaId = insertMedia(db, {
+      source_url: "https://example.com/v",
+      platform_id: "youtube",
+      external_id: null,
+      title: "V",
+      uploader: null,
+      uploader_url: null,
+      duration_s: null,
+      thumbnail_path: null,
+      view_count: null,
+      like_count: null,
+      published_at: null,
+      metadata_json: "{}",
+      channel_id: null,
+      download_status: "none",
+    }).id;
+
+    const t = insertTranscript(db, {
+      media_id: mediaId,
+      provider_id: "whisper",
+      language: "en",
+      text: "hi",
+      segments_json: null,
+      model: null,
+    });
+    setTranscriptFilePath(db, t.id, "/dl/t.srt");
+    const prompt = createPrompt(db, { name: "P", body: "b" });
+    const s = insertSummary(db, {
+      media_id: mediaId,
+      prompt_id: prompt.id,
+      provider_id: "anthropic",
+      model: "x",
+      text: "s",
+    });
+    setSummaryFilePath(db, s.id, "/dl/s.md");
+
+    await service.removeTranscript(t.id);
+    await service.removeSummary(s.id);
+
+    expect(unlinked.sort()).toEqual(["/dl/s.md", "/dl/t.srt"]);
+    expect(getTranscriptsByMediaId(db, mediaId)).toHaveLength(0);
+    expect(getSummariesByMediaId(db, mediaId)).toHaveLength(0);
 
     db.close();
   });
