@@ -5,6 +5,7 @@ export type { TranscriptMethod } from "@sift/core";
 export const IPC = {
   appGetVersion: "app:getVersion",
   appQuit: "app:quit",
+  appReadClipboardText: "app:readClipboardText",
   diagnosticsGet: "diagnostics:get",
   diagnosticsExport: "diagnostics:export",
   updateCheck: "update:check",
@@ -621,6 +622,10 @@ export interface SiftApi {
     getVersion(): Promise<string>;
     /** Quits the app (in-app Exit button). */
     quit(): Promise<void>;
+    /** The clipboard's plain text, trimmed and capped. Read in the main process because
+     * `navigator.clipboard.readText()` needs a focused document and a permission the
+     * renderer can be refused. Used only to offer a paste, never to act on one. */
+    readClipboardText(): Promise<string>;
   };
   diagnostics: {
     /** A privacy-preserving snapshot of the install, for a bug report. Contains no keys,
@@ -700,6 +705,13 @@ export interface SiftApi {
     /** Opens the native file picker filtered to supported media extensions. Returns the
      * chosen absolute paths, or `[]` when cancelled. */
     pick(): Promise<string[]>;
+    /** The absolute path of a dropped `File`, or "" when it has none.
+     *
+     * Electron 32 removed the `File.path` property the drop handler used to read, and the
+     * failure mode was silent: `path` simply became `undefined` and every drop reported
+     * "couldn't read where this lives on disk". `webUtils.getPathForFile` is the
+     * replacement, and it must be called from the preload. Synchronous — no IPC. */
+    pathForFile(file: File): string;
   };
   ollama: {
     health(): Promise<boolean>;

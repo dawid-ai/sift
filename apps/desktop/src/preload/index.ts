@@ -1,4 +1,9 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
+import {
+  contextBridge,
+  ipcRenderer,
+  webUtils,
+  type IpcRendererEvent,
+} from "electron";
 import {
   IPC,
   type BinaryProgress,
@@ -22,6 +27,7 @@ const api: SiftApi = {
   app: {
     getVersion: () => ipcRenderer.invoke(IPC.appGetVersion),
     quit: () => ipcRenderer.invoke(IPC.appQuit),
+    readClipboardText: () => ipcRenderer.invoke(IPC.appReadClipboardText),
   },
   diagnostics: {
     get: () => ipcRenderer.invoke(IPC.diagnosticsGet),
@@ -86,6 +92,15 @@ const api: SiftApi = {
   import: {
     local: (input) => ipcRenderer.invoke(IPC.importLocal, input),
     pick: () => ipcRenderer.invoke(IPC.importPick),
+    // `webUtils` lives in the preload only; the renderer has no access to it, which is
+    // why this is exposed rather than read off the `File` in the drop handler.
+    pathForFile: (file) => {
+      try {
+        return webUtils.getPathForFile(file);
+      } catch {
+        return "";
+      }
+    },
   },
   ollama: {
     health: () => ipcRenderer.invoke(IPC.ollamaHealth),
