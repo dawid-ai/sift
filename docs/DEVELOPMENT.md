@@ -1576,7 +1576,7 @@ addon) is unpacked from `app.asar` via `asarUnpack` so it loads correctly as a n
 verified by inspecting `apps/desktop/dist/win-unpacked/resources/app.asar.unpacked/`.
 
 electron-builder can't resolve an installed Electron version from a semver range
-(`"electron": "^31.4.0"`) through pnpm's hoisted `node_modules` in this monorepo, so
+(`"electron": "^43.4.1"`) through pnpm's hoisted `node_modules` in this monorepo, so
 `electron-builder.yml` pins `electronVersion` explicitly to the version actually installed
 (check with `node -p "require('electron/package.json').version"`) — bump it by hand when the
 `electron` devDependency is upgraded.

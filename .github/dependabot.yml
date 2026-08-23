@@ -1,0 +1,37 @@
+# Automated dependency update PRs. Grouped so a week's patches arrive as two reviewable
+# PRs instead of thirty; Electron is deliberately on its own because a major there needs a
+# native rebuild and a manual pass over the app (see CLAUDE.md).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      electron:
+        patterns:
+          - electron
+          - electron-*
+          - "@electron/*"
+      production:
+        dependency-type: production
+        exclude-patterns:
+          - electron
+          - electron-*
+          - "@electron/*"
+      development:
+        dependency-type: development
+        exclude-patterns:
+          - electron
+          - electron-*
+          - "@electron/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"

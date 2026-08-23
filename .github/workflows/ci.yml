@@ -1,5 +1,5 @@
 # .github/workflows/ci.yml
-# INERT until a GitHub remote exists. Runs the full gate on push/PR.
+# Runs the full gate on push/PR.
 name: CI
 on:
   push:
@@ -20,3 +20,45 @@ jobs:
       - run: pnpm test
       - run: pnpm lint
       - run: pnpm build
+      # Fails the build on a known advisory in anything that ships to users. Dev-only
+      # advisories are reported separately (below) without blocking.
+      - run: pnpm audit --prod
+
+  audit-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Advisory only: the toolchain's own dependencies never reach a user's machine, so a
+      # new advisory here is worth seeing but not worth blocking a merge on.
+      - run: pnpm audit
+        continue-on-error: true
+
+  e2e:
+    runs-on: windows-latest
+    # Separate job so a slow Electron suite never delays the gate's feedback. The specs run
+    # entirely against fixtures — no yt-dlp, ffmpeg, network, or API keys.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # better-sqlite3 is compiled against Electron's ABI, not Node's — the e2e run boots a
+      # real Electron, so this is required (see CLAUDE.md, native-module gotcha).
+      - run: pnpm --filter @sift/desktop run rebuild
+      - run: pnpm --filter @sift/desktop exec playwright install --with-deps chromium
+      - run: pnpm --filter @sift/desktop run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/desktop/test-results
+          retention-days: 7
