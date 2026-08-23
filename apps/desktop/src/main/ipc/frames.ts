@@ -1,4 +1,5 @@
-import { copyFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { copyFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import type { BrowserWindow } from "electron";
 import { dialog, ipcMain } from "electron";
@@ -21,6 +22,8 @@ import type {
 } from "../services/frame-export-service";
 import { createOllamaSlideClassifier } from "../services/frame-classifier";
 import { getDb } from "../index";
+import { bool, id, int, nonEmptyStr, obj, oneOf, optional } from "./validate";
+import { frameCrop } from "./validate-payloads";
 
 /** `65000` ms → `01-05` (mm-ss, filesystem-safe) for slide filenames. */
 function tsTag(ms: number): string {
@@ -69,9 +72,19 @@ export function registerFramesIpc(
     IPC.framesExtract,
     async (
       _event,
-      mediaId: number,
-      opts?: { classifierModel?: string; fullScreenOnly?: boolean },
+      rawMediaId: number,
+      rawOpts?: { classifierModel?: string; fullScreenOnly?: boolean },
     ) => {
+      const mediaId = id(rawMediaId, "mediaId");
+      const o = rawOpts == null ? {} : obj(rawOpts, "opts");
+      const opts = {
+        classifierModel: optional(o.classifierModel, (v) =>
+          nonEmptyStr(v, "opts.classifierModel", 200),
+        ),
+        fullScreenOnly: optional(o.fullScreenOnly, (v) =>
+          bool(v, "opts.fullScreenOnly"),
+        ),
+      };
       const videoPath = requireDownloadedPath(mediaId);
       const durationSec = getMediaById(getDb(), mediaId)?.duration_s ?? null;
       const crop = getFrameCrop(getDb(), mediaId);
@@ -98,7 +111,9 @@ export function registerFramesIpc(
 
   ipcMain.handle(
     IPC.framesCapture,
-    async (_event, mediaId: number, tsMs: number) => {
+    async (_event, rawMediaId: number, rawTsMs: number) => {
+      const mediaId = id(rawMediaId, "mediaId");
+      const tsMs = int(rawTsMs, "tsMs", 0, 1_000_000_000);
       const videoPath = requireDownloadedPath(mediaId);
       const crop = getFrameCrop(getDb(), mediaId);
       return toRecord(
@@ -109,13 +124,15 @@ export function registerFramesIpc(
 
   ipcMain.handle(
     IPC.framesGetCrop,
-    (_event, mediaId: number) => getFrameCrop(getDb(), mediaId) ?? null,
+    (_event, mediaId: number) =>
+      getFrameCrop(getDb(), id(mediaId, "mediaId")) ?? null,
   );
 
   ipcMain.handle(
     IPC.framesSetCrop,
-    (_event, mediaId: number, crop: FrameCrop | null) => {
-      if (crop) setFrameCrop(getDb(), mediaId, crop);
+    (_event, rawMediaId: number, crop: FrameCrop | null) => {
+      const mediaId = id(rawMediaId, "mediaId");
+      if (crop) setFrameCrop(getDb(), mediaId, frameCrop(crop));
       else clearFrameCrop(getDb(), mediaId);
     },
   );
@@ -123,16 +140,20 @@ export function registerFramesIpc(
   ipcMain.handle(
     IPC.framesSetIncluded,
     (_event, frameId: number, included: boolean) => {
-      setFrameIncluded(getDb(), frameId, included);
+      setFrameIncluded(
+        getDb(),
+        id(frameId, "frameId"),
+        bool(included, "included"),
+      );
     },
   );
 
   ipcMain.handle(IPC.framesList, (_event, mediaId: number) =>
-    getFramesByMediaId(getDb(), mediaId).map(toRecord),
+    getFramesByMediaId(getDb(), id(mediaId, "mediaId")).map(toRecord),
   );
 
   ipcMain.handle(IPC.framesSaveSelected, async (_event, mediaId: number) => {
-    const rows = getFramesByMediaId(getDb(), mediaId).filter(
+    const rows = getFramesByMediaId(getDb(), id(mediaId, "mediaId")).filter(
       (f) => f.included === 1,
     );
     if (rows.length === 0) throw new Error("No slides selected.");
@@ -148,13 +169,15 @@ export function registerFramesIpc(
     const dir = picked.filePaths[0];
     // Frames are stored at native resolution already (no downscale on grab), so a copy is
     // the max quality available — no re-encode. Named slide-NN-<mm-ss> in timeline order.
+    // Copied one at a time with `await`, not `copyFileSync`: a 200-slide export is a few
+    // hundred megabytes, and a sync loop freezes every window until it finishes.
     let count = 0;
-    rows.forEach((f, i) => {
+    for (const [i, f] of rows.entries()) {
       const stamp = tsTag(f.ts_ms);
       const name = `slide-${String(i + 1).padStart(3, "0")}-${stamp}${extname(f.image_path) || ".jpg"}`;
-      copyFileSync(f.image_path, join(dir, name));
+      await copyFile(f.image_path, join(dir, name));
       count++;
-    });
+    }
     return { dir, count };
   });
 
@@ -164,11 +187,25 @@ export function registerFramesIpc(
       _event,
       mediaId: number,
       format: ExportFormat,
-      polish?: { providerId: string; model: string },
-    ) =>
-      exportService.export(mediaId, format, polish, (p) => {
-        for (const win of getWindows())
-          win.webContents.send(IPC.framesExportProgress, p);
-      }),
+      rawPolish?: { providerId: string; model: string },
+    ) => {
+      const p0 = rawPolish == null ? null : obj(rawPolish, "polish");
+      const polish =
+        p0 === null
+          ? undefined
+          : {
+              providerId: nonEmptyStr(p0.providerId, "polish.providerId", 100),
+              model: nonEmptyStr(p0.model, "polish.model", 200),
+            };
+      return exportService.export(
+        id(mediaId, "mediaId"),
+        oneOf(format, "format", ["md", "pdf"] as const),
+        polish,
+        (p) => {
+          for (const win of getWindows())
+            win.webContents.send(IPC.framesExportProgress, p);
+        },
+      );
+    },
   );
 }
