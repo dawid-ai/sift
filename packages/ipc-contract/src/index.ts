@@ -30,6 +30,10 @@ export const IPC = {
   downloadStart: "download:start",
   downloadProgress: "download:progress",
   importLocal: "import:local",
+  watchFoldersList: "watchfolders:list",
+  watchFoldersSet: "watchfolders:set",
+  watchFoldersPick: "watchfolders:pick",
+  watchFoldersScan: "watchfolders:scan",
   importPick: "import:pick",
   libraryList: "library:list",
   libraryListPage: "library:listPage",
@@ -90,6 +94,11 @@ export const IPC = {
   promptsImport: "prompts:import",
   profileExport: "profile:export",
   profileImport: "profile:import",
+  backupCreate: "backup:create",
+  backupInspect: "backup:inspect",
+  backupRestore: "backup:restore",
+  backupVerify: "backup:verify",
+  backupRepair: "backup:repair",
   storageUsage: "storage:usage",
   storageClear: "storage:clear",
   aiProvidersList: "ai:providers",
@@ -136,6 +145,9 @@ export const IPC = {
   whisperStatus: "whisper:status",
   whisperInstall: "whisper:install",
   whisperProgress: "whisper:progress",
+  whisperModels: "whisper:models",
+  whisperGetConfig: "whisper:getConfig",
+  whisperSetConfig: "whisper:setConfig",
   tagsAdd: "tags:add",
   tagsRemove: "tags:remove",
   tagsListAll: "tags:listAll",
@@ -203,6 +215,22 @@ export interface WhisperStatus {
   binaryPath: string | null;
   modelInstalled: boolean;
   modelPath: string | null;
+}
+
+/** One selectable Whisper model. */
+export interface WhisperModelInfo {
+  name: string;
+  label: string;
+  approxBytes: number;
+}
+
+/** Selected Whisper model, its transcription language, and the slide-OCR language. */
+export interface WhisperConfig {
+  modelName: string;
+  /** ISO-639-1 code, or "auto" to let Whisper detect it. */
+  language: string;
+  /** Tesseract code, e.g. `eng` or `eng+deu`. */
+  ocrLanguage: string;
 }
 
 /** Download progress for an in-flight whisper install (binary, then model). */
@@ -726,6 +754,40 @@ export interface PromptPackEntry {
  * split — not just a combined `imported` count — is what lets the renderer tell the user
  * that importing a pack silently overwrote prompts they'd edited, rather than reporting a
  * bare success. All four fields are 0 if the dialog was cancelled. */
+export interface BackupManifestInfo {
+  kind: string;
+  version: number;
+  createdAt: string;
+  appVersion: string;
+  databaseFile: string;
+  settingsFiles: string[];
+  counts: { media: number; downloads: number };
+}
+
+/** One media file the library expects on disk but cannot find. */
+export interface MissingFileInfo {
+  mediaId: number;
+  downloadId: number;
+  title: string;
+  path: string;
+}
+
+export interface VerifyLibraryResult {
+  checked: number;
+  missing: MissingFileInfo[];
+}
+
+export interface RepairLibraryResult {
+  marked: number;
+  relinked: number;
+}
+
+export interface StagedRestore {
+  manifest: BackupManifestInfo;
+  stagedDatabase: string;
+  stagedSettings: string[];
+}
+
 /** One row of the storage dashboard. `clearable` marks the caches and re-downloadable
  * assets that `storage.clear()` will accept — user content is measured, never offered. */
 export interface StorageEntry {
@@ -850,6 +912,11 @@ export interface SiftApi {
     status(): Promise<WhisperStatus>;
     /** Downloads + verifies the whisper binary and the model. */
     install(): Promise<WhisperStatus>;
+    /** Models offered in Settings, smallest first. */
+    models(): Promise<WhisperModelInfo[]>;
+    getConfig(): Promise<WhisperConfig>;
+    /** Rejects a language code that is not one. */
+    setConfig(config: WhisperConfig): Promise<WhisperConfig>;
     /** Subscribes to install progress; returns an unsubscribe fn. */
     onProgress(cb: (p: WhisperProgress) => void): () => void;
   };
@@ -958,6 +1025,16 @@ export interface SiftApi {
     /** Removes one tag from many rows. */
     bulkRemove(mediaIds: number[], name: string): Promise<void>;
   };
+  watchFolders: {
+    /** Folders scanned for media to import. */
+    list(): Promise<string[]>;
+    /** Replaces the watched-folder list and re-attaches the watchers. */
+    set(folders: string[]): Promise<string[]>;
+    /** Native folder picker; resolves the chosen path, or null if cancelled. */
+    pick(): Promise<string | null>;
+    /** Scans now; resolves the paths imported. */
+    scan(): Promise<string[]>;
+  };
   collections: {
     list(): Promise<CollectionCount[]>;
     /** Creates a collection, or returns the existing one with that name. */
@@ -1003,6 +1080,21 @@ export interface SiftApi {
     /** Validates and persists a proxy URL; resolves the normalized value that was stored.
      * Rejects on an unsupported scheme or a missing host. `""` clears it. */
     setProxy(proxyUrl: string): Promise<string>;
+  };
+  backup: {
+    /** Picks a folder and writes a dated backup inside it. Null if cancelled. */
+    create(): Promise<{ path: string; manifest: BackupManifestInfo } | null>;
+    /** Picks a backup folder and reads its manifest without applying anything. */
+    inspect(): Promise<{ path: string; manifest: BackupManifestInfo } | null>;
+    /** Stages a restore beside the live files. Does not overwrite the running library. */
+    restore(sourceDir: string): Promise<StagedRestore>;
+    /** Finds completed downloads whose file is no longer where the database says. */
+    verify(): Promise<VerifyLibraryResult>;
+    /** Relinks what it can find and marks the rest. `useSearchDir` opens a folder picker. */
+    repair(
+      missing: MissingFileInfo[],
+      useSearchDir: boolean,
+    ): Promise<RepairLibraryResult>;
   };
   storage: {
     /** Per-category disk usage, plus free space on the downloads volume. */

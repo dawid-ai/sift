@@ -16,6 +16,7 @@ import {
   type TranscriptCue,
   type DownloadProgress,
   type MediaFilter,
+  type MissingFileInfo,
   type QueueConfig,
   type QueueItem,
   type QueueSpec,
@@ -26,6 +27,7 @@ import {
   type FrameCrop,
   type TranscriptProgress,
   type UpdateEvent,
+  type WhisperConfig,
   type WhisperProgress,
 } from "@sift/ipc-contract";
 
@@ -77,6 +79,10 @@ const api: SiftApi = {
   whisper: {
     status: () => ipcRenderer.invoke(IPC.whisperStatus),
     install: () => ipcRenderer.invoke(IPC.whisperInstall),
+    models: () => ipcRenderer.invoke(IPC.whisperModels),
+    getConfig: () => ipcRenderer.invoke(IPC.whisperGetConfig),
+    setConfig: (config: WhisperConfig) =>
+      ipcRenderer.invoke(IPC.whisperSetConfig, config),
     onProgress: (cb: (p: WhisperProgress) => void) => {
       const listener = (_event: IpcRendererEvent, p: WhisperProgress) => cb(p);
       ipcRenderer.on(IPC.whisperProgress, listener);
@@ -141,6 +147,13 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.librarySetPinned, mediaId, pinned),
     bulkRemove: (mediaIds: number[]) =>
       ipcRenderer.invoke(IPC.libraryBulkRemove, mediaIds),
+  },
+  watchFolders: {
+    list: () => ipcRenderer.invoke(IPC.watchFoldersList),
+    set: (folders: string[]) =>
+      ipcRenderer.invoke(IPC.watchFoldersSet, folders),
+    pick: () => ipcRenderer.invoke(IPC.watchFoldersPick),
+    scan: () => ipcRenderer.invoke(IPC.watchFoldersScan),
   },
   collections: {
     list: () => ipcRenderer.invoke(IPC.collectionsList),
@@ -215,6 +228,15 @@ const api: SiftApi = {
         startSeconds,
         endSeconds,
       ),
+  },
+  backup: {
+    create: () => ipcRenderer.invoke(IPC.backupCreate),
+    inspect: () => ipcRenderer.invoke(IPC.backupInspect),
+    restore: (sourceDir: string) =>
+      ipcRenderer.invoke(IPC.backupRestore, sourceDir),
+    verify: () => ipcRenderer.invoke(IPC.backupVerify),
+    repair: (missing: MissingFileInfo[], useSearchDir: boolean) =>
+      ipcRenderer.invoke(IPC.backupRepair, missing, useSearchDir),
   },
   storage: {
     usage: () => ipcRenderer.invoke(IPC.storageUsage),

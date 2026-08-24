@@ -36,6 +36,8 @@ import type { AiProvider, TranscriptProvider } from "@sift/core";
 import { openDatabase, runMigrations, type SiftDatabase } from "@sift/db";
 import {
   currentPlatform,
+  isWhisperModelName,
+  resolveWhisperModel,
   sha256File,
   SOURCES,
   type BinarySource,
@@ -77,6 +79,13 @@ import { registerStorageIpc } from "./ipc/storage";
 import { registerCollectionsIpc } from "./ipc/collections";
 import { registerExportClipIpc } from "./ipc/export-clip";
 import { registerChannelRulesIpc } from "./ipc/channel-rules";
+import { registerWatchFoldersIpc } from "./ipc/watch-folders";
+import { registerBackupIpc } from "./ipc/backup";
+import { BackupService } from "./services/backup-service";
+import { WatchFolderService } from "./services/watch-folder-service";
+import { createWatchFoldersStore } from "./settings/watch-folders-config";
+import { createWhisperConfigStore } from "./settings/whisper-config";
+import { registerWhisperConfigIpc } from "./ipc/whisper-config";
 import { ChannelScheduler } from "./services/channel-scheduler";
 import { createChannelRefreshStore } from "./settings/channel-refresh-config";
 import { ExportService } from "./services/export-service";
@@ -148,6 +157,8 @@ import {
   downloadsDir,
   channelRefreshConfigFile,
   networkConfigFile,
+  watchFoldersConfigFile,
+  whisperConfigFile,
   queueConfigFile,
   framesDir,
   tessdataDir,
@@ -1166,7 +1177,13 @@ app.whenReady().then(() => {
     const transcriptRegistry = new TranscriptRegistry();
     transcriptRegistry.register(createYtdlpSubsProvider({ runner }));
 
-    const modelFilePath = () => join(whisperModelsDir(), "ggml-small.bin");
+    // The selected Whisper model, its transcription language, and the OCR language.
+    const whisperConfigStore = createWhisperConfigStore({
+      filePath: whisperConfigFile(),
+      isKnownModel: isWhisperModelName,
+    });
+    const modelFilePath = () =>
+      join(whisperModelsDir(), whisperConfigStore.get().modelName);
     const whisperInstalled = () => {
       const p = assetPath("whisper");
       return p !== null && existsSync(p) && existsSync(modelFilePath());
@@ -1199,8 +1216,13 @@ app.whenReady().then(() => {
           whisperDir: whisperDir(),
           modelsDir: whisperModelsDir(),
           platform: currentPlatform(),
+          // Resolved per install so the checksum comes from the source rather than being
+          // baked in for models nobody has verified by hand.
+          resolveModel: () =>
+            resolveWhisperModel(whisperConfigStore.get().modelName),
         });
     registerWhisperIpc(whisperSetup, () => BrowserWindow.getAllWindows());
+    registerWhisperConfigIpc(whisperConfigStore);
 
     const transcriptService = new TranscriptService({
       db: getDb(),
@@ -1209,6 +1231,7 @@ app.whenReady().then(() => {
         ? e2eDownloadsDir
         : () => downloadsConfigStore.get(),
       getPreferredLanguages: transcriptConfigStore.get,
+      getForcedLanguage: () => whisperConfigStore.get().language,
       getMethod: () => transcriptMethodStore.get(),
       getCookiesFile: authManager.cookiesFileForUrl,
       reportAuthFailure: authManager.reportAuthFailure,
@@ -1450,6 +1473,20 @@ app.whenReady().then(() => {
       clipService: () => clipService,
     });
 
+    // Backup, restore, and the verify/repair scan.
+    const databaseFilePath = () => join(app.getPath("userData"), "sift.db");
+    const backupService = new BackupService({
+      db: getDb(),
+      databaseFile: databaseFilePath,
+      settingsDir: () => join(app.getPath("userData"), "settings"),
+      appVersion: () => app.getVersion(),
+    });
+    registerBackupIpc({
+      service: () => backupService,
+      databaseFile: databaseFilePath,
+      getWindows: () => BrowserWindow.getAllWindows(),
+    });
+
     registerStorageIpc({
       dirs: () => ({
         thumbnails: thumbnailsDir(),
@@ -1482,11 +1519,17 @@ app.whenReady().then(() => {
           ffmpeg: createFfmpegRunner({
             getBinaryPath: () => assetPath("ffmpeg"),
           }),
-          makeOcr: () =>
-            createOcrRunner({
-              langPath: tessdataDir(),
+          makeOcr: () => {
+            const language = whisperConfigStore.get().ocrLanguage;
+            // `resources/tessdata` holds only the bundled English data. Pointing `langPath`
+            // at it for any other language makes tesseract.js look for a file that is not
+            // there and hang; those languages go to the CDN cache instead.
+            return createOcrRunner({
+              language,
+              ...(language === "eng" ? { langPath: tessdataDir() } : {}),
               cachePath: tesseractCacheDir(),
-            }),
+            });
+          },
           framesDir,
         });
     const frameExportService = new FrameExportService({
@@ -1564,6 +1607,33 @@ app.whenReady().then(() => {
       getDb,
       scheduler: () => channelScheduler,
       config: channelRefreshStore,
+    });
+
+    // Watch folders: media dropped into one of these is imported the same way a manual
+    // import is, poster and all, so a watched file is indistinguishable from a picked one.
+    const watchFoldersStore = createWatchFoldersStore({
+      filePath: watchFoldersConfigFile(),
+    });
+    const watchFolderService = new WatchFolderService({
+      folders: () => watchFoldersStore.get().folders,
+      seen: () => new Set(watchFoldersStore.get().imported),
+      markSeen: (path) => watchFoldersStore.markImported(path),
+      importFile: async (path) => {
+        await downloadService.importLocal({
+          path,
+          durationSec: null,
+          height: null,
+          tags: ["watched"],
+        });
+      },
+      onError: (message) => console.error(message),
+    });
+    watchFolderService.start();
+    app.on("will-quit", () => watchFolderService.stop());
+    registerWatchFoldersIpc({
+      store: watchFoldersStore,
+      service: () => watchFolderService,
+      getWindows: () => BrowserWindow.getAllWindows(),
     });
 
     registerAiProvidersIpc(

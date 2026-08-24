@@ -76,6 +76,8 @@ export interface TranscriptServiceOpts {
   registry: TranscriptRegistry;
   downloadsDir: () => string; // resolves the current downloads dir (live config)
   getPreferredLanguages: () => string[];
+  /** Explicit transcription language, or "auto" to keep the caption-driven pick. */
+  getForcedLanguage?: () => string;
   getMethod: () => TranscriptMethod;
   getCookiesFile?: (url: string) => Promise<string | null>;
   reportAuthFailure?: (url: string) => void;
@@ -138,11 +140,18 @@ export class TranscriptService {
     if (input.force !== "whisper" && existing.length > 0)
       return toRecord(existing[0]!, media.id);
 
-    const language = pickTranscriptLanguage({
-      videoLanguage: metadata.language,
-      available: metadata.captionLanguages,
-      preferred: this.opts.getPreferredLanguages(),
-    });
+    // An explicit Whisper language wins over the caption-driven pick: the user set it to
+    // transcribe content the metadata mislabels, which is exactly the case the automatic
+    // choice gets wrong. "auto" (the default) leaves the existing behaviour alone.
+    const forcedLanguage = this.opts.getForcedLanguage?.() ?? "auto";
+    const language =
+      forcedLanguage !== "auto"
+        ? forcedLanguage
+        : pickTranscriptLanguage({
+            videoLanguage: metadata.language,
+            available: metadata.captionLanguages,
+            preferred: this.opts.getPreferredLanguages(),
+          });
     // audioPath = the newest COMPLETED download's file on disk (media.download_path is
     // vestigial/always-null post redesign Part A). Only Whisper (this) consumes it; the
     // yt-dlp-subs provider ignores it. null when nothing has been downloaded yet.

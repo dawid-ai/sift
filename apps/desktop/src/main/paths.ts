@@ -46,6 +46,16 @@ export function channelRefreshConfigFile(): string {
   return join(app.getPath("userData"), "settings", "channel-refresh.json");
 }
 
+/** Path to the watched-folder list plus the paths already imported from them (non-secret). */
+export function watchFoldersConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "watch-folders.json");
+}
+
+/** Path to the selected Whisper model, its language, and the OCR language (non-secret). */
+export function whisperConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "whisper.json");
+}
+
 /** Path to the persisted binary auto-update policy (auto|notify, non-secret). */
 export function binaryUpdatesConfigFile(): string {
   return join(app.getPath("userData"), "settings", "binary-updates.json");
