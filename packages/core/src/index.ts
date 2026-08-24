@@ -17,6 +17,49 @@ export { parseVtt, segmentsToText } from "./transcript/vtt";
 export { segmentsToSrt } from "./transcript/srt";
 export { baseLangCode, pickTranscriptLanguage } from "./transcript/language";
 export { parseJson3 } from "./transcript/json3";
+export {
+  countMatches,
+  replaceAll,
+  setSegmentText,
+  setSegmentTimes,
+  setSpeaker,
+  setSpeakerRange,
+  speakerOf,
+  textWithoutSpeaker,
+  shiftTimes,
+  removeSegment,
+  mergeWithPrevious,
+  segmentsEqual,
+} from "./transcript/edit";
+export type { ReplaceOptions } from "./transcript/edit";
+
+export {
+  BUNDLE_PRESETS,
+  PRESET_EXTENSION,
+  PRESET_LABEL,
+  csvField,
+  escapeHtml,
+  hms,
+  obsidianTag,
+  renderCsv,
+  renderHtml,
+  renderJson,
+  renderMarkdown,
+  renderObsidianNote,
+  renderPreset,
+} from "./export/presets";
+export type { ExportPreset, ExportItem, ExportSummary } from "./export/presets";
+
+export {
+  CLIP_EXTENSION,
+  CLIP_LABEL,
+  MAX_CLIP_SECONDS,
+  clipArgs,
+  normalizeRange,
+  supportsTimestampLink,
+  timestampedUrl,
+} from "./clip/clip";
+export type { ClipKind, ClipRange } from "./clip/clip";
 
 export * from "./channel/normalize";
 export {

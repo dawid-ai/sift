@@ -74,6 +74,11 @@ export const IPC = {
   transcriptGetAutoDownload: "transcript:getAutoDownload",
   transcriptSetAutoDownload: "transcript:setAutoDownload",
   transcriptExportSrt: "transcript:exportSrt",
+  transcriptUpdate: "transcript:update",
+  exportPreset: "export:preset",
+  exportReveal: "export:reveal",
+  clipLink: "clip:link",
+  clipExport: "clip:export",
   summarizeStart: "summarize:start",
   summarizeToken: "summarize:token",
   summarizeExport: "summarize:export",
@@ -468,6 +473,31 @@ export interface PlaylistExportResult {
   path: string;
   included: number;
   skipped: number;
+}
+
+/** One export format offered by the export menu. */
+export type ExportPreset =
+  "markdown" | "html" | "json" | "csv" | "obsidian" | "pdf";
+
+export interface ExportResult {
+  path: string;
+  preset: ExportPreset;
+}
+
+export type ClipKind = "audio" | "video" | "vertical";
+
+export interface ClipResult {
+  path: string;
+  kind: ClipKind;
+  startSeconds: number;
+  endSeconds: number;
+}
+
+/** One transcript cue. Mirrors `@sift/core`'s TranscriptSegment. */
+export interface TranscriptCue {
+  start: number;
+  end: number;
+  text: string;
 }
 
 /** A distinct tag name plus how many media rows carry it. */
@@ -1019,6 +1049,26 @@ export interface SiftApi {
     /** Writes a transcript's segments to a .srt file under the downloads dir; returns the
      * absolute path. Rejects if the transcript has no timestamps. */
     exportSrt(transcriptId: number): Promise<string>;
+    /** Replaces a transcript's cues after an edit. The searchable text is regenerated in
+     * main from the cues, so the two can never disagree. */
+    update(transcriptId: number, segments: TranscriptCue[]): Promise<void>;
+  };
+  export: {
+    /** Writes one library item in the chosen format. Obsidian resolves to a folder. */
+    preset(mediaId: number, preset: ExportPreset): Promise<ExportResult>;
+    /** Selects a written export in the OS file manager. */
+    reveal(path: string): Promise<void>;
+  };
+  clip: {
+    /** A link into the source at `seconds`, or null when the platform has no such parameter. */
+    link(mediaId: number, seconds: number): Promise<string | null>;
+    /** Cuts a span out of the downloaded file. Rejects when nothing is on disk. */
+    export(
+      mediaId: number,
+      kind: ClipKind,
+      startSeconds: number,
+      endSeconds: number,
+    ): Promise<ClipResult>;
   };
   summarize: {
     /** Streams a summary for the newest transcript of `metadata`'s URL; persists + returns the record. */

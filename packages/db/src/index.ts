@@ -58,6 +58,7 @@ export {
   getTranscriptById,
   getTranscriptsByMediaId,
   setTranscriptFilePath,
+  updateTranscriptContent,
   deleteTranscript,
 } from "./transcript";
 export type { TranscriptRow, NewTranscript } from "./transcript";

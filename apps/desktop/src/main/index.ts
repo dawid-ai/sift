@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   createReadStream,
   existsSync,
@@ -72,6 +74,9 @@ import { registerSummarizeIpc } from "./ipc/summarize";
 import { registerProfileIpc } from "./ipc/profile";
 import { registerStorageIpc } from "./ipc/storage";
 import { registerCollectionsIpc } from "./ipc/collections";
+import { registerExportClipIpc } from "./ipc/export-clip";
+import { ExportService } from "./services/export-service";
+import { ClipService } from "./services/clip-service";
 import { registerFramesIpc } from "./ipc/frames";
 import { registerAiProvidersIpc } from "./ipc/ai-providers";
 import { registerSettingsIpc } from "./ipc/settings";
@@ -506,6 +511,9 @@ function fixtureWhisperProvider(): TranscriptProvider {
 /** Renders self-contained HTML to a PDF buffer via a hidden BrowserWindow (no new dep).
  * Loads from a temp file rather than a data: URL — embedded slide images make the HTML
  * multi-MB, past comfortable data-URL limits. */
+/** Promise form of execFile, for the ffmpeg calls the clip service makes. */
+const execFileAsync = promisify(execFile);
+
 async function renderPdf(html: string): Promise<Buffer> {
   const tmp = join(app.getPath("temp"), `sift-doc-${randomUUID()}.html`);
   writeFileSync(tmp, html, "utf8");
@@ -1409,6 +1417,32 @@ app.whenReady().then(() => {
       slots: profileSlots,
       getDb,
       getWindows: () => BrowserWindow.getAllWindows(),
+    });
+
+    // Export presets and clips. Both reuse machinery that already exists: the PDF path is the
+    // same `printToPDF` renderer the slides export uses, and the clip cutter is the managed
+    // ffmpeg binary.
+    const exportService = new ExportService({
+      db: getDb(),
+      outputDir: () => downloadsConfigStore.get(),
+      renderPdf,
+    });
+    const clipService = new ClipService({
+      db: getDb(),
+      outputDir: () => downloadsConfigStore.get(),
+      runFfmpeg: async (args) => {
+        const path = assetPath("ffmpeg");
+        if (!path)
+          throw new Error(
+            "Clipping needs ffmpeg — install it in Settings → Binaries.",
+          );
+        await execFileAsync(path, args, { maxBuffer: 1024 * 1024 * 16 });
+      },
+    });
+    registerExportClipIpc({
+      getDb,
+      exportService: () => exportService,
+      clipService: () => clipService,
     });
 
     registerStorageIpc({

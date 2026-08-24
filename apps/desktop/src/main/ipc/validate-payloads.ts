@@ -15,6 +15,7 @@ import type {
   QueueConfig,
   QueueSpec,
 } from "@sift/ipc-contract";
+import type { TranscriptSegment } from "@sift/core";
 import type { FrameCrop } from "@sift/db";
 import {
   bool,
@@ -107,6 +108,30 @@ export function mediaFilter(v: unknown): MediaFilter {
             "error",
           ]),
   };
+}
+
+/**
+ * Transcript segments coming back from the editor.
+ *
+ * Capped at 100k cues — a ten-hour transcript is well under that, and an unbounded array is
+ * written straight into a database row. Text is capped per cue for the same reason.
+ */
+export function transcriptSegments(v: unknown): TranscriptSegment[] {
+  if (!Array.isArray(v))
+    throw new Error('Invalid IPC argument "segments": expected an array.');
+  if (v.length > 100_000)
+    throw new Error('Invalid IPC argument "segments": too many cues.');
+  return v.map((raw, i) => {
+    const o = obj(raw, `segments[${i}]`);
+    const start = num(o.start, `segments[${i}].start`, 0, 86_400 * 30);
+    const end = num(o.end, `segments[${i}].end`, 0, 86_400 * 30);
+    return {
+      start,
+      // A cue whose end precedes its start would break every downstream serialiser.
+      end: Math.max(start, end),
+      text: str(o.text, `segments[${i}].text`, 10_000),
+    };
+  });
 }
 
 /** A yt-dlp format choice. `selector` becomes an argv value for the `-f` flag, so it is

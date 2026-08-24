@@ -36,6 +36,7 @@ import { platformLabel } from "@/lib/platform-label";
 import { appendTimeParam } from "@/lib/transcript-view";
 import { MediaPlayer, type MediaPlayerHandle } from "./media-player";
 import { TranscriptPanel, type TranscribeMode } from "./transcript-panel";
+import { ExportMenu } from "./export-menu";
 import { DownloadsPanel } from "./downloads-panel";
 import { COUNT_ACTIVE, COUNT_ZERO, FilesPanel } from "./files-panel";
 import { SummariesPanel } from "./summaries-panel";
@@ -675,6 +676,7 @@ export function MediaDetailPage({
             {/* `mx-2` on top of the row's own `gap-2` = 16px of air on BOTH sides. The old
                 `ml-3 mr-1` stacked unevenly with the gap (21px left, 13px right) and the rule
                 sat visibly off-centre between the link pair and the trash button. */}
+            <ExportMenu mediaId={id} />
             <span aria-hidden className="mx-2 h-6 w-px flex-none bg-white/10" />
             {confirmingRemove ? (
               <>
@@ -939,6 +941,8 @@ export function MediaDetailPage({
                 onRetranscribe={() => void handleRetranscribe()}
                 onRemoveTranscript={(id) => void handleRemoveTranscript(id)}
                 onExportSrt={(id) => void handleExportSrt(id)}
+                mediaId={id}
+                onTranscriptEdited={() => void reload()}
               />
             )}
             {tab === "summary" && (

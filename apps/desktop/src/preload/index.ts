@@ -9,6 +9,9 @@ import {
   type BinaryProgress,
   type BinaryUpdateEvent,
   type ChannelVideosQuery,
+  type ClipKind,
+  type ExportPreset,
+  type TranscriptCue,
   type DownloadProgress,
   type MediaFilter,
   type QueueConfig,
@@ -176,6 +179,28 @@ const api: SiftApi = {
     setProxy: (proxyUrl: string) =>
       ipcRenderer.invoke(IPC.settingsSetProxy, proxyUrl),
   },
+  export: {
+    preset: (mediaId: number, preset: ExportPreset) =>
+      ipcRenderer.invoke(IPC.exportPreset, mediaId, preset),
+    reveal: (path: string) => ipcRenderer.invoke(IPC.exportReveal, path),
+  },
+  clip: {
+    link: (mediaId: number, seconds: number) =>
+      ipcRenderer.invoke(IPC.clipLink, mediaId, seconds),
+    export: (
+      mediaId: number,
+      kind: ClipKind,
+      startSeconds: number,
+      endSeconds: number,
+    ) =>
+      ipcRenderer.invoke(
+        IPC.clipExport,
+        mediaId,
+        kind,
+        startSeconds,
+        endSeconds,
+      ),
+  },
   storage: {
     usage: () => ipcRenderer.invoke(IPC.storageUsage),
     clear: (key: string) => ipcRenderer.invoke(IPC.storageClear, key),
@@ -252,6 +277,8 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.transcriptSetAutoDownload, enabled),
     exportSrt: (transcriptId: number) =>
       ipcRenderer.invoke(IPC.transcriptExportSrt, transcriptId),
+    update: (transcriptId: number, segments: TranscriptCue[]) =>
+      ipcRenderer.invoke(IPC.transcriptUpdate, transcriptId, segments),
   },
   summarize: {
     start: (input) => ipcRenderer.invoke(IPC.summarizeStart, input),
