@@ -59,6 +59,53 @@ export function mediaFilter(v: unknown): MediaFilter {
       f.excludeTags == null
         ? null
         : strArray(f.excludeTags, "filter.excludeTags", 200, 200),
+    publishedFrom: nullableInt(
+      f.publishedFrom,
+      "filter.publishedFrom",
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    publishedTo: nullableInt(
+      f.publishedTo,
+      "filter.publishedTo",
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    // A day of seconds is the ceiling for a sane duration bound; anything longer is a typo
+    // and would only ever match nothing.
+    durationMin: nullableInt(
+      f.durationMin,
+      "filter.durationMin",
+      0,
+      86_400 * 30,
+    ),
+    durationMax: nullableInt(
+      f.durationMax,
+      "filter.durationMax",
+      0,
+      86_400 * 30,
+    ),
+    favourite:
+      f.favourite == null ? null : bool(f.favourite, "filter.favourite"),
+    collectionId:
+      f.collectionId == null ? null : id(f.collectionId, "filter.collectionId"),
+    missing:
+      f.missing == null
+        ? null
+        : oneOf<NonNullable<MediaFilter["missing"]>>(
+            f.missing,
+            "filter.missing",
+            ["transcript", "summary", "download"],
+          ),
+    downloadStatus:
+      f.downloadStatus == null
+        ? null
+        : oneOf(f.downloadStatus, "filter.downloadStatus", [
+            "none",
+            "downloading",
+            "done",
+            "error",
+          ]),
   };
 }
 

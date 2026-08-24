@@ -71,6 +71,7 @@ import { registerTranscriptIpc } from "./ipc/transcript";
 import { registerSummarizeIpc } from "./ipc/summarize";
 import { registerProfileIpc } from "./ipc/profile";
 import { registerStorageIpc } from "./ipc/storage";
+import { registerCollectionsIpc } from "./ipc/collections";
 import { registerFramesIpc } from "./ipc/frames";
 import { registerAiProvidersIpc } from "./ipc/ai-providers";
 import { registerSettingsIpc } from "./ipc/settings";
@@ -1133,8 +1134,9 @@ app.whenReady().then(() => {
       ffmpeg: createFfmpegRunner({ getBinaryPath: () => assetPath("ffmpeg") }),
       postersDir,
     });
-    registerLibraryIpc(downloadService);
+    registerLibraryIpc(downloadService, getDb);
     registerTagsIpc(getDb());
+    registerCollectionsIpc(getDb);
 
     const transcriptConfigStore = createTranscriptConfigStore({
       filePath: transcriptConfigFile(),

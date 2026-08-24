@@ -26,6 +26,7 @@ import type {
   MediaFilter,
   MediaListItem,
   PlaylistExportResult,
+  SavedSearchInfo,
   SearchHit,
 } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
@@ -48,6 +49,17 @@ import { pageWindow } from "@/lib/page-window";
 import { platformLabel } from "@/lib/platform-label";
 import { LibraryTable } from "@/routes/library/library-table";
 import { MediaCard } from "@/routes/library/media-card";
+import {
+  DURATION_BUCKETS,
+  EMPTY_EXTRA,
+  LibraryFiltersExtra,
+  extraToFilter,
+  isExtraActive,
+  useLibraryOrganisation,
+  type ExtraFilterState,
+} from "@/routes/library/library-filters-extra";
+import { LibraryBulkBar } from "@/routes/library/library-bulk-bar";
+import { DuplicatesPanel } from "@/routes/library/duplicates-panel";
 import { MediaDetailPage } from "@/routes/library/media-detail";
 
 /**
@@ -612,6 +624,13 @@ export function LibraryPage({
   const [from, setFrom] = useState<string>(""); // yyyy-mm-dd
   const [to, setTo] = useState<string>("");
   const [reloadKey, setReloadKey] = useState(0); // bump to force a refetch after a mutation
+  const [extra, setExtra] = useState<ExtraFilterState>(EMPTY_EXTRA);
+  // Selection lives on the page, not the table, so it survives switching between the table
+  // and tile views and so the bulk bar can sit above either one.
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const { collections, savedSearches } = useLibraryOrganisation(reloadKey);
   const [exportResult, setExportResult] = useState<PlaylistExportResult | null>(
     null,
   );
@@ -631,6 +650,7 @@ export function LibraryPage({
     from: from ? Date.parse(`${from}T00:00:00`) : null,
     to: to ? Date.parse(`${to}T23:59:59.999`) : null,
     ids: searchHits ? [...searchHits.keys()] : null,
+    ...extraToFilter(extra),
   };
 
   const anyFilter = !!(
@@ -640,7 +660,8 @@ export function LibraryPage({
     platform ||
     from ||
     to ||
-    searchHits
+    searchHits ||
+    isExtraActive(extra)
   );
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
@@ -673,6 +694,84 @@ export function LibraryPage({
 
   function refresh() {
     setReloadKey((k) => k + 1);
+  }
+
+  function toggleSelect(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** Select-all covers the page on screen, not the whole filtered set — a checkbox that
+   * silently selects 4,000 rows is how a bulk delete goes wrong. */
+  function toggleSelectAll() {
+    setSelected((prev) => {
+      const pageIds = items.map((i) => i.media.id);
+      const allOn = pageIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      for (const id of pageIds) {
+        if (allOn) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function toggleFavourite(id: number, next: boolean) {
+    await window.sift.library.setFavourite(id, next);
+    refresh();
+  }
+
+  async function togglePinned(id: number, next: boolean) {
+    await window.sift.library.setPinned(id, next);
+    refresh();
+  }
+
+  /** Restores both halves of a saved view: the free-text query and the filter. */
+  function applySavedSearch(saved: SavedSearchInfo) {
+    const f = saved.filter;
+    setSearch(saved.query);
+    setActiveTags(f.tags ?? []);
+    setExcludedTags(f.excludeTags ?? []);
+    setChannel(f.channel ?? null);
+    setPlatform(f.platform ?? null);
+    setFrom(f.from ? new Date(f.from).toISOString().slice(0, 10) : "");
+    setTo(f.to ? new Date(f.to).toISOString().slice(0, 10) : "");
+    setExtra({
+      durationBucket:
+        DURATION_BUCKETS.find(
+          (b) =>
+            (b.min ?? null) === (f.durationMin ?? null) &&
+            (b.max ?? null) === (f.durationMax ?? null),
+        )?.value ?? null,
+      missing: f.missing ?? null,
+      failedOnly: f.downloadStatus === "error",
+      favouriteOnly: f.favourite === true,
+      collectionId: f.collectionId ?? null,
+      publishedFrom: f.publishedFrom
+        ? new Date(f.publishedFrom).toISOString().slice(0, 10)
+        : "",
+      publishedTo: f.publishedTo
+        ? new Date(f.publishedTo).toISOString().slice(0, 10)
+        : "",
+    });
+    setPage(0);
+  }
+
+  async function saveCurrentSearch(name: string) {
+    // `ids` is stripped on the way in and out — a saved search re-runs its query rather than
+    // pinning the row ids one run happened to return.
+    const { ids: _ids, ...rest } = filter;
+    await window.sift.savedSearches.save(name, search.trim(), rest);
+    refresh();
+  }
+
+  async function deleteSavedSearch(id: number) {
+    await window.sift.savedSearches.delete(id);
+    refresh();
   }
 
   function changePageSize(n: number) {
@@ -747,7 +846,16 @@ export function LibraryPage({
   // Any filter/search change returns to the first page.
   useEffect(() => {
     setPage(0);
-  }, [activeTags, excludedTags, channel, platform, from, to, searchHits]);
+  }, [
+    activeTags,
+    excludedTags,
+    channel,
+    platform,
+    from,
+    to,
+    searchHits,
+    extra,
+  ]);
 
   // A filtered value can vanish (its last video removed/retagged) while the filter still
   // references it — clear it so the view isn't stranded on an empty result with no visible reset.
@@ -791,6 +899,10 @@ export function LibraryPage({
     from,
     to,
     searchHits,
+    // `extra` is a fresh object only when a control in the second filter row changes, so
+    // depending on the object is exactly right here — the row's seven values would otherwise
+    // need spelling out one by one.
+    extra,
     page,
     pageSize,
     reloadKey,
@@ -1030,6 +1142,49 @@ export function LibraryPage({
               </Button>
             </div>
 
+            {/* Second filter row. Its own hairline for the same reason the tag row has one:
+                these narrow the view on axes the row above does not touch. */}
+            <div className="border-t border-border/60 pt-2.5">
+              <LibraryFiltersExtra
+                extra={extra}
+                onChange={setExtra}
+                collections={collections}
+                savedSearches={savedSearches}
+                onApplySaved={applySavedSearch}
+                onSaveCurrent={saveCurrentSearch}
+                onDeleteSaved={deleteSavedSearch}
+                onFindDuplicates={() => setShowDuplicates((v) => !v)}
+              />
+            </div>
+
+            {(selected.size > 0 || bulkMessage || showDuplicates) && (
+              <div className="flex flex-col gap-2 border-t border-border/60 pt-2.5">
+                <LibraryBulkBar
+                  selected={[...selected]}
+                  collections={collections}
+                  onClear={() => setSelected(new Set())}
+                  onDone={(message) => {
+                    setBulkMessage(message);
+                    refresh();
+                  }}
+                />
+                {bulkMessage && (
+                  <p
+                    data-testid="bulk-message"
+                    className="text-[12px] text-foreground/70"
+                  >
+                    {bulkMessage}
+                  </p>
+                )}
+                {showDuplicates && (
+                  <DuplicatesPanel
+                    onClose={() => setShowDuplicates(false)}
+                    onRemoved={refresh}
+                  />
+                )}
+              </div>
+            )}
+
             {facets.tags.length > 0 && (
               <div className="flex items-start gap-x-3 gap-y-2 border-t border-border/60 pt-2.5">
                 <span className="mt-1.5 inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-subtle">
@@ -1209,6 +1364,13 @@ export function LibraryPage({
                     onOpenChannel={onOpenChannel}
                     hits={searchHits}
                     query={search.trim()}
+                    selected={selected}
+                    onToggleSelect={toggleSelect}
+                    onToggleSelectAll={toggleSelectAll}
+                    onToggleFavourite={(id, next) =>
+                      void toggleFavourite(id, next)
+                    }
+                    onTogglePinned={(id, next) => void togglePinned(id, next)}
                   />
                   {/* 45px = the table's row pitch (`py-2` + one 28px band + the hairline). */}
                   <ListRest atEnd={page >= pageCount - 1} pitch={45} />

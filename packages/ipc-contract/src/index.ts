@@ -44,6 +44,22 @@ export const IPC = {
   libraryOpenExternal: "library:openExternal",
   librarySearch: "library:search",
   libraryExportPlaylist: "library:exportPlaylist",
+  libraryFindDuplicates: "library:findDuplicates",
+  librarySetFavourite: "library:setFavourite",
+  librarySetPinned: "library:setPinned",
+  libraryBulkRemove: "library:bulkRemove",
+  collectionsList: "collections:list",
+  collectionsCreate: "collections:create",
+  collectionsRename: "collections:rename",
+  collectionsDelete: "collections:delete",
+  collectionsAdd: "collections:add",
+  collectionsRemove: "collections:remove",
+  collectionsForMedia: "collections:forMedia",
+  tagsBulkAdd: "tags:bulkAdd",
+  tagsBulkRemove: "tags:bulkRemove",
+  savedSearchesList: "library:savedSearches",
+  savedSearchesSave: "library:saveSearch",
+  savedSearchesDelete: "library:deleteSearch",
   settingsGetTranscriptLanguages: "settings:getTranscriptLanguages",
   settingsSetTranscriptLanguages: "settings:setTranscriptLanguages",
   settingsGetProxy: "settings:getProxy",
@@ -374,6 +390,9 @@ export interface MediaListItem {
   }[];
   summaryCount: number;
   tags: string[];
+  favourite: boolean;
+  /** When the row was pinned, or null. Pinned rows sort first. */
+  pinnedAt: number | null;
 }
 
 /** Filters for the paged library list (contract's own copy of `@sift/db`'s `MediaFilter` —
@@ -386,6 +405,41 @@ export interface MediaFilter {
   to?: number | null; // created_at <= (inclusive ms epoch)
   ids?: number[] | null; // restrict to these media ids (e.g. search results)
   excludeTags?: string[] | null; // hide rows carrying any of these tags, case-insensitive
+  publishedFrom?: number | null; // published_at >= (inclusive ms epoch)
+  publishedTo?: number | null; // published_at <= (inclusive ms epoch)
+  durationMin?: number | null; // duration_s >= (inclusive seconds)
+  durationMax?: number | null; // duration_s <= (inclusive seconds)
+  favourite?: boolean | null; // true → favourites only
+  collectionId?: number | null; // only rows in this collection
+  /** Smart filter: rows still lacking one of the three artifacts. */
+  missing?: "transcript" | "summary" | "download" | null;
+  /** Exact download status, e.g. "error" for the failed-download filter. */
+  downloadStatus?: string | null;
+}
+
+/** A named, ordered set of videos the user curates, plus its size. */
+export interface CollectionCount {
+  id: number;
+  name: string;
+  created_at: number;
+  count: number;
+}
+
+/** A named library view: the free-text query plus the filter that produced it. */
+export interface SavedSearchInfo {
+  id: number;
+  name: string;
+  query: string;
+  filter: MediaFilter;
+  created_at: number;
+}
+
+/** Media rows that look like the same video. `reason` says how confident that is:
+ * `same-source` is certain, `same-title-duration` is a guess for re-uploads. */
+export interface DuplicateGroup {
+  reason: "same-source" | "same-title-duration";
+  key: string;
+  ids: number[];
 }
 
 /** One page of the library plus the total number of rows matching the filter (for the pager). */
@@ -809,6 +863,14 @@ export interface SiftApi {
       mediaIds: number[],
       name: string,
     ): Promise<PlaylistExportResult>;
+    /** Media rows that look like the same video, newest group first. */
+    findDuplicates(): Promise<DuplicateGroup[]>;
+    /** Marks or unmarks a favourite. */
+    setFavourite(mediaId: number, favourite: boolean): Promise<void>;
+    /** Pins or unpins. Pinned rows sort first, in the order they were pinned. */
+    setPinned(mediaId: number, pinned: boolean): Promise<void>;
+    /** Deletes several media rows and their artifacts. Resolves how many were removed. */
+    bulkRemove(mediaIds: number[]): Promise<number>;
   };
   tags: {
     /** Adds a tag to a media row (idempotent, case-insensitive). */
@@ -817,6 +879,33 @@ export interface SiftApi {
     remove(mediaId: number, name: string): Promise<void>;
     /** All distinct tags with counts, alphabetical. */
     listAll(): Promise<TagCount[]>;
+    /** Adds one tag to many rows. Resolves how many rows changed. */
+    bulkAdd(mediaIds: number[], name: string): Promise<number>;
+    /** Removes one tag from many rows. */
+    bulkRemove(mediaIds: number[], name: string): Promise<void>;
+  };
+  collections: {
+    list(): Promise<CollectionCount[]>;
+    /** Creates a collection, or returns the existing one with that name. */
+    create(name: string): Promise<CollectionCount>;
+    rename(id: number, name: string): Promise<void>;
+    /** Deletes the collection. The videos in it are untouched. */
+    delete(id: number): Promise<void>;
+    /** Appends to the end. Resolves how many were added, ignoring ones already in. */
+    add(id: number, mediaIds: number[]): Promise<number>;
+    remove(id: number, mediaIds: number[]): Promise<void>;
+    /** Collection ids one media belongs to. */
+    forMedia(mediaId: number): Promise<number[]>;
+  };
+  savedSearches: {
+    list(): Promise<SavedSearchInfo[]>;
+    /** Creates or replaces by name. */
+    save(
+      name: string,
+      query: string,
+      filter: MediaFilter,
+    ): Promise<SavedSearchInfo>;
+    delete(id: number): Promise<void>;
   };
   settings: {
     /** Ordered preferred transcript languages (first = default). */

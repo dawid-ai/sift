@@ -3,10 +3,19 @@ import { IPC } from "@sift/ipc-contract";
 import type { MediaFilter } from "@sift/ipc-contract";
 import type { DownloadService } from "../services/download-service";
 import { absPath, bool, httpUrl, id, idArray, int, str } from "./validate";
+import {
+  findDuplicates,
+  setFavourite,
+  setPinned,
+  type SiftDatabase,
+} from "@sift/db";
 import { mediaFilter } from "./validate-payloads";
 
 /** Registers the `library:*` handlers (list/reveal/remove/detail/remove{Download,Transcript,Summary}/openExternal/search/exportPlaylist). Errors propagate. */
-export function registerLibraryIpc(service: DownloadService): void {
+export function registerLibraryIpc(
+  service: DownloadService,
+  getDb: () => SiftDatabase,
+): void {
   ipcMain.handle(IPC.libraryList, () => service.list());
   ipcMain.handle(
     IPC.libraryListPage,
@@ -54,6 +63,22 @@ export function registerLibraryIpc(service: DownloadService): void {
         str(query, "query", 1024),
         bool(includeText ?? false, "includeText"),
       ),
+  );
+  ipcMain.handle(IPC.libraryFindDuplicates, () => findDuplicates(getDb()));
+  ipcMain.handle(
+    IPC.librarySetFavourite,
+    (_e, mediaId: number, favourite: boolean) =>
+      setFavourite(
+        getDb(),
+        id(mediaId, "mediaId"),
+        bool(favourite, "favourite"),
+      ),
+  );
+  ipcMain.handle(IPC.librarySetPinned, (_e, mediaId: number, pinned: boolean) =>
+    setPinned(getDb(), id(mediaId, "mediaId"), bool(pinned, "pinned")),
+  );
+  ipcMain.handle(IPC.libraryBulkRemove, (_e, mediaIds: number[]) =>
+    service.bulkRemove(idArray(mediaIds, "mediaIds")),
   );
   ipcMain.handle(
     IPC.libraryExportPlaylist,

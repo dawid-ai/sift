@@ -24,8 +24,35 @@ export {
   listMediaIds,
   listMediaChannels,
   listMediaPlatforms,
+  findDuplicates,
 } from "./media";
-export type { DownloadStatus, MediaRow, NewMedia, MediaFilter } from "./media";
+export type {
+  DownloadStatus,
+  MediaRow,
+  NewMedia,
+  MediaFilter,
+  DuplicateGroup,
+} from "./media";
+export {
+  createCollection,
+  renameCollection,
+  deleteCollection,
+  listCollections,
+  addToCollection,
+  removeFromCollection,
+  collectionsForMedia,
+  setFavourite,
+  setPinned,
+} from "./collection";
+export type { CollectionRow, CollectionCount } from "./collection";
+export {
+  saveSearch,
+  getSavedSearchByName,
+  listSavedSearches,
+  deleteSavedSearch,
+  parseSavedFilter,
+} from "./saved-search";
+export type { SavedSearchRow } from "./saved-search";
 export {
   insertTranscript,
   getTranscriptById,

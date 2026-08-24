@@ -407,6 +407,26 @@ export class DownloadService {
     return listMediaIds(this.opts.db, filter);
   }
 
+  /**
+   * Removes several rows, resolving how many actually went.
+   *
+   * One row failing must not abandon the rest — a bulk delete of 40 videos where one file is
+   * locked by a media player should remove the other 39 and report 39, not stop at the lock
+   * and leave the user guessing which half happened.
+   */
+  async bulkRemove(ids: number[]): Promise<number> {
+    let removed = 0;
+    for (const id of ids) {
+      try {
+        await this.remove(id);
+        removed++;
+      } catch (err) {
+        console.error(`Failed to remove media ${id}:`, err);
+      }
+    }
+    return removed;
+  }
+
   /** Enriches media rows into list items (tags + per-video capture summary). Shared by
    * `list()` and `listPage()`. */
   private toListItems(rows: MediaRow[]): MediaListItem[] {
@@ -430,6 +450,8 @@ export class DownloadService {
         })),
         summaryCount: summaries.length,
         tags: tagMap.get(m.id) ?? [],
+        favourite: m.favourite === 1,
+        pinnedAt: m.pinned_at,
       };
     });
   }

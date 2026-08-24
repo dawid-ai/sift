@@ -129,6 +129,32 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.librarySearch, query, includeText),
     exportPlaylist: (mediaIds: number[], name: string) =>
       ipcRenderer.invoke(IPC.libraryExportPlaylist, mediaIds, name),
+    findDuplicates: () => ipcRenderer.invoke(IPC.libraryFindDuplicates),
+    setFavourite: (mediaId: number, favourite: boolean) =>
+      ipcRenderer.invoke(IPC.librarySetFavourite, mediaId, favourite),
+    setPinned: (mediaId: number, pinned: boolean) =>
+      ipcRenderer.invoke(IPC.librarySetPinned, mediaId, pinned),
+    bulkRemove: (mediaIds: number[]) =>
+      ipcRenderer.invoke(IPC.libraryBulkRemove, mediaIds),
+  },
+  collections: {
+    list: () => ipcRenderer.invoke(IPC.collectionsList),
+    create: (name: string) => ipcRenderer.invoke(IPC.collectionsCreate, name),
+    rename: (id: number, name: string) =>
+      ipcRenderer.invoke(IPC.collectionsRename, id, name),
+    delete: (id: number) => ipcRenderer.invoke(IPC.collectionsDelete, id),
+    add: (id: number, mediaIds: number[]) =>
+      ipcRenderer.invoke(IPC.collectionsAdd, id, mediaIds),
+    remove: (id: number, mediaIds: number[]) =>
+      ipcRenderer.invoke(IPC.collectionsRemove, id, mediaIds),
+    forMedia: (mediaId: number) =>
+      ipcRenderer.invoke(IPC.collectionsForMedia, mediaId),
+  },
+  savedSearches: {
+    list: () => ipcRenderer.invoke(IPC.savedSearchesList),
+    save: (name: string, query: string, filter: MediaFilter) =>
+      ipcRenderer.invoke(IPC.savedSearchesSave, name, query, filter),
+    delete: (id: number) => ipcRenderer.invoke(IPC.savedSearchesDelete, id),
   },
   tags: {
     add: (mediaId: number, name: string) =>
@@ -136,6 +162,10 @@ const api: SiftApi = {
     remove: (mediaId: number, name: string) =>
       ipcRenderer.invoke(IPC.tagsRemove, mediaId, name),
     listAll: () => ipcRenderer.invoke(IPC.tagsListAll),
+    bulkAdd: (mediaIds: number[], name: string) =>
+      ipcRenderer.invoke(IPC.tagsBulkAdd, mediaIds, name),
+    bulkRemove: (mediaIds: number[], name: string) =>
+      ipcRenderer.invoke(IPC.tagsBulkRemove, mediaIds, name),
   },
   settings: {
     getTranscriptLanguages: () =>
