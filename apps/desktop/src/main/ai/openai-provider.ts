@@ -34,12 +34,16 @@ export function createOpenAiProvider(deps: {
   id?: string;
   label?: string;
   models?: AiModelInfo[]; // overridable for custom
+  /** Transport override. Set only when a proxy is configured — main passes Electron's
+   * `net.fetch`, which routes through the session proxy; Node's global fetch does not.
+   * Kept as a dep so this module stays free of `electron` and Node-loadable for Vitest. */
+  fetch?: typeof globalThis.fetch;
   clientFactory?: (opts: {
     apiKey: string;
     baseURL?: string;
   }) => OpenAiClientLike;
 }): AiProvider {
-  const { apiKey, baseURL } = deps;
+  const { apiKey, baseURL, fetch } = deps;
   const clientFactory: (opts: {
     apiKey: string;
     baseURL?: string;
@@ -49,7 +53,11 @@ export function createOpenAiProvider(deps: {
     // structurally an AsyncIterable of our minimal OpenAiChunk shape once streamed — but its
     // overloaded signature doesn't structurally match OpenAiClientLike, hence the cast at this seam.
     (({ apiKey, baseURL }) =>
-      new OpenAI({ apiKey, baseURL }) as unknown as OpenAiClientLike);
+      new OpenAI({
+        apiKey,
+        baseURL,
+        ...(fetch ? { fetch } : {}),
+      }) as unknown as OpenAiClientLike);
   const models = deps.models ?? OPENAI_MODELS;
 
   return {

@@ -127,6 +127,29 @@ describe("createYtDlpRunner", () => {
       ]);
     });
 
+    it("adds --proxy when one is configured, and omits it when blank", async () => {
+      const calls: string[][] = [];
+      let proxy = "http://127.0.0.1:8080";
+      const runner = createYtDlpRunner({
+        getBinaryPath: () => "yt-dlp",
+        getProxy: () => proxy,
+        exec: async (_f, args) => {
+          calls.push(args);
+          return { stdout: "{}", stderr: "" };
+        },
+      });
+      await runner.dumpJson("https://x/1");
+      expect(calls[0]?.slice(0, 2)).toEqual([
+        "--proxy",
+        "http://127.0.0.1:8080",
+      ]);
+
+      // Read per call, so clearing it in Settings takes effect without a restart.
+      proxy = "";
+      await runner.dumpJson("https://x/2");
+      expect(calls[1]).not.toContain("--proxy");
+    });
+
     it("reports an unsupported site as a plain sentence, not a yt-dlp stack", async () => {
       const url = "https://dribbble.com/shots/27595845-Motion-Graphics-Promo";
       const exec: ExecFn = async () => {

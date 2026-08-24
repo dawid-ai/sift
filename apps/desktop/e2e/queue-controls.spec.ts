@@ -22,13 +22,17 @@ test("Queue → duplicate URLs are skipped and reported", async () => {
 
     await window
       .getByTestId("queue-urls")
-      .fill("https://www.youtube.com/watch?v=a\nhttps://www.youtube.com/watch?v=b");
+      .fill(
+        "https://www.youtube.com/watch?v=a\nhttps://www.youtube.com/watch?v=b",
+      );
     await window.getByTestId("queue-add").click();
     await expect(window.getByTestId("queue-item")).toHaveCount(2);
 
     await window
       .getByTestId("queue-urls")
-      .fill("https://www.youtube.com/watch?v=b\nhttps://www.youtube.com/watch?v=c");
+      .fill(
+        "https://www.youtube.com/watch?v=b\nhttps://www.youtube.com/watch?v=c",
+      );
     await window.getByTestId("queue-add").click();
 
     await expect(window.getByTestId("queue-notice")).toContainText(
@@ -58,7 +62,9 @@ test("Queue → concurrency and scheduled start persist", async () => {
     // Round-trips through the main process, so re-reading proves it was stored.
     await expect
       .poll(async () =>
-        window.evaluate(async () => (await window.sift.queue.getConfig()).concurrency),
+        window.evaluate(
+          async () => (await window.sift.queue.getConfig()).concurrency,
+        ),
       )
       .toBe(3);
 

@@ -46,6 +46,8 @@ export const IPC = {
   libraryExportPlaylist: "library:exportPlaylist",
   settingsGetTranscriptLanguages: "settings:getTranscriptLanguages",
   settingsSetTranscriptLanguages: "settings:setTranscriptLanguages",
+  settingsGetProxy: "settings:getProxy",
+  settingsSetProxy: "settings:setProxy",
   authOpenBrowser: "auth:openBrowser",
   authListSites: "auth:listSites",
   authRemoveSite: "auth:removeSite",
@@ -65,6 +67,10 @@ export const IPC = {
   promptsDelete: "prompts:delete",
   promptsExport: "prompts:export",
   promptsImport: "prompts:import",
+  profileExport: "profile:export",
+  profileImport: "profile:import",
+  storageUsage: "storage:usage",
+  storageClear: "storage:clear",
   aiProvidersList: "ai:providers",
   aiKeyStatus: "ai:keyStatus",
   aiKeySet: "ai:keySet",
@@ -592,6 +598,33 @@ export interface PromptPackEntry {
  * split — not just a combined `imported` count — is what lets the renderer tell the user
  * that importing a pack silently overwrote prompts they'd edited, rather than reporting a
  * bare success. All four fields are 0 if the dialog was cancelled. */
+/** One row of the storage dashboard. `clearable` marks the caches and re-downloadable
+ * assets that `storage.clear()` will accept — user content is measured, never offered. */
+export interface StorageEntry {
+  key: string;
+  label: string;
+  description: string;
+  bytes: number;
+  clearable: boolean;
+}
+
+export interface StorageUsage {
+  entries: StorageEntry[];
+  totalBytes: number;
+  /** Free space on the volume holding the downloads folder, or null if unreadable. */
+  freeBytes: number | null;
+}
+
+/** What `profile.import()` changed. `skipped` names settings the file carried that this
+ * build rejected or does not know, so a partial apply is visible rather than silent. */
+export interface ProfileImportResult {
+  applied: string[];
+  skipped: string[];
+  promptsCreated: number;
+  promptsReplaced: number;
+  promptsSkipped: number;
+}
+
 export interface PromptImportResult {
   imported: number;
   skipped: number;
@@ -790,6 +823,26 @@ export interface SiftApi {
     getTranscriptLanguages(): Promise<string[]>;
     /** Persists the ordered preferred transcript languages. */
     setTranscriptLanguages(langs: string[]): Promise<void>;
+    /** Proxy URL used for yt-dlp and the remote AI providers. `""` means connect directly. */
+    getProxy(): Promise<string>;
+    /** Validates and persists a proxy URL; resolves the normalized value that was stored.
+     * Rejects on an unsupported scheme or a missing host. `""` clears it. */
+    setProxy(proxyUrl: string): Promise<string>;
+  };
+  storage: {
+    /** Per-category disk usage, plus free space on the downloads volume. */
+    usage(): Promise<StorageUsage>;
+    /** Empties one clearable category after a native confirm. Resolves the bytes freed —
+     * `0` if the user cancelled or there was nothing there. Rejects for any other key. */
+    clear(key: string): Promise<number>;
+  };
+  profile: {
+    /** Writes every non-secret setting plus the user's own prompts to one JSON file.
+     * Resolves the saved path, or `null` if the save dialog was cancelled. */
+    export(): Promise<string | null>;
+    /** Reads a profile file and applies what this build recognizes. Resolves `null` if the
+     * open dialog was cancelled. Rejects if the file isn't a profile of a known version. */
+    import(): Promise<ProfileImportResult | null>;
   };
   downloads: {
     /** Current downloads directory (the configured override, or the OS-default fallback). */

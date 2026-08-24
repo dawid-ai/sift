@@ -142,6 +142,17 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.settingsGetTranscriptLanguages),
     setTranscriptLanguages: (langs: string[]) =>
       ipcRenderer.invoke(IPC.settingsSetTranscriptLanguages, langs),
+    getProxy: () => ipcRenderer.invoke(IPC.settingsGetProxy),
+    setProxy: (proxyUrl: string) =>
+      ipcRenderer.invoke(IPC.settingsSetProxy, proxyUrl),
+  },
+  storage: {
+    usage: () => ipcRenderer.invoke(IPC.storageUsage),
+    clear: (key: string) => ipcRenderer.invoke(IPC.storageClear, key),
+  },
+  profile: {
+    export: () => ipcRenderer.invoke(IPC.profileExport),
+    import: () => ipcRenderer.invoke(IPC.profileImport),
   },
   downloads: {
     getPath: () => ipcRenderer.invoke(IPC.downloadsGetPath),

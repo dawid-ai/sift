@@ -1591,6 +1591,11 @@ build, set these environment variables before running `dist`:
 When both are set, electron-builder signs the packaged executable and installer automatically;
 no config changes are needed.
 
+That `.pfx` path only works for a certificate issued before mid-2023 — CA/Browser Forum rules
+now require the private key to stay on hardware, so no compliant CA still delivers one. See
+[docs/CODE-SIGNING.md](CODE-SIGNING.md) for the routes that do work, their costs, and what
+re-enabling `verifyUpdateCodeSignature` changes. No route has been chosen yet.
+
 **Known blocker — `winCodeSign` requires Windows Developer Mode:** electron-builder 25.x
 downloads a `winCodeSign` tool bundle while packaging _any_ Windows target (NSIS included), even
 for a fully unsigned build with no `CSC_LINK` set. That archive contains macOS `.dylib` files
@@ -1610,3 +1615,82 @@ false`, `CSC_IDENTITY_AUTO_DISCOVERY=false`, or `SIGNTOOL_PATH` (pointing at a s
 `signtool.exe`) do **not** avoid the download — it isn't gated by any of those. The only known fix
 is enabling Developer Mode (or running the build as Administrator) on the machine producing the
 release build; do this once on CI/release runners rather than per-developer.
+
+## Proxy (yt-dlp + remote AI providers)
+
+One stored URL under Settings → System → **Proxy**. Empty means connect directly.
+
+- `main/settings/network-config.ts` — the store, plus `normalizeProxyUrl()`. Accepts `http`,
+  `https`, `socks4`, and `socks5` only, requires a host, keeps credentials, and drops any
+  path or query a paste carries. `socks5h` is deliberately rejected: yt-dlp understands it
+  and Chromium does not, so accepting it would proxy downloads while AI calls went direct.
+  `get()` re-validates on read, so a hand-edited `settings/network.json` reads as no proxy
+  rather than putting junk in yt-dlp's argv.
+- `sidecars/ytdlp.ts` — `getProxy` dep, prepended as `--proxy <url>` next to `cookieArgs` in
+  `dumpJson`, `flatPlaylist`, `download`, and `fetchSubtitles`. Read per call, so a change in
+  Settings applies without a restart. `listExtractors` is local and skips it.
+- `main/index.ts` — `applyProxy()` calls `session.defaultSession.setProxy()`, and `aiFetch`
+  is handed to the Anthropic, OpenAI, and custom providers. Node's global `fetch` ignores the
+  Chromium session proxy, so a configured proxy routes through `net.fetch` instead; with no
+  proxy it delegates to global `fetch`, which is the SDKs' own path. Ollama and the Claude
+  CLI are local and are left alone on purpose.
+- IPC: `settings:getProxy` / `settings:setProxy` (`ipc/settings.ts`). `setProxy` resolves the
+  normalized value that was stored, which is what the field shows back.
+- Renderer: `routes/settings/network-section.tsx`, `data-testid="network-section"`,
+  `proxy-input`, `proxy-save`, `proxy-active`.
+
+The diagnostics bundle carries `proxyConfigured` as a boolean and never the URL — a proxy URL
+can hold credentials.
+
+**Human-test caveat:** no automated test proves traffic actually leaves through a proxy. The
+e2e spec covers validation and persistence only. See `docs/TEST-MATRIX.md`.
+
+## Settings profile (export/import)
+
+One JSON file with every non-secret setting plus the user's own prompts, under Settings →
+System → **Settings profile**.
+
+- `main/services/profile.ts` — `buildProfile`, `parseProfile`, `applySettings`,
+  `validPromptEntries`, and the `check` shape guards. No Electron or db imports, so it is
+  unit-tested directly (`profile.test.ts`), the same split `ipc/prompt-pack.ts` uses.
+- A **slot** is one setting: `{ key, read, check, write }`. Every store in `main/settings/`
+  is already a `{ get, set }` pair, so the slot list in `main/index.ts` (`profileSlots()`) is
+  mostly that pair plus a shape check. Adding a setting to the profile means adding one slot.
+- Import is deliberately partial: unknown keys and wrong-shaped values land in `skipped`
+  rather than failing the file, and the renderer prints both lists. A profile from a newer
+  build still restores everything it got right.
+- Not included, and the UI says so: API keys (`safeStorage`-encrypted per machine, so a copy
+  would not decrypt elsewhere), sign-in cookies, and the media library.
+- Prompts reuse `upsertPromptByName`, with the same no-transaction ceiling as the prompt-pack
+  import — a name colliding with a built-in throws partway through, so the thrown message
+  reports what already landed.
+- IPC: `profile:export` / `profile:import` (`ipc/profile.ts`, native dialogs).
+- Renderer: `routes/settings/profile-section.tsx`, `data-testid="profile-section"`,
+  `profile-export`, `profile-import`, `profile-status`.
+
+## Storage dashboard
+
+Settings → System → **Storage**: per-category disk usage with a **Clear** on what regenerates.
+
+- `main/services/storage-usage.ts` — `dirSize` (recursive, missing directory reads as 0,
+  symlinks counted by their own size so the walk can't escape or loop), `clearDir` (empties
+  a directory but keeps it, returns bytes freed), and `formatBytes`.
+- `ipc/storage.ts` — assembles the rows. Downloaded media is summed from
+  `SELECT SUM(file_size) FROM download WHERE status = 'done'` rather than walking the
+  downloads folder: that folder is user-chosen, may hold unrelated files, and may be very
+  large.
+- **The safety model is the `CLEARABLE` allowlist**: `thumbnails`, `whisperModels`, and
+  `tesseract`. Slide frames and posters are user-visible content nothing would regenerate, so
+  they are measured and never offered. `storage:clear` runs the key through `oneOf` and then
+  shows a native confirm naming the size, so the renderer can neither name an arbitrary
+  directory nor delete without a prompt.
+- Removing downloaded media stays a per-item Library action, where the row and its artifacts
+  are removed together (`DownloadService.remove()`).
+- IPC: `storage:usage` / `storage:clear`.
+- Renderer: `routes/settings/storage-section.tsx`, `data-testid="storage-section"`,
+  `storage-bytes-<key>`, `storage-clear-<key>`, `storage-total`. Bars are scaled against the
+  largest row, not the total — media dwarfs everything else, and against the total every
+  other row renders as a hairline.
+
+**Human-test caveat:** the confirm dialogs are native, so `e2e/network-storage.spec.ts` stops
+at "the buttons render". Actually clearing a category is a manual check.
