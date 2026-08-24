@@ -8,6 +8,8 @@ import {
   IPC,
   type BinaryProgress,
   type BinaryUpdateEvent,
+  type ChannelRefreshConfig,
+  type ChannelRuleUpdate,
   type ChannelVideosQuery,
   type ClipKind,
   type ExportPreset,
@@ -152,6 +154,19 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.collectionsRemove, id, mediaIds),
     forMedia: (mediaId: number) =>
       ipcRenderer.invoke(IPC.collectionsForMedia, mediaId),
+  },
+  channelRules: {
+    list: () => ipcRenderer.invoke(IPC.channelRulesList),
+    get: (channelId: string) =>
+      ipcRenderer.invoke(IPC.channelRulesGet, channelId),
+    set: (rule: ChannelRuleUpdate) =>
+      ipcRenderer.invoke(IPC.channelRulesSet, rule),
+    delete: (channelId: string) =>
+      ipcRenderer.invoke(IPC.channelRulesDelete, channelId),
+    getConfig: () => ipcRenderer.invoke(IPC.channelRefreshGetConfig),
+    setConfig: (config: ChannelRefreshConfig) =>
+      ipcRenderer.invoke(IPC.channelRefreshSetConfig, config),
+    refreshNow: () => ipcRenderer.invoke(IPC.channelRefreshNow),
   },
   savedSearches: {
     list: () => ipcRenderer.invoke(IPC.savedSearchesList),

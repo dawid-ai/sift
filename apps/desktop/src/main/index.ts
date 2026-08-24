@@ -18,6 +18,7 @@ import {
   BrowserWindow,
   Menu,
   net,
+  Notification,
   protocol,
   safeStorage,
   screen,
@@ -75,6 +76,9 @@ import { registerProfileIpc } from "./ipc/profile";
 import { registerStorageIpc } from "./ipc/storage";
 import { registerCollectionsIpc } from "./ipc/collections";
 import { registerExportClipIpc } from "./ipc/export-clip";
+import { registerChannelRulesIpc } from "./ipc/channel-rules";
+import { ChannelScheduler } from "./services/channel-scheduler";
+import { createChannelRefreshStore } from "./settings/channel-refresh-config";
 import { ExportService } from "./services/export-service";
 import { ClipService } from "./services/clip-service";
 import { registerFramesIpc } from "./ipc/frames";
@@ -142,6 +146,7 @@ import {
   aiDefaultConfigFile,
   downloadsConfigFile,
   downloadsDir,
+  channelRefreshConfigFile,
   networkConfigFile,
   queueConfigFile,
   framesDir,
@@ -1512,6 +1517,54 @@ app.whenReady().then(() => {
     registerQueueIpc(queueWorker);
     // Re-queue anything left 'running' by a crash, then drain in the background.
     queueWorker.recover();
+
+    // Scheduled channel refresh, desktop notifications, and rule-driven auto-queue.
+    const channelRefreshStore = createChannelRefreshStore({
+      filePath: channelRefreshConfigFile(),
+    });
+    const channelScheduler = new ChannelScheduler({
+      db: getDb(),
+      refreshAll: async () => {
+        await channelService.refreshAll();
+      },
+      listVideos: async (channelDbId) => {
+        const { videos } = await channelService.listVideos(channelDbId, {
+          contentType: "videos",
+          order: "latest",
+          count: 30,
+        });
+        return videos.map((v) => ({
+          externalId: v.externalId,
+          url: v.url,
+          title: v.title,
+          durationSec: v.durationSec,
+          viewCount: v.viewCount,
+          isShort: v.isShort,
+        }));
+      },
+      enqueue: (urls, spec) => queueWorker.add(urls, spec),
+      // Download only: an auto-queued video should cost bandwidth, not API credits. The user
+      // transcribes or summarizes the ones that turn out to be worth it.
+      autoQueueSpec: () => ({
+        format: { kind: "video", maxHeight: 1080, mp4: true },
+        download: true,
+        transcript: false,
+        summarize: null,
+        tags: ["auto-queued"],
+      }),
+      notify: ({ title, body }) => {
+        if (!Notification.isSupported()) return;
+        new Notification({ title, body }).show();
+      },
+      config: () => channelRefreshStore.get(),
+    });
+    channelScheduler.reschedule();
+    app.on("will-quit", () => channelScheduler.stop());
+    registerChannelRulesIpc({
+      getDb,
+      scheduler: () => channelScheduler,
+      config: channelRefreshStore,
+    });
 
     registerAiProvidersIpc(
       aiRegistry,

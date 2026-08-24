@@ -124,6 +124,13 @@ export const IPC = {
   channelOpenForMedia: "channel:openForMedia",
   channelDownloadedMedia: "channel:downloadedMedia",
   channelVideoStatuses: "channel:videoStatuses",
+  channelRulesList: "channelrules:list",
+  channelRulesGet: "channelrules:get",
+  channelRulesSet: "channelrules:set",
+  channelRulesDelete: "channelrules:delete",
+  channelRefreshGetConfig: "channelrefresh:getConfig",
+  channelRefreshSetConfig: "channelrefresh:setConfig",
+  channelRefreshNow: "channelrefresh:now",
   subscriptionList: "subscription:list",
   subscriptionSync: "subscription:sync",
   whisperStatus: "whisper:status",
@@ -498,6 +505,43 @@ export interface TranscriptCue {
   start: number;
   end: number;
   text: string;
+}
+
+/** An auto-queue rule for one channel, as the renderer sees it. */
+export interface ChannelRuleInfo {
+  channel_id: string;
+  enabled: boolean;
+  min_duration_s: number | null;
+  max_duration_s: number | null;
+  keywords: string[];
+  min_views: number | null;
+  exclude_shorts: boolean;
+  last_queued_id: string | null;
+  last_queued_at: number | null;
+  updated_at: number;
+}
+
+/** What the renderer sends when saving a rule. */
+export interface ChannelRuleUpdate {
+  channelId: string;
+  enabled: boolean;
+  minDurationS: number | null;
+  maxDurationS: number | null;
+  keywords: string[];
+  minViews: number | null;
+  excludeShorts: boolean;
+}
+
+export interface ChannelRefreshConfig {
+  /** Minutes between automatic refreshes. 0 turns the schedule off. */
+  intervalMinutes: number;
+  notifyNewVideos: boolean;
+  notifyOutliers: boolean;
+}
+
+export interface ChannelRefreshTick {
+  queued: Record<string, string[]>;
+  notifications: { title: string; body: string }[];
 }
 
 /** A distinct tag name plus how many media rows carry it. */
@@ -926,6 +970,18 @@ export interface SiftApi {
     remove(id: number, mediaIds: number[]): Promise<void>;
     /** Collection ids one media belongs to. */
     forMedia(mediaId: number): Promise<number[]>;
+  };
+  channelRules: {
+    list(): Promise<ChannelRuleInfo[]>;
+    get(channelId: string): Promise<ChannelRuleInfo | null>;
+    /** Creates or replaces the rule. Rejects an inverted duration window. */
+    set(rule: ChannelRuleUpdate): Promise<ChannelRuleInfo>;
+    delete(channelId: string): Promise<void>;
+    getConfig(): Promise<ChannelRefreshConfig>;
+    /** Persists the schedule and re-arms the timer. */
+    setConfig(config: ChannelRefreshConfig): Promise<ChannelRefreshConfig>;
+    /** Refreshes every channel now, regardless of the schedule. */
+    refreshNow(): Promise<ChannelRefreshTick>;
   };
   savedSearches: {
     list(): Promise<SavedSearchInfo[]>;

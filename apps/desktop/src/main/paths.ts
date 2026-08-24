@@ -41,6 +41,11 @@ export function networkConfigFile(): string {
   return join(app.getPath("userData"), "settings", "network.json");
 }
 
+/** Path to the persisted channel refresh schedule + notification toggles (non-secret). */
+export function channelRefreshConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "channel-refresh.json");
+}
+
 /** Path to the persisted binary auto-update policy (auto|notify, non-secret). */
 export function binaryUpdatesConfigFile(): string {
   return join(app.getPath("userData"), "settings", "binary-updates.json");
