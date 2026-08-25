@@ -8,12 +8,15 @@ import {
   IPC,
   type BinaryProgress,
   type BinaryUpdateEvent,
+  type ChannelRefreshConfig,
+  type ChannelRuleUpdate,
   type ChannelVideosQuery,
   type ClipKind,
   type ExportPreset,
   type TranscriptCue,
   type DownloadProgress,
   type MediaFilter,
+  type MissingFileInfo,
   type QueueConfig,
   type QueueItem,
   type QueueSpec,
@@ -24,6 +27,7 @@ import {
   type FrameCrop,
   type TranscriptProgress,
   type UpdateEvent,
+  type WhisperConfig,
   type WhisperProgress,
 } from "@sift/ipc-contract";
 
@@ -75,6 +79,10 @@ const api: SiftApi = {
   whisper: {
     status: () => ipcRenderer.invoke(IPC.whisperStatus),
     install: () => ipcRenderer.invoke(IPC.whisperInstall),
+    models: () => ipcRenderer.invoke(IPC.whisperModels),
+    getConfig: () => ipcRenderer.invoke(IPC.whisperGetConfig),
+    setConfig: (config: WhisperConfig) =>
+      ipcRenderer.invoke(IPC.whisperSetConfig, config),
     onProgress: (cb: (p: WhisperProgress) => void) => {
       const listener = (_event: IpcRendererEvent, p: WhisperProgress) => cb(p);
       ipcRenderer.on(IPC.whisperProgress, listener);
@@ -140,6 +148,13 @@ const api: SiftApi = {
     bulkRemove: (mediaIds: number[]) =>
       ipcRenderer.invoke(IPC.libraryBulkRemove, mediaIds),
   },
+  watchFolders: {
+    list: () => ipcRenderer.invoke(IPC.watchFoldersList),
+    set: (folders: string[]) =>
+      ipcRenderer.invoke(IPC.watchFoldersSet, folders),
+    pick: () => ipcRenderer.invoke(IPC.watchFoldersPick),
+    scan: () => ipcRenderer.invoke(IPC.watchFoldersScan),
+  },
   collections: {
     list: () => ipcRenderer.invoke(IPC.collectionsList),
     create: (name: string) => ipcRenderer.invoke(IPC.collectionsCreate, name),
@@ -152,6 +167,19 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.collectionsRemove, id, mediaIds),
     forMedia: (mediaId: number) =>
       ipcRenderer.invoke(IPC.collectionsForMedia, mediaId),
+  },
+  channelRules: {
+    list: () => ipcRenderer.invoke(IPC.channelRulesList),
+    get: (channelId: string) =>
+      ipcRenderer.invoke(IPC.channelRulesGet, channelId),
+    set: (rule: ChannelRuleUpdate) =>
+      ipcRenderer.invoke(IPC.channelRulesSet, rule),
+    delete: (channelId: string) =>
+      ipcRenderer.invoke(IPC.channelRulesDelete, channelId),
+    getConfig: () => ipcRenderer.invoke(IPC.channelRefreshGetConfig),
+    setConfig: (config: ChannelRefreshConfig) =>
+      ipcRenderer.invoke(IPC.channelRefreshSetConfig, config),
+    refreshNow: () => ipcRenderer.invoke(IPC.channelRefreshNow),
   },
   savedSearches: {
     list: () => ipcRenderer.invoke(IPC.savedSearchesList),
@@ -200,6 +228,15 @@ const api: SiftApi = {
         startSeconds,
         endSeconds,
       ),
+  },
+  backup: {
+    create: () => ipcRenderer.invoke(IPC.backupCreate),
+    inspect: () => ipcRenderer.invoke(IPC.backupInspect),
+    restore: (sourceDir: string) =>
+      ipcRenderer.invoke(IPC.backupRestore, sourceDir),
+    verify: () => ipcRenderer.invoke(IPC.backupVerify),
+    repair: (missing: MissingFileInfo[], useSearchDir: boolean) =>
+      ipcRenderer.invoke(IPC.backupRepair, missing, useSearchDir),
   },
   storage: {
     usage: () => ipcRenderer.invoke(IPC.storageUsage),

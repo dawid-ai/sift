@@ -47,6 +47,9 @@ export interface WhisperSetupOpts {
   /** Test seams (default to the pinned resolvers). */
   resolveBinary?: (p: Platform) => WhisperBinarySource;
   model?: WhisperModelManifest;
+  /** Resolves the selected model's manifest, including a checksum from the source. Takes
+   * precedence over `model` when set. */
+  resolveModel?: () => Promise<WhisperModelManifest>;
 }
 
 // known Homebrew locations only (covers Apple-silicon + Intel brew prefixes);
@@ -85,6 +88,8 @@ function findFileRecursive(dir: string, name: string): string | null {
 export class WhisperSetupService {
   constructor(private readonly opts: WhisperSetupOpts) {}
 
+  /** Synchronous manifest for path/status use. Resolution that needs the network happens
+   * in `install`, which is the only place a checksum is actually required. */
   private modelManifest(): WhisperModelManifest {
     return this.opts.model ?? WHISPER_MODEL;
   }
@@ -163,9 +168,15 @@ export class WhisperSetupService {
     }
 
     // 2) Model (presence-on-disk; skip if already there)
-    const manifest = this.modelManifest();
+    // `resolveModel` is what makes a model other than the shipped one installable: it fetches
+    // the checksum the source publishes, so nothing is ever downloaded unverified.
+    const manifest = this.opts.resolveModel
+      ? await this.opts.resolveModel()
+      : this.modelManifest();
     mkdirSync(modelsDir, { recursive: true });
-    const modelPath = this.modelPath();
+    // The resolved manifest's name, not `modelPath()` — a switch to another model must land
+    // under that model's filename, not overwrite the previous one.
+    const modelPath = join(modelsDir, manifest.name);
     if (!existsSync(modelPath)) {
       await downloadAndVerify({
         url: manifest.url,

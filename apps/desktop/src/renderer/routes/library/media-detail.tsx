@@ -620,7 +620,7 @@ export function MediaDetailPage({
     // Below lg the columns stack and the page scrolls normally again.
     <main
       data-testid="media-detail"
-      className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-8 lg:min-h-0 lg:overflow-hidden"
+      className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-6 p-8 lg:min-h-0 lg:overflow-hidden"
     >
       {/* Page header: navigation + destructive actions on one line, then the identity block
           (eyebrow → title → metadata pills → source chip), mirroring every other route. */}

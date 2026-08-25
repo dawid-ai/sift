@@ -1694,3 +1694,102 @@ Settings → System → **Storage**: per-category disk usage with a **Clear** on
 
 **Human-test caveat:** the confirm dialogs are native, so `e2e/network-storage.spec.ts` stops
 at "the buttons render". Actually clearing a category is a manual check.
+
+## Library organisation (collections, favourites, bulk actions, smart filters)
+
+Migration 019 adds `collection`, `media_collection`, `saved_search`, and two columns on
+`media` (`favourite`, `pinned_at`).
+
+- **Collections are not tags.** A tag labels a video and says nothing about order; a
+  collection is a named, ordered set. Sharing one table would mean tags with a position
+  column only some rows use.
+- **`pinned_at` is forced strictly increasing** (`packages/db/src/collection.ts`), not set to
+  the clock. Two pins inside one millisecond tie, and the tie breaks on `created_at DESC`,
+  silently reversing the order the user pinned them in.
+- `MediaFilter` (`packages/db/src/media.ts`) gained duration, publish window, favourite,
+  collection, `missing`, and `downloadStatus`. A row with an unknown duration is **excluded**
+  from a duration filter rather than treated as zero.
+- A saved search stores its filter as JSON and re-validates on read (`parseSavedFilter`), so
+  it survives the filter shape changing without a migration. It drops `ids`, which pins one
+  search run's row ids.
+- `findDuplicates` reports `same-source` (certain) separately from `same-title-duration` (a
+  guess). Nothing is removed automatically.
+- Renderer: `library-filters-extra.tsx`, `library-bulk-bar.tsx`, `duplicates-panel.tsx`.
+  **The page's fetch effect lists its dependencies explicitly** — a new filter that is not in
+  that array never triggers a refetch, which is exactly the bug
+  `e2e/library-organisation.spec.ts` caught.
+
+## Transcript editor, clips, and export presets
+
+- `packages/core/src/transcript/edit.ts` — pure editing helpers with an undo stack held in
+  the renderer. **The find needle is always regex-escaped**: the field is a search box, so
+  `(intro)` and `$5.00` must not read as syntax, and an unescaped user pattern is how an edit
+  turns into a hang. `$` in the replacement is literal too.
+- The speaker prefix needs **two** bounds — at most three words _and_ at most 40 characters.
+  Length alone lets "the rule is this: never ship on a Friday" report a speaker.
+- `transcript:update` regenerates the searchable `text` from the cues in main rather than
+  trusting the renderer, so the FTS index and the timed cues cannot disagree.
+- `packages/core/src/clip/clip.ts` — `timestampedUrl` per platform (null when the platform
+  has none, rather than a link that silently starts at zero) and `clipArgs`. `-ss` goes
+  **before** `-i` so ffmpeg seeks instead of decoding from zero.
+- **Selecting a clip span in the UI** (`routes/library/transcript-panel.tsx`): shift-click two
+  transcript lines, or press **Select clip** (`data-testid="transcript-clip-mode"`) and click
+  them plainly. The toggle exists because nothing advertised the shortcut; shift-click keeps
+  working in both modes, and turning the toggle off clears a pending span. Selection state is
+  `clipFrom` / `clipTo` in that panel; `routes/library/clip-bar.tsx` renders the actions.
+- The cue rows in `routes/library/transcript-editor.tsx` are **stacked, not a fixed-column
+  grid** — the editor renders inside the detail page's right column (~430px), where four fixed
+  columns left the textarea about 40px wide.
+- `packages/core/src/export/presets.ts` — Markdown, HTML, JSON, CSV, Obsidian. CSV fields
+  starting `=`, `+`, `-`, or `@` are tab-prefixed, since a spreadsheet reads those as a
+  formula. PDF reuses the same `printToPDF` renderer the slides export uses.
+
+## Channel scheduling, notifications, and auto-queue rules
+
+Migration 020 adds `channel_rule`, one row per channel.
+
+- **`last_queued_id` is what keeps auto-queue idempotent.** A refresh reports the newest N
+  uploads every time, so without a watermark the same video is queued on every tick. It
+  advances past rejected uploads too, or a declined video is re-examined forever.
+- A bound the video cannot be tested against **rejects** it (`evaluateRule` returns
+  `unknown-duration` / `unknown-views`). Auto-queue spends bandwidth without asking, so
+  "unknown" must not mean "yes".
+- Auto-queued videos are **downloaded only**. Transcribing and summarizing stay manual,
+  because those spend API credits.
+- One timer for all channels, and a re-entrant tick is dropped: a refresh can outlast the
+  interval, and overlapping runs double-queue everything between the two watermark writes.
+
+## Watch folders
+
+`main/services/watch-folder-service.ts` — non-recursive by design (a watch folder is a drop
+box; recursing turns pointing one at a home directory into a full-library import). A file is
+imported only once its **size has stopped changing** between scans, because a large file
+being copied in is visible long before it is complete. A path is marked seen **before** the
+import, so a file the importer rejects is not retried on every scan.
+
+## Whisper models, transcription language, and OCR languages
+
+- `packages/binaries/src/whisper-source.ts` — `WHISPER_MODELS` lists five multilingual models
+  (the `.en` variants are excluded because they cannot transcribe anything else). Only
+  `small` carries a pinned hash. **`resolveWhisperModel` reads the rest from Hugging Face's
+  tree API**, where an LFS object's `oid` _is_ its sha256 — a checksum published by the
+  source, never one computed from the bytes just downloaded, which is the same rule the
+  yt-dlp and ffmpeg downloads follow.
+- `main/settings/whisper-config.ts` validates all three values on the way in **and** out: the
+  model name becomes a filename, and both language codes reach argv or a filename.
+- OCR: `resources/tessdata` holds only English. Any other language drops `langPath` so
+  tesseract.js fetches into the cache instead — pointing `langPath` at a file that is not
+  there hangs the worker rather than erroring.
+
+## Backup, restore, and the missing-files scan
+
+`main/services/backup-service.ts`.
+
+- A backup copies the **database and the non-secret settings, not the media**. Media is the
+  bulk of the bytes, already sits where the user keeps it, and is replaceable.
+- **Restore stages, never overwrites.** The database is open while the app runs, and swapping
+  it underneath a live connection corrupts both. The staged files get a `.restored` suffix
+  and the UI tells the user to quit and rename.
+- `verify` walks every completed download; `repair` tries a user-named folder first (a moved
+  downloads folder is the common cause) and otherwise marks the row `error` — **keeping** it,
+  because the transcripts and summaries hang off that media row.

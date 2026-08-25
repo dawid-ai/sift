@@ -71,6 +71,17 @@ test("Transcript editor: find/replace and speaker labels persist; exports write 
     );
     await window.getByTestId("editor-cancel").click();
 
+    // "Select clip" makes plain clicks set the span — shift-click is the shortcut, but
+    // nothing advertised it, so the toggle is the discoverable path and needs to work.
+    const lines = window.getByTestId("media-detail-transcript-segment");
+    await window.getByTestId("transcript-clip-mode").click();
+    await lines.first().click();
+    await lines.last().click();
+    await expect(window.getByTestId("clip-bar")).toBeVisible();
+    // Toggling off clears the pending span and restores seek-on-click.
+    await window.getByTestId("transcript-clip-mode").click();
+    await expect(window.getByTestId("clip-bar")).toHaveCount(0);
+
     // Export presets each write a file and report where.
     for (const preset of ["markdown", "json", "csv", "obsidian"]) {
       await window.getByTestId("export-menu-trigger").click();

@@ -20,6 +20,8 @@ import {
   KeyRound,
   Languages,
   Laptop,
+  Archive,
+  FolderSearch,
   HardDrive,
   LifeBuoy,
   MessageSquareText,
@@ -52,6 +54,9 @@ import { AutoTranscriptSection } from "./auto-transcript-section";
 import { NetworkSection } from "./network-section";
 import { ProfileSection } from "./profile-section";
 import { StorageSection } from "./storage-section";
+import { LanguagesSection } from "./languages-section";
+import { WatchFoldersSection } from "./watch-folders-section";
+import { BackupSection } from "./backup-section";
 import { UpdatesSection } from "./updates-section";
 import { WhisperSection } from "./whisper-section";
 
@@ -926,6 +931,14 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                   One card, one count, and it counts what is rendered beneath it; the tested
                   figure is prose in the description, where it can say what it means. */}
                 <SettingsSection
+                  icon={FolderSearch}
+                  eyebrow="AUTOMATION"
+                  title="Watch folders"
+                  description="Import media dropped into a folder, without picking it each time."
+                >
+                  <WatchFoldersSection />
+                </SettingsSection>
+                <SettingsSection
                   icon={Globe}
                   eyebrow="SOURCES"
                   title="Platforms"
@@ -991,6 +1004,14 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                 >
                   <WhisperSection />
                 </SettingsSection>
+                <SettingsSection
+                  icon={Languages}
+                  eyebrow="LANGUAGES"
+                  title="Models and languages"
+                  description="Which Whisper model transcribes, in which language, and the language slide OCR reads."
+                >
+                  <LanguagesSection />
+                </SettingsSection>
               </>
             )}
 
@@ -1053,6 +1074,14 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                   description="What is using space, and what can be cleared without losing anything."
                 >
                   <StorageSection />
+                </SettingsSection>
+                <SettingsSection
+                  icon={Archive}
+                  eyebrow="SAFETY"
+                  title="Backup and repair"
+                  description="Copy the library somewhere safe, restore it, or find media the library has lost track of."
+                >
+                  <BackupSection />
                 </SettingsSection>
                 <SettingsSection
                   icon={PackageOpen}

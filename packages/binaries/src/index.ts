@@ -4,6 +4,9 @@ export * from "./sources";
 export {
   resolveWhisperBinary,
   WHISPER_MODEL,
+  WHISPER_MODELS,
+  isWhisperModelName,
+  resolveWhisperModel,
   WHISPER_VERSION,
   type WhisperBinarySource,
   type WhisperModelManifest,

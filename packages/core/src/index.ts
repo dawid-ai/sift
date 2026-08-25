@@ -67,6 +67,19 @@ export {
   outlierScore,
   OUTLIER_THRESHOLD,
 } from "./channel/outlier";
+export {
+  EMPTY_RULE,
+  REJECTION_LABEL,
+  describeRule,
+  evaluateRule,
+  matchesRule,
+  parseKeywords,
+} from "./channel/rules";
+export type {
+  ChannelRule,
+  RuleCandidate,
+  RuleRejection,
+} from "./channel/rules";
 
 export { isDataFrame, KEEP_FRAME_DEFAULTS } from "./frames/keep";
 export type { FrameOcr, KeepFrameOptions } from "./frames/keep";

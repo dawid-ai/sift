@@ -28,7 +28,7 @@ export const DURATION_BUCKETS: {
 export const MISSING_OPTIONS = [
   { value: "transcript", label: "No transcript" },
   { value: "summary", label: "No summary" },
-  { value: "download", label: "Not downloaded" },
+  { value: "download", label: "No media file" },
 ];
 
 export interface ExtraFilterState {

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { ChannelRecord, SubscriptionRecord } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
+import { ChannelRulesPanel } from "./channel-rules-panel";
 import { Input } from "@/components/ui/input";
 import { FIELD } from "@/routes/settings/settings-page";
 import { cn, thumbUrl } from "@/lib/utils";
@@ -411,6 +412,10 @@ export function ChannelsPage({
                 </div>
               </div>
             </section>
+
+            {/* Schedule, notifications, and per-channel auto-queue rules. Only with something
+                tracked — the panel acts on the channel list, so with none it has no subject. */}
+            {channels.length > 0 && <ChannelRulesPanel channels={channels} />}
 
             {/* Empty and populated are mutually exclusive — exactly one of them renders, so the
                 page never shows "nothing here" and placeholder rows at the same time. */}

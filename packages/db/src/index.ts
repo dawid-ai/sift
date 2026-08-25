@@ -46,6 +46,15 @@ export {
 } from "./collection";
 export type { CollectionRow, CollectionCount } from "./collection";
 export {
+  upsertChannelRule,
+  getChannelRule,
+  listChannelRules,
+  listEnabledChannelRules,
+  setChannelRuleWatermark,
+  deleteChannelRule,
+} from "./channel-rule";
+export type { ChannelRuleRow, ChannelRuleInput } from "./channel-rule";
+export {
   saveSearch,
   getSavedSearchByName,
   listSavedSearches,
