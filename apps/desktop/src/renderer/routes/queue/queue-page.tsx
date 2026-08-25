@@ -10,6 +10,7 @@ import {
   CircleCheck,
   CircleX,
   Clock,
+  ExternalLink,
   Inbox,
   Pause,
   Play,
@@ -180,6 +181,16 @@ function displayUrl(url: string): string {
   } catch {
     return url.replace(/^https?:\/\/(www\.)?/, "");
   }
+}
+
+/** The URL as the row's HEADLINE, used until a title lands.
+ *
+ * `displayUrl` drops the host because the pill above it already says the host — right for a
+ * caption under a title, wrong for the line that IS the item's name. A rule-queued video has
+ * no title until its metadata fetch lands, so those rows read as a bare "/watch?v=Iltb4hn8v_Y"
+ * with nothing to copy and nothing to recognise. Here the whole address is spelt out. */
+function headlineUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "");
 }
 
 const PILL =
@@ -986,7 +997,7 @@ export function QueuePage() {
                       className="mt-2 truncate text-sm font-medium text-foreground/85 transition-colors group-hover:text-foreground"
                       title={it.title ?? it.sourceUrl}
                     >
-                      {it.title ?? displayUrl(it.sourceUrl)}
+                      {it.title ?? headlineUrl(it.sourceUrl)}
                     </p>
                     {it.title && (
                       <p className="mt-0.5 truncate font-mono text-[11px] leading-4 text-fg-subtle">
@@ -1091,6 +1102,21 @@ export function QueuePage() {
                       exactly the rows that had one, and the right edge of the list visibly
                       stepped in and out between "queued" and "done" rows. */}
                   <div className="flex flex-none items-center gap-1">
+                    {/* Every row names a video and, until now, offered no way to look at it —
+                        the only way to check what a rule had queued was to copy the URL out
+                        of the text. */}
+                    <Button
+                      data-testid="queue-item-open"
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={`Open ${it.title ?? it.sourceUrl} in the browser`}
+                      title="Open in browser"
+                      onClick={() => {
+                        void window.sift.library.openExternal(it.sourceUrl);
+                      }}
+                    >
+                      <ExternalLink aria-hidden className="h-3.5 w-3.5" />
+                    </Button>
                     <div className="flex w-[74px] flex-none justify-end">
                       {(it.status === "queued" || it.status === "running") && (
                         <Button

@@ -131,6 +131,26 @@ export function isShort(
   return durationSec != null && durationSec <= 60;
 }
 
+/**
+ * A video entry's absolute URL.
+ *
+ * yt-dlp's flat-playlist entries do not always carry a full address — some tabs report a
+ * site-relative path ("/watch?v=ID"). Stored verbatim that reaches the queue as a bare path,
+ * which no downloader can fetch and no row can identify. Resolving beats substituting a
+ * watch URL built from the id, because it keeps a "/shorts/" path intact and `isShort` reads
+ * that path.
+ */
+function entryUrl(raw: string | null, externalId: string): string {
+  const fallback = `https://www.youtube.com/watch?v=${externalId}`;
+  if (!raw) return fallback;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return raw;
+  try {
+    return new URL(raw, "https://www.youtube.com").toString();
+  } catch {
+    return fallback;
+  }
+}
+
 export function normalizeChannelEntries(
   raw: unknown,
   contentType: ChannelContentType,
@@ -146,7 +166,7 @@ export function normalizeChannelEntries(
     .map((e): NormalizedChannelVideo | null => {
       const externalId = str(e.id);
       if (!externalId) return null;
-      const url = str(e.url) ?? `https://www.youtube.com/watch?v=${externalId}`;
+      const url = entryUrl(str(e.url), externalId);
       const durationSec = int(e.duration);
       return {
         externalId,

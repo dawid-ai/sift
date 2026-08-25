@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioLines, Captions, Pencil, Scissors, Search } from "lucide-react";
 import type { MediaDetail } from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +100,21 @@ export function TranscriptPanel({
     ? (timed.segments[activeSegmentIndex(timed.segments, currentTime)]?.start ??
       null)
     : null;
+
+  // Cue index by identity, built once. The rendered list can be search-filtered, so a row
+  // cannot use its position in `segments` — and a findIndex per row is O(n^2) on a
+  // two-hour transcript.
+  const indexByKey = useMemo(() => {
+    const m = new Map<string, number>();
+    timed?.segments.forEach((s, i) => m.set(`${s.start}-${s.end}`, i));
+    return m;
+  }, [timed]);
+  // Normalised span: clicking the end above the start is a reversed selection, not an
+  // invalid one — ClipBar already reads it min/max, so the list must mark it the same way.
+  const clipLo =
+    clipFrom === null ? null : Math.min(clipFrom, clipTo ?? clipFrom);
+  const clipHi =
+    clipFrom === null ? null : Math.max(clipFrom, clipTo ?? clipFrom);
 
   const activeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -326,6 +341,21 @@ export function TranscriptPanel({
           <div className="scroll-thin min-h-0 max-h-[420px] flex-1 overflow-y-auto rounded-xl border border-white/[0.06] bg-white/[0.02] lg:max-h-none">
             {segments.map((seg) => {
               const active = seg.start === activeStart;
+              const idx = indexByKey.get(`${seg.start}-${seg.end}`) ?? -1;
+              const inClip =
+                clipLo !== null &&
+                clipHi !== null &&
+                idx >= clipLo &&
+                idx <= clipHi;
+              const edge = inClip && (idx === clipLo || idx === clipHi);
+              const edgeLabel =
+                !edge || clipLo === null
+                  ? null
+                  : clipLo === clipHi
+                    ? "Start · pick the end"
+                    : idx === clipLo
+                      ? "Start"
+                      : "End";
               return (
                 <button
                   key={`${seg.start}-${seg.end}`}
@@ -347,22 +377,43 @@ export function TranscriptPanel({
                     }
                     onSeek(seg.start);
                   }}
+                  data-clip={edge ? "edge" : inClip ? "inside" : undefined}
                   className={`flex w-full items-baseline gap-3 border-b border-l-2 border-b-white/[0.05] px-3.5 py-2.5 text-left text-sm leading-relaxed transition-colors last:border-b-0 ${
                     active
                       ? "border-l-primary bg-primary/[0.10] text-foreground"
-                      : "border-l-transparent text-foreground/85 hover:bg-white/[0.035] hover:text-foreground"
+                      : inClip
+                        ? // The span the clip covers, marked on every row it spans — a
+                          // selection you can only see in the bar below it is a selection
+                          // you have to take on trust.
+                          `border-l-primary/50 bg-primary/[0.05] text-foreground ${edge ? "bg-primary/[0.09]" : ""}`
+                        : "border-l-transparent text-foreground/85 hover:bg-white/[0.035] hover:text-foreground"
                   }`}
                 >
                   {/* The UI face with tabular figures, not a mono stack — the mono numerals
                       were visibly chunkier and lower-quality than everything around them. */}
                   <span
                     className={`w-12 flex-none text-right text-[12px] tabular-nums ${
-                      active ? "font-medium text-primary" : "text-fg-subtle"
+                      active || inClip
+                        ? "font-medium text-primary"
+                        : "text-fg-subtle"
                     }`}
                   >
                     {formatTimestamp(seg.start)}
                   </span>
-                  <span className="min-w-0">{seg.text}</span>
+                  <span className="min-w-0">
+                    {edgeLabel && (
+                      // Named, not just tinted: which end of the span a row is cannot be
+                      // read off a shade, and "pick the end" is the only prompt that says
+                      // the selection is half-made.
+                      <span
+                        data-testid="transcript-clip-edge"
+                        className="mr-2 inline-flex items-center rounded-full border border-primary/35 bg-primary/15 px-1.5 align-[1px] text-[10px] font-semibold uppercase leading-4 tracking-[0.06em] text-primary"
+                      >
+                        {edgeLabel}
+                      </span>
+                    )}
+                    {seg.text}
+                  </span>
                 </button>
               );
             })}

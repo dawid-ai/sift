@@ -76,8 +76,20 @@ test("Transcript editor: find/replace and speaker labels persist; exports write 
     const lines = window.getByTestId("media-detail-transcript-segment");
     await window.getByTestId("transcript-clip-mode").click();
     await lines.first().click();
+    // Half-made selection: the start is marked in the list and says what is missing.
+    await expect(window.getByTestId("transcript-clip-edge")).toHaveText(
+      "Start · pick the end",
+    );
     await lines.last().click();
     await expect(window.getByTestId("clip-bar")).toBeVisible();
+    // Both ends named, and every row in between carries the span marker.
+    await expect(window.getByTestId("transcript-clip-edge")).toHaveText([
+      "Start",
+      "End",
+    ]);
+    await expect(window.locator("[data-clip]")).toHaveCount(
+      await lines.count(),
+    );
     // Toggling off clears the pending span and restores seek-on-click.
     await window.getByTestId("transcript-clip-mode").click();
     await expect(window.getByTestId("clip-bar")).toHaveCount(0);
