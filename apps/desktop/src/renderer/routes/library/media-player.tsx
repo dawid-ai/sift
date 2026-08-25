@@ -22,6 +22,7 @@ import {
 import type { FrameCrop } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 import { mediaFileUrl } from "@/lib/utils";
+import { containedPicture, type PictureBox } from "@/lib/contained-picture";
 
 /** One card recipe for the whole detail route: a top-lit surface (brighter top edge, faint
  * inset highlight) so the panel picks up the ambient warmth instead of sitting flat. Kept as a
@@ -132,17 +133,44 @@ export const MediaPlayer = forwardRef<MediaPlayerHandle, MediaPlayerProps>(
     const [speedOpen, setSpeedOpen] = useState(false);
     const speedRef = useRef<HTMLDivElement>(null);
 
+    /** The picture's box inside the well, in box-local pixels — see `containedPicture`. */
+    const pictureBox = (): PictureBox => {
+      const box = boxRef.current!.getBoundingClientRect();
+      return containedPicture(
+        box.width,
+        box.height,
+        videoRef.current?.videoWidth ?? 0,
+        videoRef.current?.videoHeight ?? 0,
+      );
+    };
+
     const pointToFrac = (e: {
       clientX: number;
       clientY: number;
     }): { x: number; y: number } => {
       const rect = boxRef.current!.getBoundingClientRect();
+      const p = pictureBox();
       return {
-        x: clamp01((e.clientX - rect.left) / rect.width),
-        y: clamp01((e.clientY - rect.top) / rect.height),
+        x: clamp01((e.clientX - rect.left - p.left) / p.width),
+        y: clamp01((e.clientY - rect.top - p.top) / p.height),
       };
     };
     const activeRect = dragRect ?? crop ?? null;
+    // Measured copy of `pictureBox()` for rendering. The crop is stored in picture-relative
+    // fractions, so the outline has to be laid out against the picture too — positioning it
+    // in percentages of the well would draw it somewhere the user did not put it on anything
+    // that is not 16:9.
+    const [picture, setPicture] = useState<PictureBox | null>(null);
+    useEffect(() => {
+      const el = boxRef.current;
+      if (!el) return;
+      const measure = () => setPicture(pictureBox());
+      measure();
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      return () => ro.disconnect();
+      // `ready` re-runs it once loadedmetadata has given the video its intrinsic size.
+    }, [ready, filePath]);
 
     useEffect(() => {
       setFailed(false);
@@ -387,6 +415,13 @@ export const MediaPlayer = forwardRef<MediaPlayerHandle, MediaPlayerProps>(
                           // crop every frame down to nothing.
                           if (r && r.w > 0.02 && r.h > 0.02) onCropDraw?.(r);
                           dragStartRef.current = null;
+                          // The drawn rect belongs to the drag only. Left set, it shadowed
+                          // the `crop` prop in `activeRect` forever — so "Remove slide
+                          // region" cleared the stored crop and the box stayed on screen,
+                          // which read as the button doing nothing. The parent owns the
+                          // committed crop and hands it straight back.
+                          dragRectRef.current = null;
+                          setDragRect(null);
                         }
                       : undefined
                   }
@@ -400,12 +435,21 @@ export const MediaPlayer = forwardRef<MediaPlayerHandle, MediaPlayerProps>(
                           ? "shadow-[0_0_0_9999px_hsl(var(--background)/0.45)]"
                           : ""
                       }`}
-                      style={{
-                        left: `${activeRect.x * 100}%`,
-                        top: `${activeRect.y * 100}%`,
-                        width: `${activeRect.w * 100}%`,
-                        height: `${activeRect.h * 100}%`,
-                      }}
+                      style={
+                        picture
+                          ? {
+                              left: `${picture.left + activeRect.x * picture.width}px`,
+                              top: `${picture.top + activeRect.y * picture.height}px`,
+                              width: `${activeRect.w * picture.width}px`,
+                              height: `${activeRect.h * picture.height}px`,
+                            }
+                          : {
+                              left: `${activeRect.x * 100}%`,
+                              top: `${activeRect.y * 100}%`,
+                              width: `${activeRect.w * 100}%`,
+                              height: `${activeRect.h * 100}%`,
+                            }
+                      }
                     />
                   )}
                   {cropEditing && (

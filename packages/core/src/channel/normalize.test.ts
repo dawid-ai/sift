@@ -66,6 +66,33 @@ describe("normalizeChannelEntries + isShort", () => {
     expect(vids[0]!.externalId).toBe("v1");
     expect(vids.every((v) => v.isShort)).toBe(true); // shorts tab → all short
   });
+  it("resolves a site-relative entry url and keeps a /shorts/ path", () => {
+    const out = normalizeChannelEntries(
+      {
+        entries: [
+          { id: "a1", url: "/watch?v=a1", title: "Relative watch" },
+          { id: "s1", url: "/shorts/s1", title: "Relative short" },
+          { id: "n1", title: "No url at all" },
+          {
+            id: "b1",
+            url: "https://www.youtube.com/watch?v=b1",
+            title: "Absolute",
+          },
+        ],
+      },
+      "videos",
+    );
+    expect(out.map((v) => v.url)).toEqual([
+      "https://www.youtube.com/watch?v=a1",
+      "https://www.youtube.com/shorts/s1",
+      "https://www.youtube.com/watch?v=n1",
+      "https://www.youtube.com/watch?v=b1",
+    ]);
+    // The resolved /shorts/ path still reads as a Short — substituting a watch URL built
+    // from the id would have lost that.
+    expect(out.find((v) => v.externalId === "s1")!.isShort).toBe(true);
+  });
+
   it("videos tab: short by /shorts/ url or <=60s duration", () => {
     expect(isShort("https://www.youtube.com/shorts/x", 600, "videos")).toBe(
       true,

@@ -91,6 +91,27 @@ test("extracts slide frames from a downloaded video and shows them", async () =>
     await window.mouse.up();
     // Drawing ends edit mode and marks a region (Clear appears).
     await expect(window.getByTestId("media-detail-clear-region")).toBeVisible();
+    const outline = window.getByTestId("media-detail-crop-overlay");
+    await expect(outline).toBeVisible();
+
+    // The region belongs to the Slides tab — it used to stay painted over the picture on
+    // every other tab, with no control in sight to explain or remove it.
+    await window.getByTestId("media-detail-tab-transcript").click();
+    await expect(outline).toHaveCount(0);
+    await window.getByTestId("media-detail-tab-slides").click();
+    await expect(outline).toBeVisible();
+
+    // Remove actually removes: the drawn rect used to outlive the drag and shadow the
+    // cleared crop, so the box stayed on screen and the button read as a no-op.
+    await window.getByTestId("media-detail-clear-region").click();
+    await expect(window.getByTestId("media-detail-clear-region")).toHaveCount(
+      0,
+    );
+    await expect(outline).toHaveCount(0);
+    // And it stays gone across a remount.
+    await window.getByTestId("media-detail-tab-transcript").click();
+    await window.getByTestId("media-detail-tab-slides").click();
+    await expect(outline).toHaveCount(0);
   } finally {
     await app.close();
     await rm(fixtureDir, { recursive: true, force: true });

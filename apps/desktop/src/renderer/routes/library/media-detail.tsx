@@ -813,8 +813,11 @@ export function MediaDetailPage({
             onTime={setCurrentTime}
             onDownload={() => void handleDownloadDefault()}
             downloading={downloadingFormat !== null}
-            crop={crop}
-            cropEditing={cropEditing}
+            // The slide region is a Slides-tab concern. Passed unconditionally, its outline
+            // sat over the picture on Transcript, Summary and Files too — a permanent mark
+            // on the player with no control in sight to explain or remove it.
+            crop={tab === "slides" ? crop : null}
+            cropEditing={tab === "slides" && cropEditing}
             onCropDraw={handleCropDraw}
           />
           {/* TagEditor renders its own eyebrow — this card must not repeat it. One rule governs
