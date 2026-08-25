@@ -156,11 +156,7 @@ export function UpdateToast({
   return (
     <div
       data-testid="update-toast"
-      className={cn(
-        "fixed bottom-4 right-4 z-50 w-[22rem]",
-        TOAST_PANEL,
-        PANEL_TONE[tone],
-      )}
+      className={cn("w-full", TOAST_PANEL, PANEL_TONE[tone])}
     >
       {state.kind === "available" && (
         <>
