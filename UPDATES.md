@@ -1,5 +1,21 @@
 # Updates
 
+## v0.7.1 — 2026-08-25
+
+- **"Remove slide region" removes it.** The outline stayed painted on the video after the
+  region was cleared, which made the button look broken. It also followed you onto the
+  Transcript, Summary and Files tabs — it belongs to Slides and stays there now.
+- **The slide region crops what you actually drew.** On any video that isn't 16:9 the region
+  was measured against the whole player frame instead of the picture inside it, so the crop
+  came out smaller and shifted. On a 4:3 source you got three quarters of the box you drew.
+- **You can see the clip you're selecting.** Picking two transcript lines marks every line
+  between them, labels both ends, and says when only the start is set.
+- **Queue rows say what they are.** A video queued by a channel rule showed a bare
+  "/watch?v=…" until its title arrived — the whole address is spelled out now, and every row
+  has a button to open the video.
+- **Fixed:** a video queued by a channel rule could be stored with a partial address that no
+  download could use.
+
 ## v0.7.0 — 2026-08-25
 
 - **Edit a transcript.** Fix mistakes, label speakers, merge or delete lines, and shift
