@@ -6,6 +6,8 @@ import {
   type TranscriptProgress,
 } from "@sift/ipc-contract";
 import type { TranscriptService } from "../services/transcript-service";
+import { bool, id, obj, oneOf, optional } from "./validate";
+import { mediaMetadata } from "./validate-payloads";
 
 /**
  * Registers the `transcript:get` handler and forwards coarse stage progress to every
@@ -23,20 +25,30 @@ export function registerTranscriptIpc(
   ipcMain.handle(
     IPC.transcriptGet,
     (_event, input: { metadata: MediaMetadata; force?: "whisper" }) =>
-      service.get(input, (p: TranscriptProgress) => {
-        for (const win of getWindows())
-          win.webContents.send(IPC.transcriptProgress, p);
-      }),
+      service.get(
+        {
+          metadata: mediaMetadata(obj(input, "input").metadata),
+          force: optional(obj(input, "input").force, (v) =>
+            oneOf(v, "input.force", ["whisper"] as const),
+          ),
+        },
+        (p: TranscriptProgress) => {
+          for (const win of getWindows())
+            win.webContents.send(IPC.transcriptProgress, p);
+        },
+      ),
   );
   ipcMain.handle(IPC.transcriptGetMethod, () => methodStore.get());
   ipcMain.handle(IPC.transcriptSetMethod, (_event, m: TranscriptMethod) =>
-    methodStore.set(m),
+    methodStore.set(
+      oneOf(m, "method", ["auto", "prefer_whisper", "captions_only"] as const),
+    ),
   );
   ipcMain.handle(IPC.transcriptGetAutoDownload, () => autoDownloadStore.get());
   ipcMain.handle(IPC.transcriptSetAutoDownload, (_event, enabled: boolean) =>
-    autoDownloadStore.set(enabled),
+    autoDownloadStore.set(bool(enabled, "enabled")),
   );
   ipcMain.handle(IPC.transcriptExportSrt, (_event, transcriptId: number) =>
-    service.exportSrt(transcriptId),
+    service.exportSrt(id(transcriptId, "transcriptId")),
   );
 }

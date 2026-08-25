@@ -1,11 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
+import { writeFileAtomicSync } from "../atomic-write";
 
 // Whether to auto-fetch a transcript right after a video download completes. Default true
 // (preserves the original always-transcribe behavior). No `electron` import — stays
@@ -23,7 +18,7 @@ export interface AutoTranscriptConfigDeps {
 const defaultFs: NonNullable<AutoTranscriptConfigDeps["fs"]> = {
   existsSync,
   readFileSync,
-  writeFileSync,
+  writeFileSync: writeFileAtomicSync,
   rmSync,
   mkdirSync,
 };

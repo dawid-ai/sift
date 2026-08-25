@@ -6,6 +6,8 @@ import {
   type MediaMetadata,
 } from "@sift/ipc-contract";
 import type { DownloadService } from "../services/download-service";
+import { obj, strArray } from "./validate";
+import { downloadOption, mediaMetadata } from "./validate-payloads";
 
 /**
  * Registers the `download:start` handler and forwards progress to every open
@@ -19,11 +21,30 @@ export function registerDownloadIpc(
 ): void {
   ipcMain.handle(
     IPC.downloadStart,
-    (_event, input: { metadata: MediaMetadata; option: DownloadOption }) =>
-      service.start(input, (progress) => {
-        for (const win of getWindows()) {
-          win.webContents.send(IPC.downloadProgress, progress);
-        }
-      }),
+    (
+      _event,
+      input: {
+        metadata: MediaMetadata;
+        option: DownloadOption;
+        tags?: string[];
+      },
+    ) =>
+      service.start(
+        {
+          metadata: mediaMetadata(obj(input, "input").metadata),
+          option: downloadOption(obj(input, "input").option),
+          tags: strArray(
+            obj(input, "input").tags ?? [],
+            "input.tags",
+            100,
+            200,
+          ),
+        },
+        (progress) => {
+          for (const win of getWindows()) {
+            win.webContents.send(IPC.downloadProgress, progress);
+          }
+        },
+      ),
   );
 }

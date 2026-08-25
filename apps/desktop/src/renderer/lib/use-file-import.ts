@@ -5,17 +5,20 @@ const PROBE_TIMEOUT_MS = 5000;
 const ALREADY_RUNNING = "An import is already running — wait for it to finish.";
 
 /**
- * Reads the absolute path Electron attaches to a dropped `File`.
+ * Reads the absolute path of a dropped `File`.
  *
- * ponytail: `File.path` is Electron ≤31 only — Electron 32 removed it in favour of
- * `webUtils.getPathForFile(file)`, which must be called in the preload and exposed
- * through `window.sift`. The failure mode on that bump is SILENT (`path` becomes
- * undefined), which is why a missing path surfaces an error here instead of skipping
- * the file quietly. Upgrade path: add `getPathForFile` to the preload, call it here.
+ * `webUtils.getPathForFile` (via the preload) is the only source from Electron 32 on —
+ * `File.path` was removed there, and silently: it just becomes `undefined`, so every drop
+ * reported "couldn't read where this lives on disk". The legacy property is still read as
+ * a fallback so this keeps working if the preload bridge is ever unavailable, and a
+ * missing path still surfaces an error rather than skipping the file quietly.
  */
 function droppedPath(file: File): string | null {
-  const path = (file as File & { path?: string }).path;
-  return typeof path === "string" && path.length > 0 ? path : null;
+  const fromPreload = window.sift?.import?.pathForFile?.(file);
+  if (typeof fromPreload === "string" && fromPreload.length > 0)
+    return fromPreload;
+  const legacy = (file as File & { path?: string }).path;
+  return typeof legacy === "string" && legacy.length > 0 ? legacy : null;
 }
 
 /** What a throwaway `<video>` can tell us about a file before it is imported. `height` is

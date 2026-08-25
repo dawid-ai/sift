@@ -13,7 +13,21 @@ does the whole chain — download, transcribe (even with no captions, via local
 [whisper.cpp](https://github.com/ggerganov/whisper.cpp)), summarize, and keep a
 searchable library — on your machine, with no subscription.
 
-<!-- Screenshots/GIF go here once captured — see docs/images/CAPTURE.md. -->
+![Slides: extracted, OCR-gated frames selected for a document export](docs/images/slides.png)
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/library.png" alt="Library in tiles view, with tag, channel, and platform filters"></td>
+<td width="50%"><img src="docs/images/transcript.png" alt="Media detail with a timed transcript beside the player"></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/summary.png" alt="An AI summary generated from the transcript, stored beside the media"></td>
+</tr>
+</table>
+
+<sub>Screenshots are captured from the app running against a seeded demo library — every
+channel and talk name in them is invented. See
+<a href="docs/images/CAPTURE.md">docs/images/CAPTURE.md</a>.</sub>
 
 ## Download
 

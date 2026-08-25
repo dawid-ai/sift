@@ -1,11 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
+import { writeFileAtomicSync } from "../atomic-write";
 import type { TranscriptMethod } from "@sift/ipc-contract";
 
 const VALID: TranscriptMethod[] = ["auto", "prefer_whisper", "captions_only"];
@@ -24,7 +19,7 @@ export interface TranscriptMethodConfigDeps {
 const defaultFs: NonNullable<TranscriptMethodConfigDeps["fs"]> = {
   existsSync,
   readFileSync,
-  writeFileSync,
+  writeFileSync: writeFileAtomicSync,
   rmSync,
   mkdirSync,
 };

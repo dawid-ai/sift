@@ -52,11 +52,30 @@ export interface UrlInputProps {
   /** Called with the trimmed URL after the debounce window elapses, or "" immediately when input is cleared. */
   onUrl: (url: string) => void;
   debounceMs?: number;
+  /**
+   * A URL to drop into the field from outside — a drag, the clipboard suggestion, or the
+   * command palette. `nonce` is what makes it re-apply: pasting the same URL twice in a row
+   * is a real thing to do, and a bare string would compare equal and be ignored the second
+   * time.
+   */
+  fill?: { url: string; nonce: number };
 }
 
-export function UrlInput({ onUrl, debounceMs = DEBOUNCE_MS }: UrlInputProps) {
+export function UrlInput({
+  onUrl,
+  debounceMs = DEBOUNCE_MS,
+  fill,
+}: UrlInputProps) {
   const [value, setValue] = useState("");
   useDebouncedUrl(value, debounceMs, onUrl);
+
+  const nonce = fill?.nonce;
+  const filled = fill?.url;
+  useEffect(() => {
+    if (filled) setValue(filled);
+    // `nonce` is the trigger; `filled` is read at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nonce]);
 
   const empty = value.trim() === "";
 

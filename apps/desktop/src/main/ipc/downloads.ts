@@ -1,5 +1,6 @@
 import { dialog, ipcMain, type BrowserWindow } from "electron";
 import { IPC } from "@sift/ipc-contract";
+import { absPath } from "./validate";
 
 /** Registers `downloads:getPath` / `downloads:setPath` / `downloads:pickPath`. `pickPath`
  * opens a native directory picker (parented to the focused window, if any) and returns the
@@ -9,7 +10,9 @@ export function registerDownloadsIpc(
   getFocused: () => BrowserWindow | null,
 ): void {
   ipcMain.handle(IPC.downloadsGetPath, () => store.get());
-  ipcMain.handle(IPC.downloadsSetPath, (_e, path: string) => store.set(path));
+  ipcMain.handle(IPC.downloadsSetPath, (_e, path: string) =>
+    store.set(absPath(path, "path")),
+  );
   ipcMain.handle(IPC.downloadsPickPath, async () => {
     const win = getFocused();
     const res = win

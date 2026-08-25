@@ -1,11 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
+import { writeFileAtomicSync } from "../atomic-write";
 
 // No `electron` import — stays Node-loadable for Vitest, mirroring downloads-config.ts.
 export type BinaryUpdatePolicy = "auto" | "notify";
@@ -23,7 +18,7 @@ export interface BinaryUpdatesConfigDeps {
 const defaultFs: NonNullable<BinaryUpdatesConfigDeps["fs"]> = {
   existsSync,
   readFileSync,
-  writeFileSync,
+  writeFileSync: writeFileAtomicSync,
   rmSync,
   mkdirSync,
 };

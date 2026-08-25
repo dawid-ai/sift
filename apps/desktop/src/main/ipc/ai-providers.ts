@@ -1,5 +1,9 @@
 import { ipcMain } from "electron";
-import type { AiRegistry } from "@sift/core";
+import {
+  isKeyedAiProviderId,
+  type AiRegistry,
+  type KeyedAiProviderId,
+} from "@sift/core";
 import {
   IPC,
   type AiDefaultConfig,
@@ -10,6 +14,16 @@ import type { createSecrets } from "../secrets";
 import type { createCustomConfigStore } from "../ai/custom-config";
 import type { createAiDefaultConfigStore } from "../settings/ai-default-config";
 import { isClaudeCliAvailable } from "../ai/claude-cli-provider";
+import { nonEmptyStr, obj, str } from "./validate";
+import { aiDefaultConfig, customProviderConfig } from "./validate-payloads";
+
+/** SECURITY: a provider id selects a filename under `userData/secrets/`. Reject anything
+ * outside the keyed-provider allowlist before it reaches the filesystem. */
+function keyedProviderId(v: unknown): KeyedAiProviderId {
+  const s = nonEmptyStr(v, "providerId", 100);
+  if (!isKeyedAiProviderId(s)) throw new Error(`Unknown AI provider: ${s}`);
+  return s;
+}
 
 type Secrets = ReturnType<typeof createSecrets>;
 type CustomConfigStore = ReturnType<typeof createCustomConfigStore>;
@@ -47,30 +61,32 @@ export function registerAiProvidersIpc(
   );
 
   ipcMain.handle(IPC.aiKeyStatus, (_event, providerId: string) =>
-    secretsFor(providerId).hasKey(),
+    secretsFor(keyedProviderId(providerId)).hasKey(),
   );
 
   ipcMain.handle(IPC.aiKeySet, (_event, providerId: string, key: string) => {
-    secretsFor(providerId).setKey(key);
-    rebuild(providerId, key);
+    const provider = keyedProviderId(providerId);
+    secretsFor(provider).setKey(nonEmptyStr(key, "key", 4096));
+    rebuild(provider, key);
   });
 
   ipcMain.handle(IPC.aiKeyClear, (_event, providerId: string) => {
-    secretsFor(providerId).clearKey();
-    registry.unregister(providerId);
+    const provider = keyedProviderId(providerId);
+    secretsFor(provider).clearKey();
+    registry.unregister(provider);
   });
 
   ipcMain.handle(IPC.aiCustomConfigGet, () => customConfigStore.get());
 
   ipcMain.handle(IPC.aiCustomConfigSet, (_event, cfg: CustomProviderConfig) => {
-    customConfigStore.set(cfg);
+    customConfigStore.set(customProviderConfig(cfg));
     const key = secretsFor("custom").getKey();
     if (key) rebuild("custom", key);
   });
 
   ipcMain.handle(IPC.aiGetDefault, () => defaultStore.get());
   ipcMain.handle(IPC.aiSetDefault, (_event, cfg: AiDefaultConfig | null) =>
-    defaultStore.set(cfg),
+    defaultStore.set(aiDefaultConfig(cfg)),
   );
   ipcMain.handle(IPC.aiCliStatus, () => isClaudeCliAvailable());
 
@@ -78,20 +94,27 @@ export function registerAiProvidersIpc(
     IPC.aiRunPrompt,
     (
       _event,
-      input: {
+      raw: {
         providerId: string;
         model: string;
         systemPrompt: string;
         content: string;
       },
     ) => {
-      const provider = registry.get(input.providerId);
+      const o = obj(raw, "input");
+      const provider = registry.get(
+        nonEmptyStr(o.providerId, "input.providerId", 100),
+      );
       if (!provider) throw new Error("Unknown AI provider.");
       return provider.summarize(
         {
-          model: input.model,
-          systemPrompt: input.systemPrompt,
-          content: input.content,
+          model: nonEmptyStr(o.model, "input.model", 200),
+          systemPrompt: str(
+            o.systemPrompt ?? "",
+            "input.systemPrompt",
+            100_000,
+          ),
+          content: str(o.content ?? "", "input.content", 5_000_000),
           maxTokens: 8192,
         },
         () => {},

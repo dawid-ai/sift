@@ -8,6 +8,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // Mirrors electron.vite.config.ts's renderer alias, so a renderer module under test
+      // can import its own "@/..." paths instead of the test dictating its imports.
+      "@": resolve(__dirname, "src/renderer"),
       "@sift/core": resolve(__dirname, "../../packages/core/src/index.ts"),
       "@sift/ipc-contract": resolve(
         __dirname,

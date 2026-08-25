@@ -1,4 +1,9 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
+import {
+  contextBridge,
+  ipcRenderer,
+  webUtils,
+  type IpcRendererEvent,
+} from "electron";
 import {
   IPC,
   type BinaryProgress,
@@ -6,6 +11,7 @@ import {
   type ChannelVideosQuery,
   type DownloadProgress,
   type MediaFilter,
+  type QueueConfig,
   type QueueItem,
   type QueueSpec,
   type SiftApi,
@@ -22,6 +28,11 @@ const api: SiftApi = {
   app: {
     getVersion: () => ipcRenderer.invoke(IPC.appGetVersion),
     quit: () => ipcRenderer.invoke(IPC.appQuit),
+    readClipboardText: () => ipcRenderer.invoke(IPC.appReadClipboardText),
+  },
+  diagnostics: {
+    get: () => ipcRenderer.invoke(IPC.diagnosticsGet),
+    export: () => ipcRenderer.invoke(IPC.diagnosticsExport),
   },
   updates: {
     check: () => ipcRenderer.invoke(IPC.updateCheck),
@@ -82,6 +93,15 @@ const api: SiftApi = {
   import: {
     local: (input) => ipcRenderer.invoke(IPC.importLocal, input),
     pick: () => ipcRenderer.invoke(IPC.importPick),
+    // `webUtils` lives in the preload only; the renderer has no access to it, which is
+    // why this is exposed rather than read off the `File` in the drop handler.
+    pathForFile: (file) => {
+      try {
+        return webUtils.getPathForFile(file);
+      } catch {
+        return "";
+      }
+    },
   },
   ollama: {
     health: () => ipcRenderer.invoke(IPC.ollamaHealth),
@@ -143,6 +163,10 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.queueReorder, id, dir),
     retry: (id: number) => ipcRenderer.invoke(IPC.queueRetry, id),
     cancel: (id: number) => ipcRenderer.invoke(IPC.queueCancel, id),
+    retryFailed: () => ipcRenderer.invoke(IPC.queueRetryFailed),
+    getConfig: () => ipcRenderer.invoke(IPC.queueGetConfig),
+    setConfig: (config: QueueConfig) =>
+      ipcRenderer.invoke(IPC.queueSetConfig, config),
     pause: () => ipcRenderer.invoke(IPC.queuePause),
     resume: () => ipcRenderer.invoke(IPC.queueResume),
     isPaused: () => ipcRenderer.invoke(IPC.queueIsPaused),

@@ -1,4 +1,5 @@
 import type { BrowserWindow } from "electron";
+import { oneOf } from "./validate";
 import { ipcMain } from "electron";
 import {
   IPC,
@@ -12,6 +13,12 @@ import type { BinariesService } from "../services/binaries-service";
  * Registers `binaries:list` / `binaries:check` / `binaries:install` handlers and
  * forwards install progress to every open window over `binaries:progress`.
  */
+/** A managed-binary kind. The value selects a download URL and an on-disk path, so it
+ * is checked against the known set rather than trusted from the renderer. */
+function binaryKind(v: unknown): BinaryKind {
+  return oneOf(v, "kind", ["ytdlp", "ffmpeg", "deno"] as const);
+}
+
 export function registerBinariesIpc(
   service: BinariesService,
   getWindows: () => BrowserWindow[],
@@ -19,11 +26,11 @@ export function registerBinariesIpc(
   ipcMain.handle(IPC.binariesList, () => service.list());
 
   ipcMain.handle(IPC.binariesCheck, (_event, kind: BinaryKind) =>
-    service.check(kind),
+    service.check(binaryKind(kind)),
   );
 
   ipcMain.handle(IPC.binariesInstall, (_event, kind: BinaryKind) =>
-    service.install(kind, (progress) => {
+    service.install(binaryKind(kind), (progress) => {
       for (const win of getWindows()) {
         win.webContents.send(IPC.binariesProgress, progress);
       }
@@ -56,7 +63,7 @@ export function registerBinaryUpdatesIpc(
 
   ipcMain.handle(IPC.binariesGetPolicy, () => policyStore.get());
   ipcMain.handle(IPC.binariesSetPolicy, (_e, mode: BinaryUpdatePolicy) =>
-    policyStore.set(mode),
+    policyStore.set(oneOf(mode, "mode", ["auto", "notify"] as const)),
   );
   ipcMain.handle(IPC.binariesCurrentUpdateEvent, () => [
     ...lastByKind.values(),

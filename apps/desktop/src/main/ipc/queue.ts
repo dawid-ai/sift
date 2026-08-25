@@ -1,6 +1,8 @@
 import { ipcMain } from "electron";
-import { IPC, type QueueSpec } from "@sift/ipc-contract";
+import { IPC, type QueueConfig, type QueueSpec } from "@sift/ipc-contract";
 import type { QueueWorker } from "../services/queue-worker";
+import { httpUrl, id, oneOf, strArray } from "./validate";
+import { queueConfig, queueSpec } from "./validate-payloads";
 
 /**
  * Registers the queue request handlers. The worker's snapshot emissions are
@@ -8,16 +10,35 @@ import type { QueueWorker } from "../services/queue-worker";
  */
 export function registerQueueIpc(worker: QueueWorker): void {
   ipcMain.handle(IPC.queueAdd, (_e, urls: string[], spec: QueueSpec) =>
-    worker.add(urls, spec),
+    worker.add(
+      strArray(urls, "urls", 2000, 4096).map((u, i) =>
+        httpUrl(u, "urls[" + i + "]"),
+      ),
+      queueSpec(spec),
+    ),
   );
   ipcMain.handle(IPC.queueList, () => worker.list());
-  ipcMain.handle(IPC.queueRemove, (_e, id: number) => worker.remove(id));
-  ipcMain.handle(IPC.queueReorder, (_e, id: number, dir: "up" | "down") =>
-    worker.reorder(id, dir),
+  ipcMain.handle(IPC.queueRemove, (_e, itemId: number) =>
+    worker.remove(id(itemId, "id")),
   );
-  ipcMain.handle(IPC.queueRetry, (_e, id: number) => worker.retry(id));
-  ipcMain.handle(IPC.queueCancel, (_e, id: number) => worker.cancel(id));
+  ipcMain.handle(IPC.queueReorder, (_e, itemId: number, dir: "up" | "down") =>
+    worker.reorder(
+      id(itemId, "id"),
+      oneOf(dir, "dir", ["up", "down"] as const),
+    ),
+  );
+  ipcMain.handle(IPC.queueRetry, (_e, itemId: number) =>
+    worker.retry(id(itemId, "id")),
+  );
+  ipcMain.handle(IPC.queueCancel, (_e, itemId: number) =>
+    worker.cancel(id(itemId, "id")),
+  );
   ipcMain.handle(IPC.queuePause, () => worker.pause());
   ipcMain.handle(IPC.queueResume, () => worker.resume());
   ipcMain.handle(IPC.queueIsPaused, () => worker.isPaused());
+  ipcMain.handle(IPC.queueRetryFailed, () => worker.retryFailed());
+  ipcMain.handle(IPC.queueGetConfig, () => worker.getConfig());
+  ipcMain.handle(IPC.queueSetConfig, (_e, config: QueueConfig) =>
+    worker.setConfig(queueConfig(config)),
+  );
 }

@@ -20,6 +20,7 @@ import {
   KeyRound,
   Languages,
   Laptop,
+  LifeBuoy,
   MessageSquareText,
   Mic,
   Package,
@@ -31,6 +32,8 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import type { DiagnosticsReport } from "@sift/ipc-contract";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UpdateState } from "@/lib/update-state";
 import { AiProvidersSection } from "./ai-providers-section";
@@ -583,7 +586,7 @@ const TAB_INDEX: Record<TabId, string[]> = {
     "Whisper",
   ],
   ai: ["AI providers", "Prompts", "Prompt playground"],
-  system: ["Binaries", "Updates"],
+  system: ["Binaries", "Updates", "Diagnostics"],
 };
 
 /** The hero, driven by the open tab — one table, beside the index it mirrors.
@@ -650,6 +653,92 @@ const WARM_WASH =
   "radial-gradient(58% 62% at 104% 62%, hsl(20 28% 4% / 0.82), transparent 72%)," +
   "radial-gradient(46% 40% at 100% 100%, hsl(20 30% 4% / 0.9), transparent 74%)," +
   "radial-gradient(34% 26% at 97% 94%, hsl(22 92% 52% / 0.06), transparent 70%)";
+
+/**
+ * Support bundle: shows exactly what would be written, then writes it where the user
+ * picks. Showing the contents first is the point — a bundle nobody can inspect is one
+ * nobody should be asked to attach to a public issue.
+ */
+function DiagnosticsSection() {
+  const [report, setReport] = useState<DiagnosticsReport | null>(null);
+  const [savedTo, setSavedTo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = async (): Promise<void> => {
+    setBusy(true);
+    setError(null);
+    try {
+      setReport(await window.sift.diagnostics.get());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const save = async (): Promise<void> => {
+    setBusy(true);
+    setError(null);
+    try {
+      const path = await window.sift.diagnostics.export();
+      setSavedTo(path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={busy}
+          data-testid="diagnostics-show"
+          onClick={() => void load()}
+        >
+          {report ? "Refresh" : "Show what's included"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={busy}
+          data-testid="diagnostics-export"
+          onClick={() => void save()}
+        >
+          Save support bundle
+        </Button>
+      </div>
+      <p className="text-[12px] text-foreground/55">
+        Excluded by design: API keys, cookies, transcript and summary text,
+        media titles, and source URLs. Paths have your home folder replaced with{" "}
+        <code>~</code>.
+      </p>
+      {savedTo && (
+        <p data-testid="diagnostics-saved" className="text-[12px] text-primary">
+          Saved to {savedTo}
+        </p>
+      )}
+      {error && (
+        <p data-testid="diagnostics-error" className="text-[12px] text-danger">
+          {error}
+        </p>
+      )}
+      {report && (
+        <pre
+          data-testid="diagnostics-preview"
+          className="max-h-80 overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-3 text-[11px] leading-relaxed text-foreground/70"
+        >
+          {JSON.stringify(report, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
 
 export function SettingsPage({ updateState }: { updateState: UpdateState }) {
   const [tab, setTab] = useState<TabId>("general");
@@ -950,6 +1039,14 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                   description={`Check for a new version of ${branding.appName}.`}
                 >
                   <UpdatesSection updateState={updateState} />
+                </SettingsSection>
+                <SettingsSection
+                  icon={LifeBuoy}
+                  eyebrow="SUPPORT"
+                  title="Diagnostics"
+                  description="A snapshot of this install to attach to a bug report. Nothing is sent anywhere — you save the file and decide what to do with it."
+                >
+                  <DiagnosticsSection />
                 </SettingsSection>
               </>
             )}

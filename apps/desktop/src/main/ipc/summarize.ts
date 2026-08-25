@@ -26,6 +26,18 @@ import {
 import type { SummarizeService } from "../services/summarize-service";
 import { getDb } from "../index";
 import { parsePromptPack } from "./prompt-pack";
+import { id, nonEmptyStr, obj, str } from "./validate";
+import { mediaMetadata } from "./validate-payloads";
+
+/** A user-authored prompt. The body is sent to an AI provider verbatim, so it is only
+ * bounded, not parsed; the name becomes part of an export filename downstream. */
+function promptInput(v: unknown): { name: string; body: string } {
+  const o = obj(v, "input");
+  return {
+    name: nonEmptyStr(o.name, "input.name", 200),
+    body: str(o.body ?? "", "input.body", 100_000),
+  };
+}
 
 function toPromptInfo(row: PromptRow): PromptInfo {
   return {
@@ -55,15 +67,23 @@ export function registerSummarizeIpc(
     IPC.summarizeStart,
     (
       event,
-      input: {
+      raw: {
         metadata: MediaMetadata;
         providerId: string;
         model: string;
         promptId: number;
         requestId: string;
       },
-    ) =>
-      service
+    ) => {
+      const o = obj(raw, "input");
+      const input = {
+        metadata: mediaMetadata(o.metadata),
+        providerId: nonEmptyStr(o.providerId, "input.providerId", 100),
+        model: nonEmptyStr(o.model, "input.model", 200),
+        promptId: id(o.promptId, "input.promptId"),
+        requestId: nonEmptyStr(o.requestId, "input.requestId", 128),
+      };
+      return service
         .start(input, (delta) => {
           const t: SummaryToken = {
             requestId: input.requestId,
@@ -80,11 +100,12 @@ export function registerSummarizeIpc(
           };
           event.sender.send(IPC.summarizeToken, t);
           return record;
-        }),
+        });
+    },
   );
 
   ipcMain.handle(IPC.summarizeExport, (_event, summaryId: number) =>
-    service.export(summaryId),
+    service.export(id(summaryId, "summaryId")),
   );
 
   ipcMain.handle(IPC.promptsList, () => listPrompts(getDb()).map(toPromptInfo));
@@ -92,17 +113,19 @@ export function registerSummarizeIpc(
   ipcMain.handle(
     IPC.promptsCreate,
     (_event, input: { name: string; body: string }) =>
-      toPromptInfo(createPrompt(getDb(), input)),
+      toPromptInfo(createPrompt(getDb(), promptInput(input))),
   );
 
   ipcMain.handle(
     IPC.promptsUpdate,
-    (_event, id: number, input: { name: string; body: string }) =>
-      toPromptInfo(updatePrompt(getDb(), id, input)),
+    (_event, promptId: number, input: { name: string; body: string }) =>
+      toPromptInfo(
+        updatePrompt(getDb(), id(promptId, "id"), promptInput(input)),
+      ),
   );
 
-  ipcMain.handle(IPC.promptsDelete, (_event, id: number) =>
-    deletePrompt(getDb(), id),
+  ipcMain.handle(IPC.promptsDelete, (_event, promptId: number) =>
+    deletePrompt(getDb(), id(promptId, "id")),
   );
 
   ipcMain.handle(IPC.promptsExport, async () => {

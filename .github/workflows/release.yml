@@ -6,7 +6,40 @@ on:
   push:
     tags: ["v*"]
 jobs:
+  gate:
+    # The release used to publish straight from a tag, so a tag pushed on a red commit
+    # shipped anyway. Publishing now depends on this job passing.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm audit --prod
+
+  e2e:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @sift/desktop run rebuild
+      - run: pnpm --filter @sift/desktop exec playwright install --with-deps chromium
+      - run: pnpm --filter @sift/desktop run e2e
+
   build-win:
+    needs: [gate, e2e]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -27,3 +60,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+  sbom:
+    needs: [gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # What ships and under what licence, recorded per release. `pnpm licenses` reads the
+      # lockfile, so no extra tooling is needed.
+      - run: pnpm licenses list --prod --json > sbom-licenses.json
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: sift-sbom.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: sbom-licenses.json
+          retention-days: 90

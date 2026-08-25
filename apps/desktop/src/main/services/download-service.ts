@@ -16,10 +16,13 @@ import {
   deleteTranscript,
   getAsset,
   getDownloadById,
+  getFramesByMediaId,
   getDownloadByMediaAndFormat,
   getMediaById,
   getMediaBySourceUrl,
   getSummariesByMediaId,
+  getSummaryById,
+  getTranscriptById,
   getTranscriptsByMediaId,
   getDocumentsByMediaId,
   insertMedia,
@@ -165,6 +168,11 @@ export interface DownloadServiceOpts {
   fileExists?: (path: string) => boolean;
   /** Injectable for tests; defaults to `node:fs` `rmSync` (force, ignores missing files). */
   unlinkFile?: (path: string) => void;
+  /** Per-media slide-frame directory (userData/frames/<id>), removed with the media row.
+   * Optional so the Node unit suite can construct the service without electron paths. */
+  framesDir?: (mediaId: number) => string;
+  /** Injectable for tests; defaults to `node:fs` `rmSync` (recursive + force). */
+  removeDir?: (dir: string) => void;
   getCookiesFile?: (url: string) => Promise<string | null>;
   reportAuthFailure?: (url: string) => void;
 }
@@ -180,7 +188,14 @@ export class DownloadService {
    * path for the same format) or "error" (rethrowing) on completion.
    */
   async start(
-    input: { metadata: MediaMetadata; option: DownloadOption; tags?: string[] },
+    input: {
+      metadata: MediaMetadata;
+      option: DownloadOption;
+      tags?: string[];
+      /** Aborting kills the yt-dlp process. The download row lands on "error" with the
+       * cancellation message, which is what the queue's cancel path relies on. */
+      signal?: AbortSignal;
+    },
     onProgress?: (p: DownloadProgress) => void,
   ): Promise<MediaRecord> {
     const { db, runner } = this.opts;
@@ -237,6 +252,7 @@ export class DownloadService {
           outputTemplate,
           ffmpegLocation,
           cookiesFile,
+          signal: input.signal,
         },
         (p) => onProgress?.({ mediaId: media.id, downloadId: dl.id, ...p }),
       );
@@ -418,20 +434,66 @@ export class DownloadService {
     });
   }
 
-  /** Deletes a media row: unlinks every download's file, then deletes the row (FK
-   * cascade also removes its download/transcript/summary rows). */
-  async remove(id: number): Promise<void> {
-    const { db } = this.opts;
+  /** Removes `path` if it exists. Never throws — a file the user already moved or
+   * deleted must not block removing the library row. */
+  private unlinkIfPresent(path: string | null | undefined): void {
+    if (!path) return;
     const fileExists = this.opts.fileExists ?? existsSync;
     const unlink =
       this.opts.unlinkFile ?? ((p: string) => rmSync(p, { force: true }));
+    try {
+      if (fileExists(path)) unlink(path);
+    } catch {
+      /* leave it — the database row still goes */
+    }
+  }
+
+  /**
+   * Deletes a media row and every file the app generated for it: each download, the
+   * exported transcripts and summaries, exported documents, extracted slide frames, and
+   * the poster grabbed from an import.
+   *
+   * Deleting the media file alone used to leave all of that behind, which both leaks disk
+   * space and leaves transcript and summary text on disk after the user asked for the
+   * item to be removed — the wrong default for a local-first, privacy-first tool.
+   *
+   * Two things are deliberately kept: an imported local file (the user's own media, only
+   * ever referenced, never copied) and the remote-thumbnail cache, whose entries are keyed
+   * by URL and shared between media rows.
+   */
+  async remove(id: number): Promise<void> {
+    const { db } = this.opts;
+    const removeDir =
+      this.opts.removeDir ??
+      ((p: string) => rmSync(p, { recursive: true, force: true }));
 
     for (const d of listDownloadsByMediaId(db, id)) {
       // Imported local files are referenced where the user keeps them, never copied —
       // so removing the library row must never delete their file. The row still goes.
       if (d.format_id === LOCAL_FORMAT_ID) continue;
-      if (d.file_path && fileExists(d.file_path)) unlink(d.file_path);
+      this.unlinkIfPresent(d.file_path);
     }
+    for (const t of getTranscriptsByMediaId(db, id))
+      this.unlinkIfPresent(t.file_path);
+    for (const s of getSummariesByMediaId(db, id))
+      this.unlinkIfPresent(s.file_path);
+    for (const doc of getDocumentsByMediaId(db, id))
+      this.unlinkIfPresent(doc.path);
+    for (const f of getFramesByMediaId(db, id))
+      this.unlinkIfPresent(f.image_path);
+    if (this.opts.framesDir) {
+      try {
+        removeDir(this.opts.framesDir(id));
+      } catch {
+        /* the frame files are already gone; an empty dir is not worth failing on */
+      }
+    }
+    // A poster extracted from an imported file lives under userData and is ours to
+    // delete; a remote thumbnail URL is not a path and is left alone.
+    const media = getMediaById(db, id);
+    if (media?.thumbnail_path && !/^https?:/i.test(media.thumbnail_path))
+      this.unlinkIfPresent(media.thumbnail_path);
+
     deleteMedia(db, id);
   }
 
@@ -502,13 +564,15 @@ export class DownloadService {
     deleteDownload(db, id);
   }
 
-  /** Deletes a transcript row. */
+  /** Deletes a transcript row and the file it was exported to. */
   async removeTranscript(id: number): Promise<void> {
+    this.unlinkIfPresent(getTranscriptById(this.opts.db, id)?.file_path);
     deleteTranscript(this.opts.db, id);
   }
 
-  /** Deletes a summary row. */
+  /** Deletes a summary row and the Markdown file it was written to. */
   async removeSummary(id: number): Promise<void> {
+    this.unlinkIfPresent(getSummaryById(this.opts.db, id)?.file_path);
     deleteSummary(this.opts.db, id);
   }
 

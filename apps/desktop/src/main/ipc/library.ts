@@ -2,6 +2,8 @@ import { ipcMain, shell } from "electron";
 import { IPC } from "@sift/ipc-contract";
 import type { MediaFilter } from "@sift/ipc-contract";
 import type { DownloadService } from "../services/download-service";
+import { absPath, bool, httpUrl, id, idArray, int, str } from "./validate";
+import { mediaFilter } from "./validate-payloads";
 
 /** Registers the `library:*` handlers (list/reveal/remove/detail/remove{Download,Transcript,Summary}/openExternal/search/exportPlaylist). Errors propagate. */
 export function registerLibraryIpc(service: DownloadService): void {
@@ -9,37 +11,56 @@ export function registerLibraryIpc(service: DownloadService): void {
   ipcMain.handle(
     IPC.libraryListPage,
     (_e, filter: MediaFilter, page: number, pageSize: number) =>
-      service.listPage(filter, page, pageSize),
+      service.listPage(
+        mediaFilter(filter),
+        int(page, "page", 0, 1_000_000),
+        int(pageSize, "pageSize", 1, 1000),
+      ),
   );
   ipcMain.handle(IPC.libraryFacets, () => service.facets());
   ipcMain.handle(IPC.libraryListIds, (_e, filter: MediaFilter) =>
-    service.listIds(filter),
+    service.listIds(mediaFilter(filter)),
   );
   ipcMain.handle(IPC.libraryReveal, (_event, path: string) => {
-    shell.showItemInFolder(path);
+    // showItemInFolder only selects a file in the OS file manager, but the argument
+    // still comes from the renderer — keep it to a well-formed absolute path.
+    shell.showItemInFolder(absPath(path, "path"));
   });
-  ipcMain.handle(IPC.libraryRemove, (_e, id: number) => service.remove(id));
-  ipcMain.handle(IPC.libraryDetail, (_e, id: number) => service.detail(id));
-  ipcMain.handle(IPC.libraryRemoveDownload, (_e, id: number) =>
-    service.removeDownload(id),
+  ipcMain.handle(IPC.libraryRemove, (_e, mediaId: number) =>
+    service.remove(id(mediaId, "mediaId")),
   );
-  ipcMain.handle(IPC.libraryRemoveTranscript, (_e, id: number) =>
-    service.removeTranscript(id),
+  ipcMain.handle(IPC.libraryDetail, (_e, mediaId: number) =>
+    service.detail(id(mediaId, "mediaId")),
   );
-  ipcMain.handle(IPC.libraryRemoveSummary, (_e, id: number) =>
-    service.removeSummary(id),
+  ipcMain.handle(IPC.libraryRemoveDownload, (_e, mediaId: number) =>
+    service.removeDownload(id(mediaId, "mediaId")),
+  );
+  ipcMain.handle(IPC.libraryRemoveTranscript, (_e, mediaId: number) =>
+    service.removeTranscript(id(mediaId, "mediaId")),
+  );
+  ipcMain.handle(IPC.libraryRemoveSummary, (_e, mediaId: number) =>
+    service.removeSummary(id(mediaId, "mediaId")),
   );
   ipcMain.handle(IPC.libraryOpenExternal, (_e, url: string) =>
-    shell.openExternal(url),
+    // SECURITY: openExternal hands the argument to the OS, which will launch whatever
+    // application claims the scheme. Renderer-side validation is not a boundary, so the
+    // http(s) check is repeated here.
+    shell.openExternal(httpUrl(url, "url")),
   );
   ipcMain.handle(
     IPC.librarySearch,
     (_e, query: string, includeText?: boolean) =>
-      service.search(query, includeText ?? false),
+      service.search(
+        str(query, "query", 1024),
+        bool(includeText ?? false, "includeText"),
+      ),
   );
   ipcMain.handle(
     IPC.libraryExportPlaylist,
     (_e, mediaIds: number[], name: string) =>
-      service.exportPlaylist(mediaIds, name),
+      service.exportPlaylist(
+        idArray(mediaIds, "mediaIds"),
+        str(name, "name", 200),
+      ),
   );
 }

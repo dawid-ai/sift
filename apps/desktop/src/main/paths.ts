@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
-import { branding } from "@sift/core";
+import { branding, isKeyedAiProviderId } from "@sift/core";
 
 /** Directory where managed binaries (yt-dlp, ffmpeg) are installed. Survives app updates. */
 export function binariesDir(): string {
@@ -30,6 +30,11 @@ export function downloadsConfigFile(): string {
   return join(app.getPath("userData"), "settings", "downloads.json");
 }
 
+/** Path to the persisted queue settings (concurrency + scheduled start, non-secret). */
+export function queueConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "queue.json");
+}
+
 /** Path to the persisted binary auto-update policy (auto|notify, non-secret). */
 export function binaryUpdatesConfigFile(): string {
   return join(app.getPath("userData"), "settings", "binary-updates.json");
@@ -40,8 +45,15 @@ export function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
 }
 
-/** Path to the encrypted-at-rest API key blob for a given provider. Survives app updates. */
+/** Path to the encrypted-at-rest API key blob for a given provider. Survives app updates.
+ *
+ * SECURITY: `providerId` originates in the renderer, so it is checked against the keyed
+ * provider allowlist rather than interpolated into a path. Without this, an id such as
+ * `../../config` escapes the secrets directory and lets a compromised renderer read or
+ * overwrite arbitrary files under userData. */
 export function secretsFile(providerId: string): string {
+  if (!isKeyedAiProviderId(providerId))
+    throw new Error(`Unknown AI provider: ${providerId}`);
   return join(app.getPath("userData"), "secrets", `${providerId}.key`);
 }
 

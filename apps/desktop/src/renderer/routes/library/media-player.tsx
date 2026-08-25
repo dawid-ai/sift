@@ -112,10 +112,15 @@ export const MediaPlayer = forwardRef<MediaPlayerHandle, MediaPlayerProps>(
     const [rate, setRate] = useState(
       () => Number(localStorage.getItem(SPEED_KEY)) || 1,
     );
-    const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
-      null,
-    );
     const [dragRect, setDragRect] = useState<FrameCrop | null>(null);
+    // The drag origin lives ONLY in a ref, and the rect is mirrored into one, because the
+    // pointer handlers cannot wait for a render. Playwright — and a real fast flick — deliver pointerdown, every pointermove and
+    // pointerup in one burst; if `onPointerMove` is gated on the `dragStart` STATE, React has
+    // not re-rendered yet, the prop is still undefined, every move is dropped, and pointerup
+    // reads the zero-size rect from pointerdown. The drag then silently does nothing. Refs
+    // are current inside the same burst; the state copies still drive the visible box.
+    const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+    const dragRectRef = useRef<FrameCrop | null>(null);
     // Transport state. Presentation only — the <video> element remains the source of truth.
     const [playing, setPlaying] = useState(false);
     const [muted, setMuted] = useState(false);
@@ -355,27 +360,33 @@ export const MediaPlayer = forwardRef<MediaPlayerHandle, MediaPlayerProps>(
                             e.pointerId,
                           );
                           const p = pointToFrac(e);
-                          setDragStart(p);
-                          setDragRect({ x: p.x, y: p.y, w: 0, h: 0 });
+                          dragStartRef.current = p;
+                          dragRectRef.current = { x: p.x, y: p.y, w: 0, h: 0 };
+                          setDragRect(dragRectRef.current);
                         }
                       : undefined
                   }
                   onPointerMove={
-                    cropEditing && dragStart
-                      ? (e) =>
-                          setDragRect(rectBetween(dragStart, pointToFrac(e)))
+                    cropEditing
+                      ? (e) => {
+                          const from = dragStartRef.current;
+                          if (!from) return;
+                          dragRectRef.current = rectBetween(
+                            from,
+                            pointToFrac(e),
+                          );
+                          setDragRect(dragRectRef.current);
+                        }
                       : undefined
                   }
                   onPointerUp={
                     cropEditing
                       ? () => {
-                          if (
-                            dragRect &&
-                            dragRect.w > 0.02 &&
-                            dragRect.h > 0.02
-                          )
-                            onCropDraw?.(dragRect);
-                          setDragStart(null);
+                          const r = dragRectRef.current;
+                          // Below this and it was a click, not a drag — a 1px box would
+                          // crop every frame down to nothing.
+                          if (r && r.w > 0.02 && r.h > 0.02) onCropDraw?.(r);
+                          dragStartRef.current = null;
                         }
                       : undefined
                   }

@@ -28,6 +28,7 @@ import {
 } from "@sift/db";
 import type { MediaMetadata, TranscriptRecord } from "@sift/ipc-contract";
 import { isAuthError } from "../auth/status";
+import { resolveOutputPath } from "./output-path";
 
 // Note: deliberately does NOT import `../paths` (which imports `electron`) — this
 // service must stay loadable under plain Node for its Vitest suite, mirroring
@@ -252,11 +253,15 @@ export class TranscriptService {
     if (!media) throw new Error("Media not found.");
     const dir = this.opts.downloadsDir();
     const base = buildOutputBaseName(media.uploader, media.title);
-    const path = join(
-      dir,
-      `${sanitizeFilename(`${base}__transcript-${row.provider_id}`)}.srt`,
-    );
     mkdirSync(dir, { recursive: true });
+    // Re-exporting the same transcript reuses the file (identical bytes); a different
+    // transcript for the same video gets its own, instead of overwriting the earlier one.
+    const path = resolveOutputPath(
+      dir,
+      sanitizeFilename(`${base}__transcript-${row.provider_id}`),
+      "srt",
+      srt,
+    );
     writeFileSync(path, srt, "utf8");
     return path;
   }

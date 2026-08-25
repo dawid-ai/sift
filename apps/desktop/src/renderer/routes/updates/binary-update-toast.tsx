@@ -78,7 +78,7 @@ export function BinaryUpdateToast({
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-50 flex w-[22rem] flex-col gap-2.5"
+      className="flex w-full flex-col gap-2.5"
       data-testid="binary-update-toast"
     >
       {notices.map((n) => {

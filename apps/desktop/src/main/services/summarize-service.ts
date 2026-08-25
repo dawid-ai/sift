@@ -1,5 +1,4 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import type { AiRegistry, TranscriptLine } from "@sift/core";
 import {
   assembleSummaryContent,
@@ -20,6 +19,7 @@ import {
   setSummaryFilePath,
 } from "@sift/db";
 import type { MediaMetadata, SummaryRecord } from "@sift/ipc-contract";
+import { resolveOutputPath } from "./output-path";
 
 // Note: deliberately does NOT import `../paths` (which imports `electron`) — this
 // service must stay loadable under plain Node for its Vitest suite, mirroring
@@ -181,11 +181,15 @@ export class SummarizeService {
     const prompt =
       row.prompt_id != null ? getPromptById(db, row.prompt_id) : undefined;
     const suffix = prompt ? prompt.name : "summary";
-    const path = join(
-      downloadsDir,
-      `${sanitizeFilename(`${base}__${suffix}`)}.md`,
-    );
     mkdirSync(downloadsDir, { recursive: true });
+    // Two summaries from the same prompt used to resolve to the same filename, so the
+    // second write destroyed the first and both database rows pointed at the newest file.
+    const path = resolveOutputPath(
+      downloadsDir,
+      sanitizeFilename(`${base}__${suffix}`),
+      "md",
+      row.text,
+    );
     writeFileSync(path, row.text, "utf8");
     return path;
   }

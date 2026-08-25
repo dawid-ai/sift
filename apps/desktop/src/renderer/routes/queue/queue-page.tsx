@@ -20,7 +20,7 @@ import {
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
-import type { QueueItem, QueueSpec } from "@sift/ipc-contract";
+import type { QueueConfig, QueueItem, QueueSpec } from "@sift/ipc-contract";
 import { Button } from "@/components/ui/button";
 import { QueueSpecControls } from "@/components/queue-spec-controls";
 import { FIELD } from "@/routes/settings/settings-page";
@@ -438,6 +438,24 @@ function specLine(s: QueueSpec | null): string {
     .join(" · ");
 }
 
+/** "02:30" → the next epoch ms at that local clock time. Resolving it here rather than in
+ * the main process keeps every timezone and DST question inside the one process that has a
+ * user-facing clock. */
+function nextOccurrence(clock: string): number {
+  const [h, m] = clock.split(":").map(Number);
+  const at = new Date();
+  at.setHours(h ?? 0, m ?? 0, 0, 0);
+  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+  return at.getTime();
+}
+
+/** Epoch ms → "02:30", for the `<input type="time">` value. */
+function toClock(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function QueuePage() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [urls, setUrls] = useState("");
@@ -495,6 +513,36 @@ export function QueuePage() {
      cost, 41px of disclosure chrome buying nothing. A click handler cannot be spoofed by the
      render, so intent now comes only from intent. */
   const [specOpen, setSpecOpen] = useState<boolean | null>(null);
+  /** Non-error feedback: duplicates skipped, items re-queued. Separate from `error` so a
+   * skipped duplicate never renders in the danger tone. */
+  const [notice, setNotice] = useState<string | null>(null);
+  const [config, setConfig] = useState<QueueConfig>({
+    concurrency: 1,
+    startAt: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.sift.queue.getConfig().then((c) => {
+      if (!cancelled) setConfig(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const failedCount = useMemo(
+    () =>
+      items.filter(
+        (i) =>
+          !!i.error ||
+          (i.ops &&
+            (["download", "transcript", "summarize"] as const).some(
+              (k) => i.ops![k] === "error",
+            )),
+      ).length,
+    [items],
+  );
   const specExpanded = specOpen ?? items.length === 0;
 
   /* What the textarea currently holds, parsed once. Both the submit and the CTA's enabled
@@ -511,11 +559,45 @@ export function QueuePage() {
 
   const add = async () => {
     setError(null);
+    setNotice(null);
     if (!spec) return;
     if (pending.length === 0) return;
     try {
-      await window.sift.queue.add(pending, spec);
+      const result = await window.sift.queue.add(pending, spec);
       setUrls("");
+      // A silently-dropped duplicate reads as a bug ("I pasted six, five arrived"), so say
+      // what happened rather than just clearing the box.
+      if (result.duplicates.length > 0) {
+        const n = result.duplicates.length;
+        setNotice(
+          `Added ${result.added}. Skipped ${n} URL${n === 1 ? "" : "s"} already in the queue.`,
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const retryAllFailed = async () => {
+    setError(null);
+    setNotice(null);
+    try {
+      const n = await window.sift.queue.retryFailed();
+      setNotice(
+        n === 0
+          ? "Nothing failed."
+          : `Re-queued ${n} failed item${n === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const applyConfig = async (next: QueueConfig) => {
+    setConfig(next);
+    try {
+      await window.sift.queue.setConfig(next);
+      setPaused(await window.sift.queue.isPaused());
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -677,7 +759,89 @@ export function QueuePage() {
               <Plus aria-hidden className="h-4 w-4" />
               Add to queue
             </Button>
+            {failedCount > 0 && (
+              <Button
+                data-testid="queue-retry-failed"
+                size="sm"
+                variant="outline"
+                onClick={retryAllFailed}
+              >
+                <RotateCw aria-hidden className="h-3.5 w-3.5" />
+                Retry {failedCount} failed
+              </Button>
+            )}
           </div>
+
+          {/* How the runner behaves, not what a batch contains — so it sits with the runner
+              controls rather than inside the per-batch spec above. */}
+          <div className="mt-4 flex flex-wrap items-end gap-5 border-t border-border pt-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="field-label">At once</span>
+              <select
+                data-testid="queue-concurrency"
+                aria-label="Items to run at once"
+                className={`h-9 rounded-lg border ${FIELD} px-2.5 text-[13px] text-foreground`}
+                value={config.concurrency}
+                onChange={(e) =>
+                  void applyConfig({
+                    ...config,
+                    concurrency: Number(e.target.value),
+                  })
+                }
+              >
+                {[1, 2, 3, 4].map((n) => (
+                  <option key={n} value={n}>
+                    {n === 1 ? "1 item" : `${n} items`}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="field-label">Start at</span>
+              <input
+                type="time"
+                data-testid="queue-start-at"
+                aria-label="Scheduled start time"
+                className={`h-9 rounded-lg border ${FIELD} px-2.5 text-[13px] text-foreground`}
+                value={config.startAt ? toClock(config.startAt) : ""}
+                onChange={(e) =>
+                  void applyConfig({
+                    ...config,
+                    startAt: e.target.value
+                      ? nextOccurrence(e.target.value)
+                      : null,
+                  })
+                }
+              />
+            </label>
+
+            {config.startAt && (
+              <p
+                data-testid="queue-scheduled"
+                className="pb-2 text-[13px] text-muted-foreground"
+              >
+                Paused until {new Date(config.startAt).toLocaleString()}.{" "}
+                <button
+                  type="button"
+                  data-testid="queue-clear-schedule"
+                  onClick={() => void applyConfig({ ...config, startAt: null })}
+                  className="underline decoration-foreground/35 underline-offset-[3px] hover:decoration-foreground"
+                >
+                  Clear
+                </button>
+              </p>
+            )}
+          </div>
+
+          {notice && (
+            <p
+              data-testid="queue-notice"
+              className="mt-3.5 rounded-xl border border-border bg-white/[0.03] px-4 py-3 text-sm text-muted-foreground"
+            >
+              {notice}
+            </p>
+          )}
 
           {error && (
             <p className="mt-3.5 rounded-xl border border-danger/25 bg-danger/12 px-4 py-3 text-sm text-danger">

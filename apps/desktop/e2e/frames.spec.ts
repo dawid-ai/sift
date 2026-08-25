@@ -13,6 +13,14 @@ test("extracts slide frames from a downloaded video and shows them", async () =>
 
   try {
     const window = await app.firstWindow();
+    // Pin the window to the CI virtual display's 1024x768. The app asks for 1200x800, a
+    // runner clamps it, and media detail then falls below the `lg` breakpoint into its
+    // stacked, scrolling layout — which is where the crop drag below broke and a local
+    // 2560px run could never see it. Other specs still run at the default size; if one of
+    // them ever disagrees with CI, this is the first thing to match.
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.setSize(1024, 768),
+    );
 
     // Download a fixture video (real tiny mp4 on disk) so frames:extract has a file to read.
     await window
@@ -70,6 +78,10 @@ test("extracts slide frames from a downloaded video and shows them", async () =>
     await window.getByTestId("media-detail-set-region").click();
     const overlay = window.getByTestId("media-detail-crop-overlay");
     await expect(overlay).toBeVisible();
+    // `boundingBox()` reports the full rect even where it runs off the bottom of the
+    // viewport, and `mouse.move` takes viewport coordinates and never scrolls — so on the
+    // stacked layout the drag was aimed below the fold and landed on nothing.
+    await overlay.scrollIntoViewIfNeeded();
     const box = (await overlay.boundingBox())!;
     await window.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
     await window.mouse.down();

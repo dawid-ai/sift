@@ -17,6 +17,7 @@ import { IPC, type MediaRecord } from "@sift/ipc-contract";
 import type { DownloadService } from "../services/download-service";
 import type { FfmpegRunner } from "../sidecars/ffmpeg";
 import { jpegSize, posterSeekSeconds } from "../local-file";
+import { absPath, int, num, obj, strArray } from "./validate";
 
 export interface ImportIpcDeps {
   getWindows: () => BrowserWindow[];
@@ -100,13 +101,27 @@ export function registerImportIpc(
     IPC.importLocal,
     async (
       _event,
-      input: {
+      raw: {
         path: string;
         durationSec?: number | null;
         height?: number | null;
         tags?: string[];
       },
-    ) => attachPoster(deps, input.path, await service.importLocal(input)),
+    ) => {
+      // The path is opened, probed by ffmpeg, and copied — validate before any of that.
+      const o = obj(raw, "input");
+      const input = {
+        path: absPath(o.path, "input.path"),
+        durationSec:
+          o.durationSec == null
+            ? null
+            : num(o.durationSec, "input.durationSec", 0, 1e7),
+        height:
+          o.height == null ? null : int(o.height, "input.height", 1, 20_000),
+        tags: strArray(o.tags ?? [], "input.tags", 100, 200),
+      };
+      return attachPoster(deps, input.path, await service.importLocal(input));
+    },
   );
 
   ipcMain.handle(IPC.importPick, async () => {

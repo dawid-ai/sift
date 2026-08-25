@@ -1,11 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
+import { writeFileAtomicSync } from "../atomic-write";
 
 // No `electron` import — stays Node-loadable for Vitest, mirroring transcript-config.ts.
 export interface DownloadsConfigDeps {
@@ -22,7 +17,7 @@ export interface DownloadsConfigDeps {
 const defaultFs: NonNullable<DownloadsConfigDeps["fs"]> = {
   existsSync,
   readFileSync,
-  writeFileSync,
+  writeFileSync: writeFileAtomicSync,
   rmSync,
   mkdirSync,
 };

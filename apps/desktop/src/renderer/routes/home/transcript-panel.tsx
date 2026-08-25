@@ -11,6 +11,7 @@ import {
   useVerticalOverflow,
 } from "@/routes/home/preview-card";
 import { cn } from "@/lib/utils";
+import { CopyButton } from "@/components/copy-button";
 
 export interface TranscriptPanelProps {
   transcript: TranscriptRecord;
@@ -66,6 +67,11 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
           <span className={cn(CHIP_SHELL, CHIP_STRONG)}>
             {transcript.providerId}
           </span>
+          <CopyButton
+            testId="transcript-copy"
+            label="Copy"
+            value={() => transcript.text}
+          />
         </div>
       </header>
 

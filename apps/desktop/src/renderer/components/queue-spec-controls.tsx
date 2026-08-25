@@ -46,6 +46,9 @@ const SELECT = `${SHAPE} ${SKIN} ${CONTROL_FOCUS} appearance-none pl-3 pr-9 disa
  * the first time — the moment one call site re-declares a rung, the rung has two definitions
  * and only one of them moves when the system does. Only the 8px gap is local, because that
  * belongs to the layout, not to the type. */
+/** A labelled column. The label is a `<span>`, not a `<label htmlFor>`, because some
+ * fields wrap a group of controls rather than one — so each control carries its own
+ * `aria-label`. axe's `select-name` rule (e2e/a11y.spec.ts) is what keeps that honest. */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col">
@@ -227,6 +230,7 @@ export function QueueSpecControls({
           <SelectShell>
             <select
               data-testid="queue-format"
+              aria-label="Format"
               className={SELECT}
               value={formatKind}
               onChange={(e) =>
@@ -242,6 +246,7 @@ export function QueueSpecControls({
           <SelectShell>
             <select
               data-testid="queue-maxres"
+              aria-label="Quality"
               className={SELECT}
               value={maxRes}
               onChange={(e) => setMaxRes(e.target.value)}
@@ -334,6 +339,7 @@ export function QueueSpecControls({
             <Field label="Provider">
               <SelectShell>
                 <select
+                  aria-label="Provider"
                   className={SELECT}
                   value={ai.selectedProviderId}
                   onChange={(e) => ai.setSelectedProviderId(e.target.value)}
@@ -349,6 +355,7 @@ export function QueueSpecControls({
             <Field label="Model">
               <SelectShell>
                 <select
+                  aria-label="Model"
                   className={SELECT}
                   value={ai.selectedModel}
                   onChange={(e) => ai.setSelectedModel(e.target.value)}
@@ -364,6 +371,7 @@ export function QueueSpecControls({
             <Field label="Prompt">
               <SelectShell>
                 <select
+                  aria-label="Prompt"
                   className={SELECT}
                   value={ai.selectedPromptId}
                   onChange={(e) =>

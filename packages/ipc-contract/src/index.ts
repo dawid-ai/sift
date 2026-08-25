@@ -5,6 +5,9 @@ export type { TranscriptMethod } from "@sift/core";
 export const IPC = {
   appGetVersion: "app:getVersion",
   appQuit: "app:quit",
+  appReadClipboardText: "app:readClipboardText",
+  diagnosticsGet: "diagnostics:get",
+  diagnosticsExport: "diagnostics:export",
   updateCheck: "update:check",
   updateDownload: "update:download",
   updateInstall: "update:install",
@@ -81,6 +84,9 @@ export const IPC = {
   queuePause: "queue:pause",
   queueResume: "queue:resume",
   queueIsPaused: "queue:isPaused",
+  queueGetConfig: "queue:getConfig",
+  queueSetConfig: "queue:setConfig",
+  queueRetryFailed: "queue:retryFailed",
   queueUpdate: "queue:update",
   channelAdd: "channel:add",
   channelList: "channel:list",
@@ -507,6 +513,20 @@ export interface QueueSpec {
   tags: string[];
 }
 
+/** Persisted queue behaviour. `startAt` is an absolute epoch ms so the main process never
+ * does clock arithmetic; the renderer resolves "start at 02:00" to the next occurrence. */
+export interface QueueConfig {
+  /** How many items run at once, 1..4. */
+  concurrency: number;
+  startAt: number | null;
+}
+
+/** What `queue.add` did: how many went in, and which URLs were already waiting. */
+export interface QueueAddResult {
+  added: number;
+  duplicates: string[];
+}
+
 export type QueueOpKey = "download" | "transcript" | "summarize";
 export type OpOutcome = "pending" | "running" | "done" | "error" | "skipped";
 
@@ -619,6 +639,18 @@ export interface SiftApi {
     getVersion(): Promise<string>;
     /** Quits the app (in-app Exit button). */
     quit(): Promise<void>;
+    /** The clipboard's plain text, trimmed and capped. Read in the main process because
+     * `navigator.clipboard.readText()` needs a focused document and a permission the
+     * renderer can be refused. Used only to offer a paste, never to act on one. */
+    readClipboardText(): Promise<string>;
+  };
+  diagnostics: {
+    /** A privacy-preserving snapshot of the install, for a bug report. Contains no keys,
+     * cookies, transcript text, media titles, or source URLs. */
+    get(): Promise<DiagnosticsReport>;
+    /** Writes the same snapshot to a file the user picks. Returns the path, or null if
+     * the save dialog was cancelled. */
+    export(): Promise<string | null>;
   };
   updates: {
     check(): Promise<void>;
@@ -690,6 +722,13 @@ export interface SiftApi {
     /** Opens the native file picker filtered to supported media extensions. Returns the
      * chosen absolute paths, or `[]` when cancelled. */
     pick(): Promise<string[]>;
+    /** The absolute path of a dropped `File`, or "" when it has none.
+     *
+     * Electron 32 removed the `File.path` property the drop handler used to read, and the
+     * failure mode was silent: `path` simply became `undefined` and every drop reported
+     * "couldn't read where this lives on disk". `webUtils.getPathForFile` is the
+     * replacement, and it must be called from the preload. Synchronous — no IPC. */
+    pathForFile(file: File): string;
   };
   ollama: {
     health(): Promise<boolean>;
@@ -769,8 +808,9 @@ export interface SiftApi {
     removeSite(domain: string): Promise<void>;
   };
   queue: {
-    /** Enqueues one item per URL with a shared spec. */
-    add(urls: string[], spec: QueueSpec): Promise<void>;
+    /** Enqueues one item per URL with a shared spec, skipping URLs already queued or
+     * running. Reports what went in and what was already there. */
+    add(urls: string[], spec: QueueSpec): Promise<QueueAddResult>;
     /** Current queue snapshot, in order. */
     list(): Promise<QueueItem[]>;
     /** Deletes a queue item (keeps any downloaded files). */
@@ -779,8 +819,13 @@ export interface SiftApi {
     reorder(id: number, dir: "up" | "down"): Promise<void>;
     /** Re-queues an item, re-running only its errored ops. */
     retry(id: number): Promise<void>;
-    /** Cancels a queued item (running item stops at the next op boundary). */
+    /** Cancels an item. A running download is killed, not left to finish. */
     cancel(id: number): Promise<void>;
+    /** Re-queues every item with a failed op. Returns how many were re-queued. */
+    retryFailed(): Promise<number>;
+    /** Concurrency and scheduled start. */
+    getConfig(): Promise<QueueConfig>;
+    setConfig(config: QueueConfig): Promise<void>;
     /** Stops picking new items (running item finishes). */
     pause(): Promise<void>;
     /** Resumes draining. */
@@ -926,4 +971,39 @@ export interface SiftApi {
       content: string;
     }): Promise<string>;
   };
+}
+
+/** One recorded warning/error kept for the support bundle. Never carries user content. */
+export interface DiagnosticEvent {
+  at: string;
+  level: "warn" | "error";
+  message: string;
+}
+
+/** The support-bundle payload. See `main/diagnostics.ts` for what is deliberately left out. */
+export interface DiagnosticsReport {
+  generatedAt: string;
+  app: { version: string; packaged: boolean; locale: string };
+  runtime: {
+    electron: string;
+    chrome: string;
+    node: string;
+    v8: string;
+    arch: string;
+  };
+  os: { type: string; release: string; totalMemMb: number };
+  display: { width: number; height: number; scaleFactor: number } | null;
+  paths: { userData: string; downloads: string };
+  storage: { databaseBytes: number | null; downloadsFreeBytes: number | null };
+  binaries: { name: string; installed: boolean; version: string | null }[];
+  library: {
+    media: number;
+    downloads: number;
+    transcripts: number;
+    summaries: number;
+    frames: number;
+  } | null;
+  security: { secureStorageAvailable: boolean; keyedProviders: string[] };
+  settings: Record<string, unknown>;
+  recentEvents: DiagnosticEvent[];
 }

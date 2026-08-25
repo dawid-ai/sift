@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0"
+    "better-sqlite3": "^13.0.3"
   },
   "devDependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",

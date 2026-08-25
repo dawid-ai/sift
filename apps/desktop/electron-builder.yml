@@ -1,10 +1,10 @@
 appId: app.sift.desktop
 productName: Sift
-# electron's devDependency range ("^31.4.0") isn't a fixed version, and electron-builder's
+# electron's devDependency range ("^43.4.1") isn't a fixed version, and electron-builder's
 # monorepo-unaware installed-version probe can't find node_modules/electron under pnpm's
 # hoisted root node_modules. Pin it explicitly to the version actually installed
 # (node -p "require('electron/package.json').version") so builds don't depend on probing.
-electronVersion: 31.7.7
+electronVersion: 43.4.1
 directories:
   output: dist
   buildResources: build
