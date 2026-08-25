@@ -212,42 +212,81 @@ export function TranscriptEditor({
         </p>
       )}
 
-      <ul className="scroll-thin flex max-h-[28rem] flex-col gap-1 overflow-y-auto pr-1">
+      <ul className="scroll-thin flex max-h-[28rem] flex-col gap-1.5 overflow-y-auto pr-1">
         {cues.map((cue, i) => {
           const speaker = speakerOf(cue) ?? "";
           return (
             <li
               key={i}
               data-testid="editor-cue"
-              className="grid grid-cols-[7rem_9rem_1fr_auto] items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-white/[0.03]"
+              className="flex flex-col gap-1.5 rounded-lg px-2 py-1.5 hover:bg-white/[0.03]"
             >
-              <div className="flex items-center gap-1">
+              {/* ponytail: stacked, not a fixed-column grid. The row lives in the detail
+                  page's narrow right column (~430px), where four fixed columns left the
+                  textarea ~40px wide and it rendered one word per line. Stacking works at
+                  400px and at 1200px without a second layout. */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* One start control, not two: the number input is seconds, and the
+                    m:ss beside it is the same value formatted. They used to sit on
+                    separate lines with no label between them. */}
+                <label className="flex flex-none items-center gap-1.5 text-[11px] text-foreground/55">
+                  Start
+                  <Input
+                    type="number"
+                    step="0.1"
+                    aria-label={`Start of cue ${i + 1} in seconds`}
+                    data-testid="editor-cue-start"
+                    className="h-8 w-[5.5rem] text-[11px] tabular-nums"
+                    value={cue.start}
+                    onChange={(e) =>
+                      apply(
+                        setSegmentTimes(
+                          cues,
+                          i,
+                          Number(e.target.value),
+                          cue.end,
+                        ),
+                      )
+                    }
+                  />
+                  <span className="tabular-nums text-foreground/35">
+                    s · {formatTimestamp(cue.start)}
+                  </span>
+                </label>
                 <Input
-                  type="number"
-                  step="0.1"
-                  aria-label={`Start of cue ${i + 1}`}
-                  data-testid="editor-cue-start"
-                  className="h-8 w-full text-[11px] tabular-nums"
-                  value={cue.start}
-                  onChange={(e) =>
-                    apply(
-                      setSegmentTimes(cues, i, Number(e.target.value), cue.end),
-                    )
-                  }
+                  aria-label={`Speaker for cue ${i + 1}`}
+                  data-testid="editor-cue-speaker"
+                  className="h-8 w-[9rem] flex-none text-[11px]"
+                  placeholder="Speaker"
+                  value={speaker}
+                  onChange={(e) => apply(setSpeaker(cues, i, e.target.value))}
                 />
+                <div className="ml-auto flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    aria-label={`Merge cue ${i + 1} into the one before it`}
+                    data-testid="editor-cue-merge"
+                    disabled={i === 0}
+                    className="rounded-md p-1 text-foreground/35 hover:text-foreground disabled:opacity-30"
+                    onClick={() => apply(mergeWithPrevious(cues, i))}
+                  >
+                    <Merge aria-hidden className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete cue ${i + 1}`}
+                    data-testid="editor-cue-delete"
+                    className="rounded-md p-1 text-foreground/35 hover:text-danger"
+                    onClick={() => apply(removeSegment(cues, i))}
+                  >
+                    <Trash2 aria-hidden className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-              <Input
-                aria-label={`Speaker for cue ${i + 1}`}
-                data-testid="editor-cue-speaker"
-                className="h-8 text-[11px]"
-                placeholder="Speaker"
-                value={speaker}
-                onChange={(e) => apply(setSpeaker(cues, i, e.target.value))}
-              />
               <textarea
                 aria-label={`Text of cue ${i + 1}`}
                 data-testid="editor-cue-text"
-                rows={1}
+                rows={2}
                 className={cn(
                   "min-h-8 w-full resize-y rounded-lg border border-border bg-surface-2/80 px-2.5 py-1.5",
                   "text-[12px] leading-relaxed text-foreground",
@@ -265,30 +304,6 @@ export function TranscriptEditor({
                   )
                 }
               />
-              <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  aria-label={`Merge cue ${i + 1} into the one before it`}
-                  data-testid="editor-cue-merge"
-                  disabled={i === 0}
-                  className="rounded-md p-1 text-foreground/35 hover:text-foreground disabled:opacity-30"
-                  onClick={() => apply(mergeWithPrevious(cues, i))}
-                >
-                  <Merge aria-hidden className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Delete cue ${i + 1}`}
-                  data-testid="editor-cue-delete"
-                  className="rounded-md p-1 text-foreground/35 hover:text-danger"
-                  onClick={() => apply(removeSegment(cues, i))}
-                >
-                  <Trash2 aria-hidden className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <span className="col-start-1 -mt-1 text-[10px] tabular-nums text-foreground/35">
-                {formatTimestamp(cue.start)}
-              </span>
             </li>
           );
         })}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AudioLines, Captions, Pencil, Search } from "lucide-react";
+import { AudioLines, Captions, Pencil, Scissors, Search } from "lucide-react";
 import type { MediaDetail } from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,9 @@ export function TranscriptPanel({
   // Clip selection: shift-click a second cue to extend the span, like a file list.
   const [clipFrom, setClipFrom] = useState<number | null>(null);
   const [clipTo, setClipTo] = useState<number | null>(null);
+  // Shift-click is the shortcut, but nothing advertised it. This toggle makes plain clicks
+  // set the span instead of seeking, so the feature is discoverable without a keyboard.
+  const [clipMode, setClipMode] = useState(false);
   const timed = transcripts.find((t) => t.segments.length > 0) ?? null;
   // A transcript with no timestamps (rare) can't drive the synced viewer — show its raw text.
   const fallbackText = !timed ? (transcripts[0]?.text ?? null) : null;
@@ -150,6 +153,30 @@ export function TranscriptPanel({
             {transcribeMode === "whisper"
               ? transcriptStageLabel(transcriptStage)
               : "Re-transcribe with Whisper"}
+          </Button>
+        )}
+        {timed && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className={
+              clipMode
+                ? "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                : GHOST_BUTTON
+            }
+            data-testid="transcript-clip-mode"
+            aria-pressed={clipMode}
+            data-active={clipMode ? "true" : undefined}
+            onClick={() => {
+              setClipMode((on) => !on);
+              if (clipMode) {
+                setClipFrom(null);
+                setClipTo(null);
+              }
+            }}
+          >
+            <Scissors className="h-3.5 w-3.5" aria-hidden />
+            {clipMode ? "Selecting clip…" : "Select clip"}
           </Button>
         )}
       </div>
@@ -307,12 +334,13 @@ export function TranscriptPanel({
                   data-testid="media-detail-transcript-segment"
                   data-active={active ? "true" : undefined}
                   onClick={(e) => {
-                    // Shift-click extends the clip span; a plain click seeks, which is what
-                    // this list has always done and must keep doing.
+                    // Shift-click extends the clip span in either mode; with "Select clip"
+                    // on, a plain click does the same. Off, a plain click seeks, which is
+                    // what this list has always done and must keep doing.
                     const index = timed.segments.findIndex(
                       (s) => s.start === seg.start && s.end === seg.end,
                     );
-                    if (e.shiftKey && index >= 0) {
+                    if ((e.shiftKey || clipMode) && index >= 0) {
                       if (clipFrom === null) setClipFrom(index);
                       else setClipTo(index);
                       return;
@@ -356,11 +384,13 @@ export function TranscriptPanel({
           survived the search filter, which is a different fact about a different set. */}
       {timed && (
         <p className="-mt-1 flex-none border-t border-white/[0.06] pt-3 text-[12px] leading-5 text-muted-foreground">
-          {!hasPlayer
-            ? "Download this video to jump to a line in the player."
-            : q === ""
-              ? "Click a line to jump the player."
-              : `${segments.length} matching ${segments.length === 1 ? "line" : "lines"} — click one to jump the player.`}
+          {clipMode
+            ? "Click a line to set the clip start, then another for the end. Select clip again to stop."
+            : !hasPlayer
+              ? "Download this video to jump to a line in the player."
+              : q === ""
+                ? "Click a line to jump the player. Shift-click two lines to select a clip."
+                : `${segments.length} matching ${segments.length === 1 ? "line" : "lines"} — click one to jump the player.`}
         </p>
       )}
 

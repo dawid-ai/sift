@@ -1732,6 +1732,14 @@ Migration 019 adds `collection`, `media_collection`, `saved_search`, and two col
 - `packages/core/src/clip/clip.ts` — `timestampedUrl` per platform (null when the platform
   has none, rather than a link that silently starts at zero) and `clipArgs`. `-ss` goes
   **before** `-i` so ffmpeg seeks instead of decoding from zero.
+- **Selecting a clip span in the UI** (`routes/library/transcript-panel.tsx`): shift-click two
+  transcript lines, or press **Select clip** (`data-testid="transcript-clip-mode"`) and click
+  them plainly. The toggle exists because nothing advertised the shortcut; shift-click keeps
+  working in both modes, and turning the toggle off clears a pending span. Selection state is
+  `clipFrom` / `clipTo` in that panel; `routes/library/clip-bar.tsx` renders the actions.
+- The cue rows in `routes/library/transcript-editor.tsx` are **stacked, not a fixed-column
+  grid** — the editor renders inside the detail page's right column (~430px), where four fixed
+  columns left the textarea about 40px wide.
 - `packages/core/src/export/presets.ts` — Markdown, HTML, JSON, CSV, Obsidian. CSV fields
   starting `=`, `+`, `-`, or `@` are tab-prefixed, since a spreadsheet reads those as a
   formula. PDF reuses the same `printToPDF` renderer the slides export uses.
