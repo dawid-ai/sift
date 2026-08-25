@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
   createReadStream,
   existsSync,
@@ -15,6 +17,7 @@ import {
   app,
   BrowserWindow,
   Menu,
+  net,
   protocol,
   safeStorage,
   screen,
@@ -36,7 +39,12 @@ import {
   SOURCES,
   type BinarySource,
 } from "@sift/binaries";
-import { IPC, type BinaryKind } from "@sift/ipc-contract";
+import {
+  IPC,
+  type BinaryKind,
+  type QueueConfig,
+  type TranscriptMethod,
+} from "@sift/ipc-contract";
 import { KEYED_AI_PROVIDER_IDS } from "@sift/core";
 import {
   backfillMediaChannelIds,
@@ -63,6 +71,12 @@ import { registerLibraryIpc } from "./ipc/library";
 import { registerTagsIpc } from "./ipc/tags";
 import { registerTranscriptIpc } from "./ipc/transcript";
 import { registerSummarizeIpc } from "./ipc/summarize";
+import { registerProfileIpc } from "./ipc/profile";
+import { registerStorageIpc } from "./ipc/storage";
+import { registerCollectionsIpc } from "./ipc/collections";
+import { registerExportClipIpc } from "./ipc/export-clip";
+import { ExportService } from "./services/export-service";
+import { ClipService } from "./services/clip-service";
 import { registerFramesIpc } from "./ipc/frames";
 import { registerAiProvidersIpc } from "./ipc/ai-providers";
 import { registerSettingsIpc } from "./ipc/settings";
@@ -99,26 +113,36 @@ import { createAnthropicProvider } from "./ai/anthropic-provider";
 import { createOpenAiProvider } from "./ai/openai-provider";
 import { createOllamaProvider } from "./ai/ollama-provider";
 import { createClaudeCliProvider } from "./ai/claude-cli-provider";
-import { createCustomConfigStore } from "./ai/custom-config";
-import { createAiDefaultConfigStore } from "./settings/ai-default-config";
+import { createCustomConfigStore, type CustomConfig } from "./ai/custom-config";
+import {
+  createAiDefaultConfigStore,
+  type AiDefaultConfig,
+} from "./settings/ai-default-config";
 import { createTranscriptConfigStore } from "./settings/transcript-config";
 import { createTranscriptMethodStore } from "./settings/transcript-method-config";
 import { createAutoTranscriptStore } from "./settings/auto-transcript-config";
 import { createDownloadsConfigStore } from "./settings/downloads-config";
 import { createQueueConfigStore } from "./settings/queue-config";
-import { createBinaryUpdatesConfigStore } from "./settings/binary-updates-config";
+import { createNetworkConfigStore } from "./settings/network-config";
+import { check as profileCheck, type ProfileSlot } from "./services/profile";
+import {
+  createBinaryUpdatesConfigStore,
+  type BinaryUpdatePolicy,
+} from "./settings/binary-updates-config";
 import { runStartupBinaryMaintenance } from "./services/binary-update-orchestrator";
 import { createSecrets } from "./secrets";
 import { createDiagnostics } from "./diagnostics";
 import { resetStaleDownloads } from "./maintenance";
 import {
   binariesDir,
+  framesRootDir,
   binaryUpdatesConfigFile,
   cookiesFile,
   customConfigFile,
   aiDefaultConfigFile,
   downloadsConfigFile,
   downloadsDir,
+  networkConfigFile,
   queueConfigFile,
   framesDir,
   tessdataDir,
@@ -487,6 +511,9 @@ function fixtureWhisperProvider(): TranscriptProvider {
 /** Renders self-contained HTML to a PDF buffer via a hidden BrowserWindow (no new dep).
  * Loads from a temp file rather than a data: URL — embedded slide images make the HTML
  * multi-MB, past comfortable data-URL limits. */
+/** Promise form of execFile, for the ffmpeg calls the clip service makes. */
+const execFileAsync = promisify(execFile);
+
 async function renderPdf(html: string): Promise<Buffer> {
   const tmp = join(app.getPath("temp"), `sift-doc-${randomUUID()}.html`);
   writeFileSync(tmp, html, "utf8");
@@ -971,11 +998,40 @@ app.whenReady().then(() => {
       });
     }
 
+    const queueConfigStore = createQueueConfigStore({
+      filePath: queueConfigFile(),
+    });
+
+    // Proxy config. One stored URL drives three consumers: yt-dlp's `--proxy`, Chromium's
+    // session (which covers the renderer and anything on `net.fetch`), and `aiFetch` below.
+    const networkConfigStore = createNetworkConfigStore({
+      filePath: networkConfigFile(),
+    });
+    const applyProxy = (url: string): void => {
+      void session.defaultSession
+        .setProxy(url ? { proxyRules: url } : { mode: "direct" })
+        .catch((e: unknown) => console.warn("Failed to apply proxy:", e));
+    };
+    applyProxy(networkConfigStore.get());
+
+    // Transport handed to the remote AI SDKs. Node's global fetch ignores the Chromium
+    // session proxy, so a configured proxy has to go through `net.fetch` instead; with no
+    // proxy this is the SDKs' own default path. Checked per request, so changing the
+    // setting takes effect without rebuilding the providers.
+    const aiFetch: typeof globalThis.fetch = (input, init) =>
+      networkConfigStore.get()
+        ? (net.fetch(
+            input as Parameters<typeof net.fetch>[0],
+            init,
+          ) as ReturnType<typeof globalThis.fetch>)
+        : globalThis.fetch(input, init);
+
     const runner = e2eFixtureDir
       ? fixtureYtDlpRunner()
       : createYtDlpRunner({
           getBinaryPath: () => assetPath("ytdlp"),
           getJsRuntimePath: () => assetPath("deno"),
+          getProxy: () => networkConfigStore.get(),
         });
 
     // e2e: an in-memory jar (no real Electron session/window/fs). Seeded signed-in so
@@ -1086,8 +1142,9 @@ app.whenReady().then(() => {
       ffmpeg: createFfmpegRunner({ getBinaryPath: () => assetPath("ffmpeg") }),
       postersDir,
     });
-    registerLibraryIpc(downloadService);
+    registerLibraryIpc(downloadService, getDb);
     registerTagsIpc(getDb());
+    registerCollectionsIpc(getDb);
 
     const transcriptConfigStore = createTranscriptConfigStore({
       filePath: transcriptConfigFile(),
@@ -1157,7 +1214,14 @@ app.whenReady().then(() => {
       transcriptMethodStore,
       autoTranscriptStore,
     );
-    registerSettingsIpc(transcriptConfigStore);
+    registerSettingsIpc(transcriptConfigStore, {
+      get: () => networkConfigStore.get(),
+      set: (url) => {
+        const stored = networkConfigStore.set(url);
+        applyProxy(stored);
+        return stored;
+      },
+    });
 
     // One encrypted secrets store per keyed provider (anthropic, openai, custom),
     // memoized so repeated IPC calls for the same provider reuse the same instance
@@ -1194,10 +1258,14 @@ app.whenReady().then(() => {
     const rebuild = (providerId: string, key: string): void => {
       switch (providerId) {
         case "anthropic":
-          aiRegistry.register(createAnthropicProvider({ apiKey: key }));
+          aiRegistry.register(
+            createAnthropicProvider({ apiKey: key, fetch: aiFetch }),
+          );
           break;
         case "openai":
-          aiRegistry.register(createOpenAiProvider({ apiKey: key }));
+          aiRegistry.register(
+            createOpenAiProvider({ apiKey: key, fetch: aiFetch }),
+          );
           break;
         case "custom": {
           // custom is the OpenAI provider pointed at a user base_url with a
@@ -1209,6 +1277,7 @@ app.whenReady().then(() => {
               createOpenAiProvider({
                 apiKey: key,
                 baseURL: cfg.baseUrl,
+                fetch: aiFetch,
                 id: "custom",
                 label: "Custom (OpenAI-compatible)",
                 models: [{ id: cfg.model, label: cfg.model }],
@@ -1236,13 +1305,18 @@ app.whenReady().then(() => {
       );
     } else {
       const apiKey = secretsFor("anthropic").getKey();
-      if (apiKey) aiRegistry.register(createAnthropicProvider({ apiKey }));
+      if (apiKey)
+        aiRegistry.register(
+          createAnthropicProvider({ apiKey, fetch: aiFetch }),
+        );
       // else: no provider registered until the user sets a key; summarize.start
       // throws "Unknown AI provider" → UI prompts to add a key
 
       const openaiKey = secretsFor("openai").getKey();
       if (openaiKey)
-        aiRegistry.register(createOpenAiProvider({ apiKey: openaiKey }));
+        aiRegistry.register(
+          createOpenAiProvider({ apiKey: openaiKey, fetch: aiFetch }),
+        );
 
       // Ollama is local + keyless — always registered, unlike the keyed providers
       // above which wait for a stored secret. Reachability is only checked when
@@ -1260,6 +1334,7 @@ app.whenReady().then(() => {
           createOpenAiProvider({
             apiKey: customKey,
             baseURL: customConfig.baseUrl,
+            fetch: aiFetch,
             id: "custom",
             label: "Custom (OpenAI-compatible)",
             models: [{ id: customConfig.model, label: customConfig.model }],
@@ -1275,6 +1350,122 @@ app.whenReady().then(() => {
         : () => downloadsConfigStore.get(),
     });
     registerSummarizeIpc(summarizeService, () => BrowserWindow.getAllWindows());
+
+    // Portable settings profile. Every store is already a `{ get, set }` pair, so a slot is
+    // that pair plus a shape check. Deliberately absent: API keys (safeStorage-encrypted per
+    // machine, so a copy wouldn't decrypt elsewhere), sign-in cookies, and the library.
+    const profileSlots = (): ProfileSlot[] => [
+      {
+        key: "transcriptLanguages",
+        read: () => transcriptConfigStore.get(),
+        check: profileCheck.stringArray,
+        write: (v) => transcriptConfigStore.set(v as string[]),
+      },
+      {
+        key: "transcriptMethod",
+        read: () => transcriptMethodStore.get(),
+        check: profileCheck.oneOf("auto", "prefer_whisper", "captions_only"),
+        write: (v) => transcriptMethodStore.set(v as TranscriptMethod),
+      },
+      {
+        key: "autoTranscript",
+        read: () => autoTranscriptStore.get(),
+        check: profileCheck.boolean,
+        write: (v) => autoTranscriptStore.set(v as boolean),
+      },
+      {
+        key: "aiDefault",
+        read: () => aiDefaultStore.get(),
+        check: profileCheck.objectOrNull,
+        write: (v) => aiDefaultStore.set(v as AiDefaultConfig | null),
+      },
+      {
+        key: "downloadsPath",
+        read: () => downloadsConfigStore.get(),
+        check: profileCheck.string,
+        write: (v) => downloadsConfigStore.set(v as string),
+      },
+      {
+        key: "queue",
+        read: () => queueConfigStore.get(),
+        check: profileCheck.object,
+        write: (v) => queueConfigStore.set(v as QueueConfig),
+      },
+      {
+        key: "binaryUpdates",
+        read: () => binaryUpdatesStore.get(),
+        check: profileCheck.oneOf("auto", "notify"),
+        write: (v) => binaryUpdatesStore.set(v as BinaryUpdatePolicy),
+      },
+      {
+        key: "proxyUrl",
+        read: () => networkConfigStore.get(),
+        check: profileCheck.string,
+        write: (v) => {
+          applyProxy(networkConfigStore.set(v as string));
+        },
+      },
+      {
+        // The custom endpoint's base_url + model, not its key.
+        key: "customEndpoint",
+        read: () => customConfigStore.get(),
+        check: profileCheck.object,
+        write: (v) => customConfigStore.set(v as CustomConfig),
+      },
+    ];
+    registerProfileIpc({
+      slots: profileSlots,
+      getDb,
+      getWindows: () => BrowserWindow.getAllWindows(),
+    });
+
+    // Export presets and clips. Both reuse machinery that already exists: the PDF path is the
+    // same `printToPDF` renderer the slides export uses, and the clip cutter is the managed
+    // ffmpeg binary.
+    const exportService = new ExportService({
+      db: getDb(),
+      outputDir: () => downloadsConfigStore.get(),
+      renderPdf,
+    });
+    const clipService = new ClipService({
+      db: getDb(),
+      outputDir: () => downloadsConfigStore.get(),
+      runFfmpeg: async (args) => {
+        const path = assetPath("ffmpeg");
+        if (!path)
+          throw new Error(
+            "Clipping needs ffmpeg — install it in Settings → Binaries.",
+          );
+        await execFileAsync(path, args, { maxBuffer: 1024 * 1024 * 16 });
+      },
+    });
+    registerExportClipIpc({
+      getDb,
+      exportService: () => exportService,
+      clipService: () => clipService,
+    });
+
+    registerStorageIpc({
+      dirs: () => ({
+        thumbnails: thumbnailsDir(),
+        posters: postersDir(),
+        frames: framesRootDir(),
+        whisperModels: whisperModelsDir(),
+        binaries: binariesDir(),
+        tesseract: tesseractCacheDir(),
+        databaseFile: join(app.getPath("userData"), "sift.db"),
+        downloadsDir: downloadsConfigStore.get(),
+      }),
+      getDb,
+      getWindows: () => BrowserWindow.getAllWindows(),
+      freeDiskBytes: (path) => {
+        try {
+          return statfsSync(path).bavail * statfsSync(path).bsize;
+        } catch {
+          return null;
+        }
+      },
+    });
 
     // Slide/data-frame extraction: reuses the managed ffmpeg binary; OCR via a lazily
     // created Tesseract worker per run. langPath points at the bundled eng.traineddata
@@ -1316,7 +1507,7 @@ app.whenReady().then(() => {
           win.webContents.send(IPC.queueUpdate, items);
         }
       },
-      config: createQueueConfigStore({ filePath: queueConfigFile() }),
+      config: queueConfigStore,
     });
     registerQueueIpc(queueWorker);
     // Re-queue anything left 'running' by a crash, then drain in the background.
@@ -1340,6 +1531,8 @@ app.whenReady().then(() => {
         autoTranscript: autoTranscriptStore.get(),
         aiDefault: aiDefaultStore.get(),
         customEndpointConfigured: !!customConfigStore.get(),
+        // A boolean, never the URL — a proxy URL can carry credentials.
+        proxyConfigured: networkConfigStore.get().length > 0,
         downloadsPathIsDefault: downloadsConfigStore.get() === downloadsDir(),
       }),
     };

@@ -32,11 +32,16 @@ export interface AnthropicClientLike {
 
 export function createAnthropicProvider(deps: {
   apiKey: string;
+  /** Transport override. Set only when a proxy is configured — main passes Electron's
+   * `net.fetch`, which routes through the session proxy; Node's global fetch does not.
+   * Kept as a dep so this module stays free of `electron` and Node-loadable for Vitest. */
+  fetch?: typeof globalThis.fetch;
   clientFactory?: (apiKey: string) => AnthropicClientLike;
 }): AiProvider {
-  const { apiKey } = deps;
+  const { apiKey, fetch } = deps;
   const clientFactory: (apiKey: string) => AnthropicClientLike =
-    deps.clientFactory ?? ((k) => new Anthropic({ apiKey: k }));
+    deps.clientFactory ??
+    ((k) => new Anthropic({ apiKey: k, ...(fetch ? { fetch } : {}) }));
 
   return {
     id: ANTHROPIC_ID,

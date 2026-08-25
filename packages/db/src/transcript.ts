@@ -62,6 +62,23 @@ export function setTranscriptFilePath(
   });
 }
 
+/**
+ * Replaces a transcript's text and segments after an edit.
+ *
+ * Both together, never one: `text` is what the FTS index and the AI summary prompt read, and
+ * `segments_json` is what the synced viewer and every timed export read. Writing one without
+ * the other leaves a video whose search results disagree with its transcript.
+ */
+export function updateTranscriptContent(
+  db: SiftDatabase,
+  id: number,
+  content: { text: string; segments_json: string | null },
+): void {
+  db.prepare(
+    "UPDATE transcript SET text = @text, segments_json = @segments_json WHERE id = @id",
+  ).run({ id, text: content.text, segments_json: content.segments_json });
+}
+
 export function deleteTranscript(db: SiftDatabase, id: number): void {
   db.prepare("DELETE FROM transcript WHERE id = ?").run(id);
 }

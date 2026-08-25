@@ -15,6 +15,7 @@ import type {
   QueueConfig,
   QueueSpec,
 } from "@sift/ipc-contract";
+import type { TranscriptSegment } from "@sift/core";
 import type { FrameCrop } from "@sift/db";
 import {
   bool,
@@ -59,7 +60,78 @@ export function mediaFilter(v: unknown): MediaFilter {
       f.excludeTags == null
         ? null
         : strArray(f.excludeTags, "filter.excludeTags", 200, 200),
+    publishedFrom: nullableInt(
+      f.publishedFrom,
+      "filter.publishedFrom",
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    publishedTo: nullableInt(
+      f.publishedTo,
+      "filter.publishedTo",
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    // A day of seconds is the ceiling for a sane duration bound; anything longer is a typo
+    // and would only ever match nothing.
+    durationMin: nullableInt(
+      f.durationMin,
+      "filter.durationMin",
+      0,
+      86_400 * 30,
+    ),
+    durationMax: nullableInt(
+      f.durationMax,
+      "filter.durationMax",
+      0,
+      86_400 * 30,
+    ),
+    favourite:
+      f.favourite == null ? null : bool(f.favourite, "filter.favourite"),
+    collectionId:
+      f.collectionId == null ? null : id(f.collectionId, "filter.collectionId"),
+    missing:
+      f.missing == null
+        ? null
+        : oneOf<NonNullable<MediaFilter["missing"]>>(
+            f.missing,
+            "filter.missing",
+            ["transcript", "summary", "download"],
+          ),
+    downloadStatus:
+      f.downloadStatus == null
+        ? null
+        : oneOf(f.downloadStatus, "filter.downloadStatus", [
+            "none",
+            "downloading",
+            "done",
+            "error",
+          ]),
   };
+}
+
+/**
+ * Transcript segments coming back from the editor.
+ *
+ * Capped at 100k cues — a ten-hour transcript is well under that, and an unbounded array is
+ * written straight into a database row. Text is capped per cue for the same reason.
+ */
+export function transcriptSegments(v: unknown): TranscriptSegment[] {
+  if (!Array.isArray(v))
+    throw new Error('Invalid IPC argument "segments": expected an array.');
+  if (v.length > 100_000)
+    throw new Error('Invalid IPC argument "segments": too many cues.');
+  return v.map((raw, i) => {
+    const o = obj(raw, `segments[${i}]`);
+    const start = num(o.start, `segments[${i}].start`, 0, 86_400 * 30);
+    const end = num(o.end, `segments[${i}].end`, 0, 86_400 * 30);
+    return {
+      start,
+      // A cue whose end precedes its start would break every downstream serialiser.
+      end: Math.max(start, end),
+      text: str(o.text, `segments[${i}].text`, 10_000),
+    };
+  });
 }
 
 /** A yt-dlp format choice. `selector` becomes an argv value for the `-f` flag, so it is

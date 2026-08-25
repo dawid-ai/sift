@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AudioLines, Captions, Search } from "lucide-react";
+import { AudioLines, Captions, Pencil, Search } from "lucide-react";
 import type { MediaDetail } from "@sift/ipc-contract";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { activeSegmentIndex, formatTimestamp } from "@/lib/transcript-view";
 // The Files tab owns the one wording for a transcript's language; this panel lists the same
 // records, so it reads them from there instead of printing the raw code.
 import { languageName } from "./files-panel";
+import { TranscriptEditor } from "./transcript-editor";
+import { ClipBar } from "./clip-bar";
 
 /** Which transcript job (if any) this view kicked off — lets only the clicked button show a
  * progress label while the other merely disables. */
@@ -49,6 +51,10 @@ export interface TranscriptPanelProps {
   onRetranscribe: () => void;
   onRemoveTranscript: (id: number) => void;
   onExportSrt: (id: number) => void;
+  /** Owning media id — the clip actions need it. */
+  mediaId: number;
+  /** Called after an edit is saved, so the detail view refetches. */
+  onTranscriptEdited?: () => void;
 }
 
 /** The single transcript view: a synced, searchable segment list. Clicking a segment seeks the
@@ -68,8 +74,14 @@ export function TranscriptPanel({
   onRetranscribe,
   onRemoveTranscript,
   onExportSrt,
+  mediaId,
+  onTranscriptEdited,
 }: TranscriptPanelProps) {
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  // Clip selection: shift-click a second cue to extend the span, like a file list.
+  const [clipFrom, setClipFrom] = useState<number | null>(null);
+  const [clipTo, setClipTo] = useState<number | null>(null);
   const timed = transcripts.find((t) => t.segments.length > 0) ?? null;
   // A transcript with no timestamps (rare) can't drive the synced viewer — show its raw text.
   const fallbackText = !timed ? (transcripts[0]?.text ?? null) : null;
@@ -209,6 +221,19 @@ export function TranscriptPanel({
                 <Button
                   size="sm"
                   variant="ghost"
+                  className={GHOST_BUTTON}
+                  data-testid={`transcript-edit-${t.id}`}
+                  disabled={busy || t.segments.length === 0}
+                  onClick={() =>
+                    setEditingId((cur) => (cur === t.id ? null : t.id))
+                  }
+                >
+                  <Pencil aria-hidden className="mr-1.5 h-3.5 w-3.5" />
+                  {editingId === t.id ? "Close editor" : "Edit"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
                   data-testid="media-detail-transcript-remove"
                   onClick={() => onRemoveTranscript(t.id)}
                   className={DANGER_GHOST_BUTTON}
@@ -221,7 +246,35 @@ export function TranscriptPanel({
         </div>
       )}
 
-      {timed && (
+      {editingId !== null &&
+        (() => {
+          const target = transcripts.find((t) => t.id === editingId);
+          return target ? (
+            <TranscriptEditor
+              transcript={target}
+              onCancel={() => setEditingId(null)}
+              onSaved={() => {
+                setEditingId(null);
+                onTranscriptEdited?.();
+              }}
+            />
+          ) : null;
+        })()}
+
+      {timed && clipFrom !== null && (
+        <ClipBar
+          mediaId={mediaId}
+          cues={timed.segments}
+          fromIndex={clipFrom}
+          toIndex={clipTo ?? clipFrom}
+          onClear={() => {
+            setClipFrom(null);
+            setClipTo(null);
+          }}
+        />
+      )}
+
+      {timed && editingId === null && (
         <div className="flex min-h-0 flex-1 flex-col gap-2.5">
           <div className="relative flex-none">
             <Search
@@ -253,7 +306,19 @@ export function TranscriptPanel({
                   type="button"
                   data-testid="media-detail-transcript-segment"
                   data-active={active ? "true" : undefined}
-                  onClick={() => onSeek(seg.start)}
+                  onClick={(e) => {
+                    // Shift-click extends the clip span; a plain click seeks, which is what
+                    // this list has always done and must keep doing.
+                    const index = timed.segments.findIndex(
+                      (s) => s.start === seg.start && s.end === seg.end,
+                    );
+                    if (e.shiftKey && index >= 0) {
+                      if (clipFrom === null) setClipFrom(index);
+                      else setClipTo(index);
+                      return;
+                    }
+                    onSeek(seg.start);
+                  }}
                   className={`flex w-full items-baseline gap-3 border-b border-l-2 border-b-white/[0.05] px-3.5 py-2.5 text-left text-sm leading-relaxed transition-colors last:border-b-0 ${
                     active
                       ? "border-l-primary bg-primary/[0.10] text-foreground"

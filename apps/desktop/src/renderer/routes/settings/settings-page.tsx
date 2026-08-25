@@ -20,10 +20,13 @@ import {
   KeyRound,
   Languages,
   Laptop,
+  HardDrive,
   LifeBuoy,
   MessageSquareText,
   Mic,
   Package,
+  Network,
+  PackageOpen,
   RefreshCw,
   SlidersHorizontal,
   Sparkles,
@@ -46,6 +49,9 @@ import { SigninSection } from "./signin-section";
 import { TranscriptLanguageSection } from "./transcript-language-section";
 import { TranscriptMethodSection } from "./transcript-method-section";
 import { AutoTranscriptSection } from "./auto-transcript-section";
+import { NetworkSection } from "./network-section";
+import { ProfileSection } from "./profile-section";
+import { StorageSection } from "./storage-section";
 import { UpdatesSection } from "./updates-section";
 import { WhisperSection } from "./whisper-section";
 
@@ -1039,6 +1045,30 @@ export function SettingsPage({ updateState }: { updateState: UpdateState }) {
                   description={`Check for a new version of ${branding.appName}.`}
                 >
                   <UpdatesSection updateState={updateState} />
+                </SettingsSection>
+                <SettingsSection
+                  icon={HardDrive}
+                  eyebrow="DISK"
+                  title="Storage"
+                  description="What is using space, and what can be cleared without losing anything."
+                >
+                  <StorageSection />
+                </SettingsSection>
+                <SettingsSection
+                  icon={PackageOpen}
+                  eyebrow="PORTABILITY"
+                  title="Settings profile"
+                  description="Move your setup to another machine, or restore it after a reinstall."
+                >
+                  <ProfileSection />
+                </SettingsSection>
+                <SettingsSection
+                  icon={Network}
+                  eyebrow="CONNECTION"
+                  title="Proxy"
+                  description="Route downloads and remote AI calls through a proxy on your network."
+                >
+                  <NetworkSection />
                 </SettingsSection>
                 <SettingsSection
                   icon={LifeBuoy}

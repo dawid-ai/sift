@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { ArrowDown, ExternalLink, Sparkles, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ExternalLink,
+  Pin,
+  Sparkles,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { LOCAL_PLATFORM_ID } from "@sift/core";
 import type { MediaListItem, SearchHit } from "@sift/ipc-contract";
 import { TagChip } from "@/components/tag-chip";
@@ -172,6 +179,13 @@ export interface LibraryTableProps {
   onOpenChannel?: (mediaId: number) => void;
   hits?: Map<number, SearchHit> | null;
   query?: string;
+  /** Selection for bulk actions. Omitted → no checkbox column at all. */
+  selected?: Set<number>;
+  onToggleSelect?: (id: number) => void;
+  onToggleSelectAll?: () => void;
+  /** Favourite + pin toggles. Omitted → the flag column is not rendered. */
+  onToggleFavourite?: (id: number, next: boolean) => void;
+  onTogglePinned?: (id: number, next: boolean) => void;
 }
 
 /** Table-first library view: one row per media item, with format/transcript/summary counts
@@ -185,7 +199,17 @@ export function LibraryTable({
   onOpenChannel,
   hits,
   query,
+  selected,
+  onToggleSelect,
+  onToggleSelectAll,
+  onToggleFavourite,
+  onTogglePinned,
 }: LibraryTableProps) {
+  const selectable = !!selected && !!onToggleSelect;
+  const allSelected =
+    selectable &&
+    items.length > 0 &&
+    items.every((i) => selected.has(i.media.id));
   return (
     // min-w keeps eight columns from crushing in a narrow window — the panel's scroller
     // takes the overflow instead of the cells.
@@ -197,6 +221,18 @@ export function LibraryTable({
     >
       <thead>
         <tr>
+          {selectable && (
+            <th className={cn(TH, "w-8 pl-4 text-left")}>
+              <input
+                type="checkbox"
+                data-testid="library-select-all"
+                aria-label="Select every row on this page"
+                className="h-3.5 w-3.5 accent-primary"
+                checked={allSelected}
+                onChange={() => onToggleSelectAll?.()}
+              />
+            </th>
+          )}
           <th className={cn(TH, "pl-4 text-left")}>Video</th>
           <th className={cn(TH, "text-left")}>Channel</th>
           <th className={cn(TH, "text-right")}>Length</th>
@@ -242,6 +278,10 @@ export function LibraryTable({
             onOpenChannel={onOpenChannel}
             hit={hits?.get(item.media.id)}
             query={query}
+            checked={selectable ? selected.has(item.media.id) : undefined}
+            onToggleSelect={selectable ? onToggleSelect : undefined}
+            onToggleFavourite={onToggleFavourite}
+            onTogglePinned={onTogglePinned}
           />
         ))}
       </tbody>
@@ -251,6 +291,10 @@ export function LibraryTable({
 
 interface LibraryRowProps {
   item: MediaListItem;
+  checked?: boolean;
+  onToggleSelect?: (id: number) => void;
+  onToggleFavourite?: (id: number, next: boolean) => void;
+  onTogglePinned?: (id: number, next: boolean) => void;
   onOpen: (id: number) => void;
   onRemove: (id: number) => void;
   onTagClick: (name: string) => void;
@@ -264,6 +308,10 @@ interface LibraryRowProps {
 /** A single row, with its own inline-confirm state for Remove (mirrors MediaCard). */
 function LibraryRow({
   item,
+  checked,
+  onToggleSelect,
+  onToggleFavourite,
+  onTogglePinned,
   onOpen,
   onRemove,
   onTagClick,
@@ -319,6 +367,18 @@ function LibraryRow({
           : "hover:bg-foreground/[0.03]",
       )}
     >
+      {onToggleSelect && (
+        <td className={cn(TD, "pl-4")}>
+          <input
+            type="checkbox"
+            data-testid="library-row-select"
+            aria-label={`Select ${media.title}`}
+            className="h-3.5 w-3.5 accent-primary"
+            checked={checked ?? false}
+            onChange={() => onToggleSelect(media.id)}
+          />
+        </td>
+      )}
       <td className={cn(TD, "pl-4")}>
         {/* `items-center`: the cell is one 28px band and the title is a 20px line box inside it,
             so the line has to be centred against the poster or it sits 4px above every other
@@ -614,6 +674,59 @@ function LibraryRow({
           the buttons centre in it on their own. */}
       <td className={cn(TD, "pr-4")}>
         <div className="flex items-center justify-end gap-1.5">
+          {/* Icon toggles rather than buttons with words: they are per-row state, not actions
+              on the row, and eight rows of "Favourite"/"Pin" would out-shout Details. */}
+          {onToggleFavourite && (
+            <button
+              type="button"
+              data-testid="media-favourite"
+              aria-label={
+                item.favourite
+                  ? `Remove ${media.title} from favourites`
+                  : `Add ${media.title} to favourites`
+              }
+              aria-pressed={item.favourite}
+              className={cn(
+                "rounded-md p-1 transition-colors",
+                item.favourite
+                  ? "text-primary"
+                  : "text-foreground/30 hover:text-foreground/70",
+              )}
+              onClick={() => onToggleFavourite(media.id, !item.favourite)}
+            >
+              <Star
+                aria-hidden
+                className={cn("h-3.5 w-3.5", item.favourite && "fill-current")}
+              />
+            </button>
+          )}
+          {onTogglePinned && (
+            <button
+              type="button"
+              data-testid="media-pin"
+              aria-label={
+                item.pinnedAt === null
+                  ? `Pin ${media.title} to the top`
+                  : `Unpin ${media.title}`
+              }
+              aria-pressed={item.pinnedAt !== null}
+              className={cn(
+                "rounded-md p-1 transition-colors",
+                item.pinnedAt !== null
+                  ? "text-primary"
+                  : "text-foreground/30 hover:text-foreground/70",
+              )}
+              onClick={() => onTogglePinned(media.id, item.pinnedAt === null)}
+            >
+              <Pin
+                aria-hidden
+                className={cn(
+                  "h-3.5 w-3.5",
+                  item.pinnedAt !== null && "fill-current",
+                )}
+              />
+            </button>
+          )}
           <Button
             size="sm"
             variant="outline"

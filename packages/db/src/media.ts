@@ -19,6 +19,8 @@ export interface MediaRow {
   channel_id: string | null; // source channel (YouTube UC…) for "downloaded from this channel"
   download_path: string | null;
   download_status: string;
+  favourite: number; // 0 | 1
+  pinned_at: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -27,7 +29,13 @@ export interface MediaRow {
 // from metadata_json for older rows, so callers that predate it need not supply it.
 export type NewMedia = Omit<
   MediaRow,
-  "id" | "channel_id" | "download_path" | "created_at" | "updated_at"
+  | "id"
+  | "channel_id"
+  | "download_path"
+  | "favourite"
+  | "pinned_at"
+  | "created_at"
+  | "updated_at"
 > & { channel_id?: string | null };
 
 export function insertMedia(db: SiftDatabase, m: NewMedia): MediaRow {
@@ -131,6 +139,16 @@ export interface MediaFilter {
   to?: number | null; // created_at <= (inclusive ms epoch)
   ids?: number[] | null; // restrict to these media ids (e.g. search results)
   excludeTags?: string[] | null; // hide rows carrying any of these tags, case-insensitive
+  publishedFrom?: number | null; // published_at >= (inclusive ms epoch)
+  publishedTo?: number | null; // published_at <= (inclusive ms epoch)
+  durationMin?: number | null; // duration_s >= (inclusive seconds)
+  durationMax?: number | null; // duration_s <= (inclusive seconds)
+  favourite?: boolean | null; // true → only favourites
+  collectionId?: number | null; // only rows in this collection
+  /** Smart filter: rows still lacking one of the three artifacts. */
+  missing?: "transcript" | "summary" | "download" | null;
+  /** Exact `media.download_status`, e.g. "error" for the failed-download filter. */
+  downloadStatus?: string | null;
 }
 
 /** Builds a WHERE clause + named params from a MediaFilter. Empty string when nothing is set. */
@@ -174,6 +192,49 @@ function mediaWhere(f: MediaFilter): {
     clauses.push("m.created_at <= @to");
     params.to = f.to;
   }
+  if (f.publishedFrom != null) {
+    clauses.push(
+      "m.published_at IS NOT NULL AND m.published_at >= @publishedFrom",
+    );
+    params.publishedFrom = f.publishedFrom;
+  }
+  if (f.publishedTo != null) {
+    clauses.push(
+      "m.published_at IS NOT NULL AND m.published_at <= @publishedTo",
+    );
+    params.publishedTo = f.publishedTo;
+  }
+  // A row with an unknown duration is excluded from a duration filter rather than treated as
+  // zero — "under 5 minutes" should not surface everything Sift failed to probe.
+  if (f.durationMin != null) {
+    clauses.push("m.duration_s IS NOT NULL AND m.duration_s >= @durationMin");
+    params.durationMin = f.durationMin;
+  }
+  if (f.durationMax != null) {
+    clauses.push("m.duration_s IS NOT NULL AND m.duration_s <= @durationMax");
+    params.durationMax = f.durationMax;
+  }
+  if (f.favourite) clauses.push("m.favourite = 1");
+  if (f.collectionId != null) {
+    clauses.push(
+      "EXISTS (SELECT 1 FROM media_collection mc WHERE mc.media_id = m.id AND mc.collection_id = @collectionId)",
+    );
+    params.collectionId = f.collectionId;
+  }
+  if (f.missing === "transcript")
+    clauses.push(
+      "NOT EXISTS (SELECT 1 FROM transcript t WHERE t.media_id = m.id)",
+    );
+  if (f.missing === "summary")
+    clauses.push(
+      "NOT EXISTS (SELECT 1 FROM summary s WHERE s.media_id = m.id)",
+    );
+  if (f.missing === "download")
+    clauses.push("(m.download_path IS NULL OR m.download_status <> 'done')");
+  if (f.downloadStatus) {
+    clauses.push("m.download_status = @downloadStatus");
+    params.downloadStatus = f.downloadStatus;
+  }
   if (f.ids != null) {
     if (f.ids.length === 0) {
       clauses.push("0"); // empty allowlist → match nothing
@@ -193,6 +254,11 @@ function mediaWhere(f: MediaFilter): {
   };
 }
 
+/** Pinned rows first (oldest pin first, so pinning is stable), then newest. Shared by the
+ * page query and the id query so "export everything matching" is in the order on screen. */
+const LIBRARY_ORDER =
+  "ORDER BY CASE WHEN m.pinned_at IS NULL THEN 1 ELSE 0 END, m.pinned_at ASC, m.created_at DESC, m.id DESC";
+
 /** One page of media matching `filter`, newest first, plus the total match count (for the pager). */
 export function listMediaPage(
   db: SiftDatabase,
@@ -207,7 +273,7 @@ export function listMediaPage(
   const total = (where ? countStmt.get(params) : countStmt.get())!.n;
   const rows = db
     .prepare<MediaRow>(
-      `SELECT m.* FROM media m ${where} ORDER BY m.created_at DESC, m.id DESC LIMIT @limit OFFSET @offset`,
+      `SELECT m.* FROM media m ${where} ${LIBRARY_ORDER} LIMIT @limit OFFSET @offset`,
     )
     .all({ ...params, limit, offset });
   return { rows, total };
@@ -217,7 +283,7 @@ export function listMediaPage(
 export function listMediaIds(db: SiftDatabase, filter: MediaFilter): number[] {
   const { where, params } = mediaWhere(filter);
   const stmt = db.prepare<{ id: number }>(
-    `SELECT m.id FROM media m ${where} ORDER BY m.created_at DESC, m.id DESC`,
+    `SELECT m.id FROM media m ${where} ${LIBRARY_ORDER}`,
   );
   return (where ? stmt.all(params) : stmt.all()).map((r) => r.id);
 }
@@ -277,4 +343,62 @@ export function getMediaBySourceUrl(
       "SELECT * FROM media WHERE source_url = @sourceUrl ORDER BY id DESC LIMIT 1",
     )
     .get({ sourceUrl });
+}
+
+/** One group of media rows that look like the same video. */
+export interface DuplicateGroup {
+  /** What matched: the same platform + external id, or the same title and duration. */
+  reason: "same-source" | "same-title-duration";
+  key: string;
+  ids: number[];
+}
+
+/**
+ * Finds probable duplicates, newest group first.
+ *
+ * Two passes rather than one clever query, because the two kinds of duplicate are different
+ * facts. `same-source` is certain: the same platform and external id is the same video, and
+ * that happens when a URL is re-fetched through a different form (youtu.be vs watch?v=).
+ * `same-title-duration` is a guess for re-uploads and for local files imported twice under
+ * different names, so it needs an exact duration match to stay useful; a group already
+ * reported as same-source is not repeated.
+ */
+export function findDuplicates(db: SiftDatabase): DuplicateGroup[] {
+  const groups: DuplicateGroup[] = [];
+  const seen = new Set<number>();
+
+  const bySource = db
+    .prepare<{ key: string; ids: string }>(
+      `SELECT platform_id || ':' || external_id AS key, group_concat(id) AS ids
+         FROM media
+        WHERE external_id IS NOT NULL AND external_id <> ''
+        GROUP BY platform_id, external_id
+       HAVING COUNT(*) > 1
+        ORDER BY MAX(created_at) DESC`,
+    )
+    .all();
+  for (const row of bySource) {
+    const ids = row.ids.split(",").map(Number);
+    ids.forEach((id) => seen.add(id));
+    groups.push({ reason: "same-source", key: row.key, ids });
+  }
+
+  const byTitle = db
+    .prepare<{ key: string; ids: string }>(
+      `SELECT title || ' (' || duration_s || 's)' AS key, group_concat(id) AS ids
+         FROM media
+        WHERE duration_s IS NOT NULL AND title <> ''
+        GROUP BY title COLLATE NOCASE, duration_s
+       HAVING COUNT(*) > 1
+        ORDER BY MAX(created_at) DESC`,
+    )
+    .all();
+  for (const row of byTitle) {
+    const ids = row.ids.split(",").map(Number);
+    // Skip a group whose members are all already reported as the same source.
+    if (ids.every((id) => seen.has(id))) continue;
+    ids.forEach((id) => seen.add(id));
+    groups.push({ reason: "same-title-duration", key: row.key, ids });
+  }
+  return groups;
 }

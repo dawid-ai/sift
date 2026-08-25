@@ -9,6 +9,9 @@ import {
   type BinaryProgress,
   type BinaryUpdateEvent,
   type ChannelVideosQuery,
+  type ClipKind,
+  type ExportPreset,
+  type TranscriptCue,
   type DownloadProgress,
   type MediaFilter,
   type QueueConfig,
@@ -129,6 +132,32 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.librarySearch, query, includeText),
     exportPlaylist: (mediaIds: number[], name: string) =>
       ipcRenderer.invoke(IPC.libraryExportPlaylist, mediaIds, name),
+    findDuplicates: () => ipcRenderer.invoke(IPC.libraryFindDuplicates),
+    setFavourite: (mediaId: number, favourite: boolean) =>
+      ipcRenderer.invoke(IPC.librarySetFavourite, mediaId, favourite),
+    setPinned: (mediaId: number, pinned: boolean) =>
+      ipcRenderer.invoke(IPC.librarySetPinned, mediaId, pinned),
+    bulkRemove: (mediaIds: number[]) =>
+      ipcRenderer.invoke(IPC.libraryBulkRemove, mediaIds),
+  },
+  collections: {
+    list: () => ipcRenderer.invoke(IPC.collectionsList),
+    create: (name: string) => ipcRenderer.invoke(IPC.collectionsCreate, name),
+    rename: (id: number, name: string) =>
+      ipcRenderer.invoke(IPC.collectionsRename, id, name),
+    delete: (id: number) => ipcRenderer.invoke(IPC.collectionsDelete, id),
+    add: (id: number, mediaIds: number[]) =>
+      ipcRenderer.invoke(IPC.collectionsAdd, id, mediaIds),
+    remove: (id: number, mediaIds: number[]) =>
+      ipcRenderer.invoke(IPC.collectionsRemove, id, mediaIds),
+    forMedia: (mediaId: number) =>
+      ipcRenderer.invoke(IPC.collectionsForMedia, mediaId),
+  },
+  savedSearches: {
+    list: () => ipcRenderer.invoke(IPC.savedSearchesList),
+    save: (name: string, query: string, filter: MediaFilter) =>
+      ipcRenderer.invoke(IPC.savedSearchesSave, name, query, filter),
+    delete: (id: number) => ipcRenderer.invoke(IPC.savedSearchesDelete, id),
   },
   tags: {
     add: (mediaId: number, name: string) =>
@@ -136,12 +165,49 @@ const api: SiftApi = {
     remove: (mediaId: number, name: string) =>
       ipcRenderer.invoke(IPC.tagsRemove, mediaId, name),
     listAll: () => ipcRenderer.invoke(IPC.tagsListAll),
+    bulkAdd: (mediaIds: number[], name: string) =>
+      ipcRenderer.invoke(IPC.tagsBulkAdd, mediaIds, name),
+    bulkRemove: (mediaIds: number[], name: string) =>
+      ipcRenderer.invoke(IPC.tagsBulkRemove, mediaIds, name),
   },
   settings: {
     getTranscriptLanguages: () =>
       ipcRenderer.invoke(IPC.settingsGetTranscriptLanguages),
     setTranscriptLanguages: (langs: string[]) =>
       ipcRenderer.invoke(IPC.settingsSetTranscriptLanguages, langs),
+    getProxy: () => ipcRenderer.invoke(IPC.settingsGetProxy),
+    setProxy: (proxyUrl: string) =>
+      ipcRenderer.invoke(IPC.settingsSetProxy, proxyUrl),
+  },
+  export: {
+    preset: (mediaId: number, preset: ExportPreset) =>
+      ipcRenderer.invoke(IPC.exportPreset, mediaId, preset),
+    reveal: (path: string) => ipcRenderer.invoke(IPC.exportReveal, path),
+  },
+  clip: {
+    link: (mediaId: number, seconds: number) =>
+      ipcRenderer.invoke(IPC.clipLink, mediaId, seconds),
+    export: (
+      mediaId: number,
+      kind: ClipKind,
+      startSeconds: number,
+      endSeconds: number,
+    ) =>
+      ipcRenderer.invoke(
+        IPC.clipExport,
+        mediaId,
+        kind,
+        startSeconds,
+        endSeconds,
+      ),
+  },
+  storage: {
+    usage: () => ipcRenderer.invoke(IPC.storageUsage),
+    clear: (key: string) => ipcRenderer.invoke(IPC.storageClear, key),
+  },
+  profile: {
+    export: () => ipcRenderer.invoke(IPC.profileExport),
+    import: () => ipcRenderer.invoke(IPC.profileImport),
   },
   downloads: {
     getPath: () => ipcRenderer.invoke(IPC.downloadsGetPath),
@@ -211,6 +277,8 @@ const api: SiftApi = {
       ipcRenderer.invoke(IPC.transcriptSetAutoDownload, enabled),
     exportSrt: (transcriptId: number) =>
       ipcRenderer.invoke(IPC.transcriptExportSrt, transcriptId),
+    update: (transcriptId: number, segments: TranscriptCue[]) =>
+      ipcRenderer.invoke(IPC.transcriptUpdate, transcriptId, segments),
   },
   summarize: {
     start: (input) => ipcRenderer.invoke(IPC.summarizeStart, input),

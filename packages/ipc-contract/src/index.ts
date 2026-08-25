@@ -44,8 +44,26 @@ export const IPC = {
   libraryOpenExternal: "library:openExternal",
   librarySearch: "library:search",
   libraryExportPlaylist: "library:exportPlaylist",
+  libraryFindDuplicates: "library:findDuplicates",
+  librarySetFavourite: "library:setFavourite",
+  librarySetPinned: "library:setPinned",
+  libraryBulkRemove: "library:bulkRemove",
+  collectionsList: "collections:list",
+  collectionsCreate: "collections:create",
+  collectionsRename: "collections:rename",
+  collectionsDelete: "collections:delete",
+  collectionsAdd: "collections:add",
+  collectionsRemove: "collections:remove",
+  collectionsForMedia: "collections:forMedia",
+  tagsBulkAdd: "tags:bulkAdd",
+  tagsBulkRemove: "tags:bulkRemove",
+  savedSearchesList: "library:savedSearches",
+  savedSearchesSave: "library:saveSearch",
+  savedSearchesDelete: "library:deleteSearch",
   settingsGetTranscriptLanguages: "settings:getTranscriptLanguages",
   settingsSetTranscriptLanguages: "settings:setTranscriptLanguages",
+  settingsGetProxy: "settings:getProxy",
+  settingsSetProxy: "settings:setProxy",
   authOpenBrowser: "auth:openBrowser",
   authListSites: "auth:listSites",
   authRemoveSite: "auth:removeSite",
@@ -56,6 +74,11 @@ export const IPC = {
   transcriptGetAutoDownload: "transcript:getAutoDownload",
   transcriptSetAutoDownload: "transcript:setAutoDownload",
   transcriptExportSrt: "transcript:exportSrt",
+  transcriptUpdate: "transcript:update",
+  exportPreset: "export:preset",
+  exportReveal: "export:reveal",
+  clipLink: "clip:link",
+  clipExport: "clip:export",
   summarizeStart: "summarize:start",
   summarizeToken: "summarize:token",
   summarizeExport: "summarize:export",
@@ -65,6 +88,10 @@ export const IPC = {
   promptsDelete: "prompts:delete",
   promptsExport: "prompts:export",
   promptsImport: "prompts:import",
+  profileExport: "profile:export",
+  profileImport: "profile:import",
+  storageUsage: "storage:usage",
+  storageClear: "storage:clear",
   aiProvidersList: "ai:providers",
   aiKeyStatus: "ai:keyStatus",
   aiKeySet: "ai:keySet",
@@ -368,6 +395,9 @@ export interface MediaListItem {
   }[];
   summaryCount: number;
   tags: string[];
+  favourite: boolean;
+  /** When the row was pinned, or null. Pinned rows sort first. */
+  pinnedAt: number | null;
 }
 
 /** Filters for the paged library list (contract's own copy of `@sift/db`'s `MediaFilter` —
@@ -380,6 +410,41 @@ export interface MediaFilter {
   to?: number | null; // created_at <= (inclusive ms epoch)
   ids?: number[] | null; // restrict to these media ids (e.g. search results)
   excludeTags?: string[] | null; // hide rows carrying any of these tags, case-insensitive
+  publishedFrom?: number | null; // published_at >= (inclusive ms epoch)
+  publishedTo?: number | null; // published_at <= (inclusive ms epoch)
+  durationMin?: number | null; // duration_s >= (inclusive seconds)
+  durationMax?: number | null; // duration_s <= (inclusive seconds)
+  favourite?: boolean | null; // true → favourites only
+  collectionId?: number | null; // only rows in this collection
+  /** Smart filter: rows still lacking one of the three artifacts. */
+  missing?: "transcript" | "summary" | "download" | null;
+  /** Exact download status, e.g. "error" for the failed-download filter. */
+  downloadStatus?: string | null;
+}
+
+/** A named, ordered set of videos the user curates, plus its size. */
+export interface CollectionCount {
+  id: number;
+  name: string;
+  created_at: number;
+  count: number;
+}
+
+/** A named library view: the free-text query plus the filter that produced it. */
+export interface SavedSearchInfo {
+  id: number;
+  name: string;
+  query: string;
+  filter: MediaFilter;
+  created_at: number;
+}
+
+/** Media rows that look like the same video. `reason` says how confident that is:
+ * `same-source` is certain, `same-title-duration` is a guess for re-uploads. */
+export interface DuplicateGroup {
+  reason: "same-source" | "same-title-duration";
+  key: string;
+  ids: number[];
 }
 
 /** One page of the library plus the total number of rows matching the filter (for the pager). */
@@ -408,6 +473,31 @@ export interface PlaylistExportResult {
   path: string;
   included: number;
   skipped: number;
+}
+
+/** One export format offered by the export menu. */
+export type ExportPreset =
+  "markdown" | "html" | "json" | "csv" | "obsidian" | "pdf";
+
+export interface ExportResult {
+  path: string;
+  preset: ExportPreset;
+}
+
+export type ClipKind = "audio" | "video" | "vertical";
+
+export interface ClipResult {
+  path: string;
+  kind: ClipKind;
+  startSeconds: number;
+  endSeconds: number;
+}
+
+/** One transcript cue. Mirrors `@sift/core`'s TranscriptSegment. */
+export interface TranscriptCue {
+  start: number;
+  end: number;
+  text: string;
 }
 
 /** A distinct tag name plus how many media rows carry it. */
@@ -592,6 +682,33 @@ export interface PromptPackEntry {
  * split — not just a combined `imported` count — is what lets the renderer tell the user
  * that importing a pack silently overwrote prompts they'd edited, rather than reporting a
  * bare success. All four fields are 0 if the dialog was cancelled. */
+/** One row of the storage dashboard. `clearable` marks the caches and re-downloadable
+ * assets that `storage.clear()` will accept — user content is measured, never offered. */
+export interface StorageEntry {
+  key: string;
+  label: string;
+  description: string;
+  bytes: number;
+  clearable: boolean;
+}
+
+export interface StorageUsage {
+  entries: StorageEntry[];
+  totalBytes: number;
+  /** Free space on the volume holding the downloads folder, or null if unreadable. */
+  freeBytes: number | null;
+}
+
+/** What `profile.import()` changed. `skipped` names settings the file carried that this
+ * build rejected or does not know, so a partial apply is visible rather than silent. */
+export interface ProfileImportResult {
+  applied: string[];
+  skipped: string[];
+  promptsCreated: number;
+  promptsReplaced: number;
+  promptsSkipped: number;
+}
+
 export interface PromptImportResult {
   imported: number;
   skipped: number;
@@ -776,6 +893,14 @@ export interface SiftApi {
       mediaIds: number[],
       name: string,
     ): Promise<PlaylistExportResult>;
+    /** Media rows that look like the same video, newest group first. */
+    findDuplicates(): Promise<DuplicateGroup[]>;
+    /** Marks or unmarks a favourite. */
+    setFavourite(mediaId: number, favourite: boolean): Promise<void>;
+    /** Pins or unpins. Pinned rows sort first, in the order they were pinned. */
+    setPinned(mediaId: number, pinned: boolean): Promise<void>;
+    /** Deletes several media rows and their artifacts. Resolves how many were removed. */
+    bulkRemove(mediaIds: number[]): Promise<number>;
   };
   tags: {
     /** Adds a tag to a media row (idempotent, case-insensitive). */
@@ -784,12 +909,59 @@ export interface SiftApi {
     remove(mediaId: number, name: string): Promise<void>;
     /** All distinct tags with counts, alphabetical. */
     listAll(): Promise<TagCount[]>;
+    /** Adds one tag to many rows. Resolves how many rows changed. */
+    bulkAdd(mediaIds: number[], name: string): Promise<number>;
+    /** Removes one tag from many rows. */
+    bulkRemove(mediaIds: number[], name: string): Promise<void>;
+  };
+  collections: {
+    list(): Promise<CollectionCount[]>;
+    /** Creates a collection, or returns the existing one with that name. */
+    create(name: string): Promise<CollectionCount>;
+    rename(id: number, name: string): Promise<void>;
+    /** Deletes the collection. The videos in it are untouched. */
+    delete(id: number): Promise<void>;
+    /** Appends to the end. Resolves how many were added, ignoring ones already in. */
+    add(id: number, mediaIds: number[]): Promise<number>;
+    remove(id: number, mediaIds: number[]): Promise<void>;
+    /** Collection ids one media belongs to. */
+    forMedia(mediaId: number): Promise<number[]>;
+  };
+  savedSearches: {
+    list(): Promise<SavedSearchInfo[]>;
+    /** Creates or replaces by name. */
+    save(
+      name: string,
+      query: string,
+      filter: MediaFilter,
+    ): Promise<SavedSearchInfo>;
+    delete(id: number): Promise<void>;
   };
   settings: {
     /** Ordered preferred transcript languages (first = default). */
     getTranscriptLanguages(): Promise<string[]>;
     /** Persists the ordered preferred transcript languages. */
     setTranscriptLanguages(langs: string[]): Promise<void>;
+    /** Proxy URL used for yt-dlp and the remote AI providers. `""` means connect directly. */
+    getProxy(): Promise<string>;
+    /** Validates and persists a proxy URL; resolves the normalized value that was stored.
+     * Rejects on an unsupported scheme or a missing host. `""` clears it. */
+    setProxy(proxyUrl: string): Promise<string>;
+  };
+  storage: {
+    /** Per-category disk usage, plus free space on the downloads volume. */
+    usage(): Promise<StorageUsage>;
+    /** Empties one clearable category after a native confirm. Resolves the bytes freed —
+     * `0` if the user cancelled or there was nothing there. Rejects for any other key. */
+    clear(key: string): Promise<number>;
+  };
+  profile: {
+    /** Writes every non-secret setting plus the user's own prompts to one JSON file.
+     * Resolves the saved path, or `null` if the save dialog was cancelled. */
+    export(): Promise<string | null>;
+    /** Reads a profile file and applies what this build recognizes. Resolves `null` if the
+     * open dialog was cancelled. Rejects if the file isn't a profile of a known version. */
+    import(): Promise<ProfileImportResult | null>;
   };
   downloads: {
     /** Current downloads directory (the configured override, or the OS-default fallback). */
@@ -877,6 +1049,26 @@ export interface SiftApi {
     /** Writes a transcript's segments to a .srt file under the downloads dir; returns the
      * absolute path. Rejects if the transcript has no timestamps. */
     exportSrt(transcriptId: number): Promise<string>;
+    /** Replaces a transcript's cues after an edit. The searchable text is regenerated in
+     * main from the cues, so the two can never disagree. */
+    update(transcriptId: number, segments: TranscriptCue[]): Promise<void>;
+  };
+  export: {
+    /** Writes one library item in the chosen format. Obsidian resolves to a folder. */
+    preset(mediaId: number, preset: ExportPreset): Promise<ExportResult>;
+    /** Selects a written export in the OS file manager. */
+    reveal(path: string): Promise<void>;
+  };
+  clip: {
+    /** A link into the source at `seconds`, or null when the platform has no such parameter. */
+    link(mediaId: number, seconds: number): Promise<string | null>;
+    /** Cuts a span out of the downloaded file. Rejects when nothing is on disk. */
+    export(
+      mediaId: number,
+      kind: ClipKind,
+      startSeconds: number,
+      endSeconds: number,
+    ): Promise<ClipResult>;
   };
   summarize: {
     /** Streams a summary for the newest transcript of `metadata`'s URL; persists + returns the record. */

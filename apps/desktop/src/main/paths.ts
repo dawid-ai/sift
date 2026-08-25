@@ -35,6 +35,12 @@ export function queueConfigFile(): string {
   return join(app.getPath("userData"), "settings", "queue.json");
 }
 
+/** Path to the persisted proxy URL used for yt-dlp and remote AI providers (non-secret —
+ * but it can carry proxy credentials, so it is not included in the diagnostics bundle). */
+export function networkConfigFile(): string {
+  return join(app.getPath("userData"), "settings", "network.json");
+}
+
 /** Path to the persisted binary auto-update policy (auto|notify, non-secret). */
 export function binaryUpdatesConfigFile(): string {
   return join(app.getPath("userData"), "settings", "binary-updates.json");

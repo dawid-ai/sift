@@ -168,6 +168,9 @@ export function parseProgressLine(line: string): RawDownloadProgress | null {
 export function createYtDlpRunner(deps: {
   getBinaryPath: () => string | null;
   getJsRuntimePath?: () => string | null;
+  /** Configured proxy URL, or `""`/absent for a direct connection. Read per call, not
+   * captured, so changing it in Settings takes effect without restarting the app. */
+  getProxy?: () => string;
   exec?: ExecFn;
   spawn?: SpawnFn;
 }): YtDlpRunner {
@@ -184,6 +187,13 @@ export function createYtDlpRunner(deps: {
 
   const cookieArgs = (cookiesFile?: string): string[] =>
     cookiesFile ? ["--cookies", cookiesFile] : [];
+
+  // Prepended to every invocation. The store validates the scheme and host before persisting,
+  // so nothing that reaches argv here can be read as another flag.
+  const proxyArgs = (): string[] => {
+    const url = deps.getProxy?.() ?? "";
+    return url ? ["--proxy", url] : [];
+  };
 
   // YouTube's "n" signature challenge must be solved in JavaScript to unlock the real
   // media/format URLs; without a JS runtime yt-dlp only sees storyboards and fails with
@@ -205,6 +215,7 @@ export function createYtDlpRunner(deps: {
       let stderr: string;
       try {
         ({ stdout, stderr } = await exec(path, [
+          ...proxyArgs(),
           ...cookieArgs(cookiesFile),
           ...jsRuntimeArgs(),
           "-J",
@@ -232,6 +243,7 @@ export function createYtDlpRunner(deps: {
     async flatPlaylist(url, opts, cookiesFile): Promise<unknown> {
       const path = requireBinaryPath();
       const args = [
+        ...proxyArgs(),
         ...cookieArgs(cookiesFile),
         "--flat-playlist",
         "-J",
@@ -273,6 +285,7 @@ export function createYtDlpRunner(deps: {
       const path = requireBinaryPath();
 
       const args = [
+        ...proxyArgs(),
         ...cookieArgs(opts.cookiesFile),
         ...jsRuntimeArgs(),
         "-f",
@@ -404,6 +417,7 @@ export function createYtDlpRunner(deps: {
       // them one by one, which is wasteful and reliably trips YouTube's HTTP 429 rate
       // limit. "en" fetches the original English captions (manual, else auto) only.
       const args = [
+        ...proxyArgs(),
         ...cookieArgs(opts.cookiesFile),
         ...jsRuntimeArgs(),
         "--skip-download",
