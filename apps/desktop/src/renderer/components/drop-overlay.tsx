@@ -11,21 +11,15 @@ const GRAIN =
 
 export interface DropOverlayProps {
   dragging: boolean;
-  busy: ImportProgress | null;
   error: string | null;
 }
 
 /** Full-window drag affordance plus the import status card. Rendered by App() so a file
  * can be dropped from any view.
  *
- * The busy state is a solid fixed card, not an inline line of grey text: a Whisper run on
- * a long file is minutes of exactly this screen, and a faint static `<p>` in page flow read
- * as a frozen app. The moving percentage is the part that says "not frozen". */
-export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
-  const percent =
-    busy?.ratio != null
-      ? Math.round(Math.min(1, Math.max(0, busy.ratio)) * 100)
-      : null;
+ * The import status card moved to `ImportBusyCard` below, which App renders in its toast
+ * stack; what stays here is the drag affordance and the in-flow error. */
+export function DropOverlay({ dragging, error }: DropOverlayProps) {
   return (
     <>
       {dragging && (
@@ -80,68 +74,6 @@ export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
           </div>
         </div>
       )}
-      {busy && (
-        <div
-          data-testid="import-busy"
-          role="status"
-          aria-live="polite"
-          // Same width, padding, rim-lit frame and 36px icon chip as the update toasts —
-          // all three stack in this corner and have to read as one family.
-          className="panel-lit fixed bottom-4 right-4 z-40 w-[22rem] bg-surface p-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-200 motion-reduce:animate-none"
-        >
-          <div className="flex items-start gap-3">
-            <span className="grid h-9 w-9 flex-none place-items-center rounded-xl border border-primary/25 bg-primary/12 text-primary shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.08)]">
-              <FileAudio className="h-[18px] w-[18px]" aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                {/* Muted micro-header: the coral is already spent on the icon chip and the
-                    progress fill — a third orange object in a 22rem card flattens all three. */}
-                <p className="eyebrow text-muted-foreground">Importing</p>
-                {busy.total > 1 && (
-                  <span className={cn(CHIP_SHELL, "flex-none tabular-nums")}>
-                    File {busy.index} of {busy.total}
-                  </span>
-                )}
-              </div>
-              <p
-                className="mt-1.5 truncate text-[13px] font-medium text-foreground"
-                title={busy.name}
-              >
-                {busy.name}
-              </p>
-            </div>
-          </div>
-          <div className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
-            {/* No ratio yet (extracting audio, or a provider that doesn't report one) → an
-                indeterminate sliver that still reads as "running", not a 0% bar. */}
-            <div
-              data-testid="import-progress"
-              className={`h-full rounded-full bg-gradient-to-r from-primary to-primary-lit ${
-                percent === null
-                  ? "animate-pulse motion-reduce:animate-none"
-                  : "transition-[width] duration-200 ease-out motion-reduce:transition-none"
-              }`}
-              style={{ width: percent === null ? "15%" : `${percent}%` }}
-            />
-          </div>
-          {/* The numeral is the hero, not a footnote: the stage label is the 11px caption
-              beneath it, the same ramp the reference uses for a stat tile. */}
-          <p className="mt-2.5 flex items-baseline justify-between gap-3">
-            <span className="truncate text-[11px] leading-4 text-muted-foreground">
-              {transcriptStageLabel(busy.stage)}
-            </span>
-            {percent !== null && (
-              <span className="flex-none text-[17px] font-bold leading-none tracking-[-0.02em] tabular-nums text-foreground">
-                {percent}
-                <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
-                  %
-                </span>
-              </span>
-            )}
-          </p>
-        </div>
-      )}
       {error && (
         <p
           data-testid="import-error"
@@ -158,5 +90,82 @@ export function DropOverlay({ dragging, busy, error }: DropOverlayProps) {
         </p>
       )}
     </>
+  );
+}
+
+/** The import status card. It lives in App's toast stack rather than owning a `fixed` corner
+ * of its own: it, the app-update toast and the binary-update toasts were each pinned to
+ * `bottom-4 right-4` independently, so they overlapped instead of stacking and whichever
+ * rendered last swallowed the others' clicks. */
+export function ImportBusyCard({ busy }: { busy: ImportProgress | null }) {
+  const percent =
+    busy?.ratio != null
+      ? Math.round(Math.min(1, Math.max(0, busy.ratio)) * 100)
+      : null;
+  if (!busy) return null;
+  return (
+    <div
+      data-testid="import-busy"
+      role="status"
+      aria-live="polite"
+      // Same padding, rim-lit frame and 36px icon chip as the update toasts — all three
+      // are siblings in one stack now and have to read as one family. It is a solid card
+      // and not an inline line of grey text: a Whisper run on a long file is minutes of
+      // exactly this screen, and a faint static `<p>` in page flow read as a frozen app.
+      // The moving percentage is the part that says "not frozen".
+      className="panel-lit w-full bg-surface p-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-200 motion-reduce:animate-none"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid h-9 w-9 flex-none place-items-center rounded-xl border border-primary/25 bg-primary/12 text-primary shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.08)]">
+          <FileAudio className="h-[18px] w-[18px]" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            {/* Muted micro-header: the coral is already spent on the icon chip and the
+                    progress fill — a third orange object in a 22rem card flattens all three. */}
+            <p className="eyebrow text-muted-foreground">Importing</p>
+            {busy.total > 1 && (
+              <span className={cn(CHIP_SHELL, "flex-none tabular-nums")}>
+                File {busy.index} of {busy.total}
+              </span>
+            )}
+          </div>
+          <p
+            className="mt-1.5 truncate text-[13px] font-medium text-foreground"
+            title={busy.name}
+          >
+            {busy.name}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]">
+        {/* No ratio yet (extracting audio, or a provider that doesn't report one) → an
+                indeterminate sliver that still reads as "running", not a 0% bar. */}
+        <div
+          data-testid="import-progress"
+          className={`h-full rounded-full bg-gradient-to-r from-primary to-primary-lit ${
+            percent === null
+              ? "animate-pulse motion-reduce:animate-none"
+              : "transition-[width] duration-200 ease-out motion-reduce:transition-none"
+          }`}
+          style={{ width: percent === null ? "15%" : `${percent}%` }}
+        />
+      </div>
+      {/* The numeral is the hero, not a footnote: the stage label is the 11px caption
+              beneath it, the same ramp the reference uses for a stat tile. */}
+      <p className="mt-2.5 flex items-baseline justify-between gap-3">
+        <span className="truncate text-[11px] leading-4 text-muted-foreground">
+          {transcriptStageLabel(busy.stage)}
+        </span>
+        {percent !== null && (
+          <span className="flex-none text-[17px] font-bold leading-none tracking-[-0.02em] tabular-nums text-foreground">
+            {percent}
+            <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
+              %
+            </span>
+          </span>
+        )}
+      </p>
+    </div>
   );
 }
