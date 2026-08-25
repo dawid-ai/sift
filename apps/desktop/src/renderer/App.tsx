@@ -43,7 +43,7 @@ import { useBinaryUpdates } from "@/routes/updates/use-binary-updates";
 import { BinaryUpdateToast } from "@/routes/updates/binary-update-toast";
 import { KNOWN_PROVIDERS } from "@/lib/ai-provider-catalog";
 import { transcriptStageLabel } from "@/lib/transcript-stage-label";
-import { DropOverlay } from "@/components/drop-overlay";
+import { DropOverlay, ImportBusyCard } from "@/components/drop-overlay";
 import { Badge } from "@/components/ui/badge";
 import { ChipDot } from "@/components/tag-chip";
 import { useFileImport } from "@/lib/use-file-import";
@@ -869,11 +869,7 @@ export function App() {
             : "overflow-y-auto",
         )}
       >
-        <DropOverlay
-          dragging={fileImport.dragging}
-          busy={fileImport.busy}
-          error={fileImport.error}
-        />
+        <DropOverlay dragging={fileImport.dragging} error={fileImport.error} />
         {openChannelError && (
           <p
             data-testid="open-channel-error"
@@ -917,11 +913,21 @@ export function App() {
         commands={commands}
         dynamic={dynamicCommands}
       />
-      <UpdateToast state={updateState} onDismiss={dismissUpdate} />
-      <BinaryUpdateToast
-        state={binaryUpdateState}
-        onDismiss={dismissBinaryUpdate}
-      />
+      {/* One corner, one stack. The import card, the app-update toast and the binary-update
+          toasts were each pinned to `fixed bottom-4 right-4` on their own, so they overlapped
+          instead of stacking — a binary toast sat on top of the app-update toast and
+          swallowed every click on its Install button. Only this container is positioned. */}
+      <div
+        data-testid="toast-stack"
+        className="fixed bottom-4 right-4 z-50 flex w-[22rem] flex-col gap-2.5"
+      >
+        <ImportBusyCard busy={fileImport.busy} />
+        <UpdateToast state={updateState} onDismiss={dismissUpdate} />
+        <BinaryUpdateToast
+          state={binaryUpdateState}
+          onDismiss={dismissBinaryUpdate}
+        />
+      </div>
     </div>
   );
 }
