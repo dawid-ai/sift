@@ -1,5 +1,42 @@
 # Updates
 
+## v0.7.0 — 2026-08-25
+
+- **Edit a transcript.** Fix mistakes, label speakers, merge or delete lines, and shift
+  timings when captions run early or late. Find and replace across the whole thing, with
+  undo on everything.
+- **Cut a clip.** Pick two lines in the transcript — press **Select clip** and click them,
+  or shift-click — then export that span as video or audio, or copy a link that starts there.
+- **Export a video's content six ways.** Markdown, HTML, JSON, CSV, PDF, or straight into an
+  Obsidian vault.
+- **Organise the library.** Collections, favourites, and pinning, plus bulk actions: tag,
+  collect, export, or remove many videos at once. There's a duplicate finder too.
+- **Filter by more than a title.** Duration, publish date, what a video is missing, failed
+  downloads — and save any filter you use often.
+- **Watch folders.** Point Sift at a folder and anything dropped into it is imported and
+  transcribed on its own.
+- **Channels check themselves.** Set a refresh schedule, get a desktop notification when
+  something new lands, and add per-channel rules that queue matching uploads for download
+  without asking. Rules only download — transcribing and summarizing stay yours to start,
+  because those spend API credits.
+- **Transcribe in other languages.** Five Whisper models to choose from, a transcription
+  language of your own, and OCR beyond English.
+- **Back up your library.** A restore point for the database and your settings, plus a scan
+  that finds media files that have moved or gone missing.
+- **See where the disk went.** A breakdown of what each kind of file is costing you.
+- **Route traffic through a proxy** — downloads and AI calls both.
+- **Carry your setup to another machine.** Export settings and prompts as one small file. No
+  library, no API keys.
+- **A command palette.** Ctrl+K jumps anywhere, and pasting a URL into it starts a fetch.
+- **The queue cancels for real.** Cancelling now stops the download instead of leaving it
+  running in the background, and up to four can run at once.
+- **Fixed:** a binary update notice could sit on top of the app update prompt and swallow
+  every click on **Install**. Drawing a slide region on the video no longer misses a fast
+  drag, or one made in a narrow window.
+- Under the hood: every internal message is re-checked before it's acted on, settings files
+  are written so a crash can't corrupt them, exports no longer overwrite each other, and
+  Sift runs on Electron 43.
+
 ## v0.6.2 — 2026-08-21
 
 - **A channel's video count is real now.** Every channel used to show "Videos 2" — the
