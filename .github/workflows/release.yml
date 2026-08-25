@@ -52,6 +52,33 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @sift/desktop run rebuild
+      # Create the release BEFORE electron-builder publishes into it. v0.7.0 shipped broken
+      # without this: electron-builder runs a publisher per artifact, both raced on
+      # "release doesn't exist", and each created its own — two releases on one tag, the
+      # installer and latest.yml in the one nobody linked, and the job still exited 0. A
+      # duplicated tag also makes the release un-PATCHable, so the notes could not be set.
+      # With the release already there, every publisher just uploads. `|| true` keeps a
+      # re-run idempotent when the release exists.
+      #
+      # The notes come from this version's UPDATES.md entry. electron-updater serves them
+      # as the in-app "what's new", so an empty body is a broken release, not a cosmetic one.
+      - name: Create the GitHub release with notes from UPDATES.md
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          notes="$(awk -v t="## ${tag} " '
+            index($0, t) == 1 { on = 1; next }
+            on && /^## v/ { exit }
+            on { print }
+          ' UPDATES.md)"
+          if [ -z "$(printf '%s' "$notes" | tr -d '[:space:]')" ]; then
+            echo "No UPDATES.md entry for ${tag} — add one before tagging." >&2
+            exit 1
+          fi
+          gh release create "$tag" --title "$tag" --notes "$notes" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Publishes the NSIS installer + latest.yml to the GitHub Release for this tag.
       # Signing activates automatically if CSC_LINK / CSC_KEY_PASSWORD secrets are set.
       - run: pnpm --filter @sift/desktop exec electron-vite build && pnpm --filter @sift/desktop exec electron-builder --win --publish always
