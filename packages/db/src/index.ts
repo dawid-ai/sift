@@ -46,6 +46,14 @@ export {
 } from "./collection";
 export type { CollectionRow, CollectionCount } from "./collection";
 export {
+  upsertChannelVideos,
+  listChannelVideos,
+  listChannelViewCounts,
+  countChannelVideos,
+  deleteChannelVideos,
+} from "./channel-video";
+export type { ChannelVideoRow, NewChannelVideo } from "./channel-video";
+export {
   upsertChannelRule,
   getChannelRule,
   listChannelRules,
@@ -140,6 +148,7 @@ export {
   listChannels,
   upsertChannel,
   updateChannelRefresh,
+  setChannelStatsSynced,
   deleteChannel,
 } from "./channel";
 export type { ChannelRow, NewChannel } from "./channel";

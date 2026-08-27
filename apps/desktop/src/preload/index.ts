@@ -288,6 +288,7 @@ const api: SiftApi = {
     refreshAll: () => ipcRenderer.invoke(IPC.channelRefreshAll),
     listVideos: (id: number, query: ChannelVideosQuery) =>
       ipcRenderer.invoke(IPC.channelListVideos, id, query),
+    syncStats: (id: number) => ipcRenderer.invoke(IPC.channelSyncStats, id),
     openForMedia: (mediaId: number) =>
       ipcRenderer.invoke(IPC.channelOpenForMedia, mediaId),
     videoStatuses: (urls: string[]) =>

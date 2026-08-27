@@ -19,6 +19,7 @@ import { migration017CreatorPrompts } from "./migrations/017-creator-prompts.sql
 import { migration018MediaFts } from "./migrations/018-media-fts.sql";
 import { migration019 } from "./migrations/019-collection.sql";
 import { migration020 } from "./migrations/020-channel-rule.sql";
+import { migration021 } from "./migrations/021-channel-video.sql";
 
 const MIGRATIONS: { version: number; sql: string }[] = [
   { version: 1, sql: migration001 },
@@ -41,6 +42,7 @@ const MIGRATIONS: { version: number; sql: string }[] = [
   { version: 18, sql: migration018MediaFts },
   { version: 19, sql: migration019 },
   { version: 20, sql: migration020 },
+  { version: 21, sql: migration021 },
 ];
 
 // `migrations` param defaults to the real list; overridable so tests can inject a

@@ -66,11 +66,13 @@ describe("channel CRUD", () => {
       last_seen_video_id: "vidX",
       new_count: 3,
       video_count: 42,
+      follower_count: 2000,
       last_checked: 123,
     });
     const after = getChannelById(db, c.id)!;
     expect(after.new_count).toBe(3);
     expect(after.video_count).toBe(42);
+    expect(after.follower_count).toBe(2000);
     expect(after.last_seen_video_id).toBe("vidX");
     expect(after.last_checked).toBe(123);
     deleteChannel(db, c.id);

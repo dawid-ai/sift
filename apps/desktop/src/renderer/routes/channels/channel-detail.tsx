@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Check,
   ChevronDown,
@@ -12,6 +6,7 @@ import {
   Film,
   ListVideo,
   Plus,
+  RefreshCw,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -24,11 +19,11 @@ import type {
   DownloadedVideo,
   QueueSpec,
 } from "@sift/ipc-contract";
-import { medianViews, outlierScore, OUTLIER_THRESHOLD } from "@sift/core";
+import { outlierScore, OUTLIER_THRESHOLD } from "@sift/core";
 import { Button } from "@/components/ui/button";
 import { FIELD } from "@/routes/settings/settings-page";
 import { thumbUrl, videoThumbUrl } from "@/lib/utils";
-import { extractLinks } from "@/lib/extract-links";
+import { extractEmails, extractLinks } from "@/lib/extract-links";
 import { QueueSpecControls } from "@/components/queue-spec-controls";
 
 const ORDERS: { value: ChannelOrder; label: string }[] = [
@@ -164,7 +159,12 @@ export function ChannelDetail({
 }) {
   const [downloaded, setDownloaded] = useState<DownloadedVideo[]>([]);
   const [showFullDesc, setShowFullDesc] = useState(false);
-  const links = extractLinks(channel.description);
+  // A stats sync returns a fresh record (subscribers, video total). The prop is owned by the
+  // list route, so the newer copy is held here and everything below reads `ch`.
+  const [synced, setSynced] = useState<ChannelRecord | null>(null);
+  const ch = synced ?? channel;
+  const links = extractLinks(ch.description);
+  const emails = extractEmails(ch.description);
   useEffect(() => {
     let live = true;
     void window.sift.channels.downloadedMedia(channel.channelId).then((d) => {
@@ -188,7 +188,11 @@ export function ChannelDetail({
   const [error, setError] = useState<string | null>(null);
   const [spec, setSpec] = useState<QueueSpec | null>(null);
   const onSpec = useCallback((s: QueueSpec) => setSpec(s), []);
-  const median = useMemo(() => medianViews(videos), [videos]);
+  // Outlier baseline, straight from main: the synced catalogue's median when there is one,
+  // otherwise the median of the page just fetched.
+  const [median, setMedian] = useState<number | null>(null);
+  const [fromCatalog, setFromCatalog] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const getVideos = async () => {
     setBusy(true);
@@ -203,6 +207,8 @@ export function ChannelDetail({
         count,
       });
       setVideos(res.videos);
+      setMedian(res.median);
+      setFromCatalog(res.source === "catalog");
       if (!res.viewCountsAvailable && order === "most_viewed")
         setNote(
           "View counts unavailable for this channel — showing latest instead.",
@@ -229,6 +235,28 @@ export function ChannelDetail({
   const selectAll = () =>
     setSelected(new Set(videos.filter(selectable).map((v) => v.url)));
   const unselectAll = () => setSelected(new Set());
+  const syncStats = async () => {
+    setSyncing(true);
+    setError(null);
+    setNote(null);
+    try {
+      const res = await window.sift.channels.syncStats(channel.id);
+      setSynced(res.channel);
+      const total = res.counts.videos + res.counts.shorts + res.counts.live;
+      setNote(
+        `Stats synced for ${total.toLocaleString()} videos.` +
+          (res.failures.length > 0
+            ? ` ${res.failures.map((f) => f.contentType).join(", ")} unavailable.`
+            : ""),
+      );
+      await getVideos();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const addToQueue = async () => {
     if (!spec || selected.size === 0) return;
     setError(null);
@@ -270,11 +298,27 @@ export function ChannelDetail({
           >
             {"← Channels"}
           </Button>
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex items-center gap-2">
+            {ch.statsSyncedAt && (
+              <span className="text-xs text-muted-foreground">
+                Stats synced {new Date(ch.statsSyncedAt).toLocaleString()}
+              </span>
+            )}
+            <Button
+              data-testid="channel-sync-stats"
+              size="sm"
+              variant="outline"
+              disabled={syncing}
+              onClick={syncStats}
+              title="Pull view counts for every video on this channel, so outliers are measured against the whole catalogue"
+            >
+              <RefreshCw aria-hidden className="h-4 w-4" />
+              {syncing ? "Syncing…" : "Sync stats"}
+            </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => window.sift.library.openExternal(channel.url)}
+              onClick={() => window.sift.library.openExternal(ch.url)}
             >
               {"Open channel ↗"}
             </Button>
@@ -337,10 +381,10 @@ export function ChannelDetail({
           <div className="flex flex-wrap gap-2.5 px-6 pb-6">
             <HeroStat
               label="Subscribers"
-              value={channel.followerCount}
+              value={ch.followerCount}
               icon={Users}
             />
-            <HeroStat label="Videos" value={channel.videoCount} icon={Film} />
+            <HeroStat label="Videos" value={ch.videoCount} icon={Film} />
             <HeroStat
               label="Downloaded"
               value={downloaded.length}
@@ -349,17 +393,17 @@ export function ChannelDetail({
             />
           </div>
 
-          {(channel.description || links.length > 0) && (
+          {(ch.description || links.length > 0 || emails.length > 0) && (
             <div className="border-t border-border px-6 py-5">
               <p className="eyebrow">About</p>
-              {channel.description && (
+              {ch.description && (
                 <>
                   <p
                     className={`mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${showFullDesc ? "" : "line-clamp-3"}`}
                   >
-                    {channel.description}
+                    {ch.description}
                   </p>
-                  {channel.description.length > 180 && (
+                  {ch.description.length > 180 && (
                     <button
                       type="button"
                       onClick={() => setShowFullDesc((v) => !v)}
@@ -383,6 +427,20 @@ export function ChannelDetail({
                     >
                       {l.replace(/^https?:\/\/(www\.)?/, "")} ↗
                     </button>
+                  ))}
+                </div>
+              )}
+              {emails.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {emails.map((e) => (
+                    <span
+                      key={e}
+                      data-testid="channel-email"
+                      className={NEUTRAL_PILL}
+                      title="Read out of the channel description — YouTube's About-tab email is captcha-gated and can't be fetched"
+                    >
+                      {e}
+                    </span>
                   ))}
                 </div>
               )}
@@ -610,7 +668,11 @@ export function ChannelDetail({
                         {score != null && score >= OUTLIER_THRESHOLD && (
                           <span
                             data-testid={`channel-video-outlier-${v.externalId}`}
-                            title="Views versus the median of the videos currently listed — not adjusted for video age"
+                            title={
+                              fromCatalog
+                                ? "Views versus the median of every video on this channel — not adjusted for video age"
+                                : "Views versus the median of the videos currently listed. Sync stats to score against the whole channel."
+                            }
                             className={`${PILL} flex-none border-primary/25 bg-primary/12 font-semibold text-primary`}
                           >
                             {`${score.toFixed(1)}×`}

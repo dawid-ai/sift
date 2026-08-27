@@ -22,6 +22,9 @@ export function registerChannelsIpc(service: ChannelService): void {
     (_e, channelRowId: number, query: ChannelVideosQuery) =>
       service.listVideos(id(channelRowId, "id"), channelVideosQuery(query)),
   );
+  ipcMain.handle(IPC.channelSyncStats, (_e, channelRowId: number) =>
+    service.syncStats(id(channelRowId, "id")),
+  );
   ipcMain.handle(IPC.channelOpenForMedia, (_e, mediaId: number) =>
     service.openForMedia(id(mediaId, "mediaId")),
   );

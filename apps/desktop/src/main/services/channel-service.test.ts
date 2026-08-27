@@ -44,6 +44,108 @@ describe("ChannelService", () => {
     runMigrations(db);
   });
 
+  it("syncStats stores every tab's catalogue and scores outliers against it", async () => {
+    const ch = upsertChannel(db, {
+      channel_id: "UC1",
+      url: "https://www.youtube.com/channel/UC1",
+      handle: "@chan",
+      title: "Chan",
+      description: null,
+      uploader: null,
+      avatar_url: null,
+      banner_url: null,
+      follower_count: null,
+      video_count: null,
+      last_seen_video_id: null,
+      new_count: 0,
+      last_checked: null,
+    });
+    // 5 long-form videos with a median of 100, one short, no live tab.
+    const svc = new ChannelService(
+      makeDeps(db, async (url) => {
+        if (url.endsWith("/videos"))
+          return channelRaw([
+            { id: "v1", view_count: 1000 },
+            { id: "v2", view_count: 120 },
+            { id: "v3", view_count: 100 },
+            { id: "v4", view_count: 80 },
+            { id: "v5", view_count: 60 },
+          ]);
+        if (url.endsWith("/shorts"))
+          return channelRaw([{ id: "s1", view_count: 5000 }]);
+        if (url.endsWith("/streams")) throw new Error("This tab has no videos");
+        return channelRaw([]); // uploads-playlist count probe
+      }),
+    );
+
+    const res = await svc.syncStats(ch.id);
+    expect(res.counts).toEqual({ videos: 5, shorts: 1, live: 0 });
+    expect(res.failures.map((f) => f.contentType)).toEqual(["live"]);
+    // Channel-level stats ride along on the same fetch.
+    expect(res.channel.followerCount).toBe(10);
+    expect(res.channel.statsSyncedAt).not.toBeNull();
+
+    // A page of 2 is now scored against all 5, not against itself.
+    const page = await svc.listVideos(ch.id, {
+      contentType: "videos",
+      order: "latest",
+      count: 2,
+    });
+    expect(page.source).toBe("catalog");
+    expect(page.catalogSize).toBe(5);
+    expect(page.median).toBe(100);
+    expect(page.videos.map((v) => v.externalId)).toEqual(["v1", "v2"]);
+
+    // Most viewed sorts the whole catalogue; oldest reads the stored position backwards.
+    const top = await svc.listVideos(ch.id, {
+      contentType: "videos",
+      order: "most_viewed",
+      count: 1,
+    });
+    expect(top.videos[0]!.externalId).toBe("v1");
+    const oldest = await svc.listVideos(ch.id, {
+      contentType: "videos",
+      order: "oldest",
+      count: 1,
+    });
+    expect(oldest.videos[0]!.externalId).toBe("v5");
+  });
+
+  it("listVideos falls back to a live fetch and its own median before a sync", async () => {
+    const ch = upsertChannel(db, {
+      channel_id: "UC1",
+      url: "https://www.youtube.com/channel/UC1",
+      handle: null,
+      title: "Chan",
+      description: null,
+      uploader: null,
+      avatar_url: null,
+      banner_url: null,
+      follower_count: null,
+      video_count: null,
+      last_seen_video_id: null,
+      new_count: 0,
+      last_checked: null,
+    });
+    const svc = new ChannelService(
+      makeDeps(db, async () =>
+        channelRaw([
+          { id: "a", view_count: 300 },
+          { id: "b", view_count: 100 },
+          { id: "c", view_count: 50 },
+        ]),
+      ),
+    );
+    const res = await svc.listVideos(ch.id, {
+      contentType: "videos",
+      order: "latest",
+      count: 3,
+    });
+    expect(res.source).toBe("live");
+    expect(res.catalogSize).toBe(0);
+    expect(res.median).toBe(100);
+  });
+
   it("videoStatuses flags downloaded and queued videos, leaves the rest absent", async () => {
     const svc = new ChannelService(makeDeps(db, async () => ({})));
     const dl = "https://www.youtube.com/watch?v=DL";
