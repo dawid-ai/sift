@@ -21,6 +21,7 @@ import type {
   QueueOps,
   QueueSpec,
 } from "@sift/ipc-contract";
+import { MEMBERS_ONLY_MESSAGE } from "../auth/status";
 import { computeDownloadOptions } from "./download-options";
 import { resolveQueueFormat } from "./queue-format";
 import type { DownloadService } from "./download-service";
@@ -60,7 +61,11 @@ const OP_KEYS: QueueOpKey[] = ["download", "transcript", "summarize"];
 function initialOps(spec: QueueSpec): QueueOps {
   return {
     download: spec.download ? "pending" : "skipped",
-    transcript: spec.transcript ? "pending" : "skipped",
+    // A summary is written from a transcript, so asking for one implies the other. Without
+    // this, ticking Summarize but not Transcribe finished the item with summarize "skipped"
+    // / "needs a transcript" — and since a skip is not an error, the row auto-cleared and the
+    // summary that was asked for left no trace anywhere.
+    transcript: spec.transcript || spec.summarize ? "pending" : "skipped",
     summarize: spec.summarize ? "pending" : "skipped",
     messages: {},
   };
@@ -106,6 +111,9 @@ function toItem(
     // Present only on the joined listing (`listQueueItemsWithMedia`); the mutation paths
     // reuse `toItem` with a bare row, and a row with no resolved media has none either.
     title: row.media_title ?? null,
+    // Derived, not stored: the message is written once by MetadataService and read back here,
+    // so no column and no migration for a flag that is a property of the stored error.
+    membersOnly: (row.error ?? "") === MEMBERS_ONLY_MESSAGE,
     queueOrder: row.queue_order,
     error: row.error,
     progress: row.status === "running" ? progress : null,
@@ -409,12 +417,19 @@ export class QueueWorker {
     try {
       meta = await metadata.fetch(row.source_url);
     } catch (err) {
+      // A members-only refusal still stops the item, but it is not a failure to retry blindly:
+      // nothing was downloaded, no space was used, and it will refuse identically until the
+      // account actually joins the channel. It stays visible (and retryable, for when you do
+      // join) rather than being auto-cleared, and the renderer flags it instead of printing
+      // yt-dlp's paragraph.
+      const message = msgOf(err);
       for (const k of OP_KEYS)
         if (ops[k] === "pending" || ops[k] === "running") ops[k] = "error";
+      if (message === MEMBERS_ONLY_MESSAGE) ops.messages.download = message;
       updateQueueItem(db, id, {
         status: "done",
         ops_json: JSON.stringify(ops),
-        error: msgOf(err),
+        error: message,
       });
       this.emit();
       return;

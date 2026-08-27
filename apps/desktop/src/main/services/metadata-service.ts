@@ -1,6 +1,10 @@
 import { baseLangCode, resolvePlatform } from "@sift/core";
 import type { MediaMetadata } from "@sift/ipc-contract";
-import { isAuthError } from "../auth/status";
+import {
+  isAuthError,
+  isMembersOnlyError,
+  MEMBERS_ONLY_MESSAGE,
+} from "../auth/status";
 import {
   filePathFromUrl,
   isLocalFileUrl,
@@ -130,13 +134,14 @@ export class MetadataService {
     try {
       raw = await this.runner.dumpJson(url, cookiesFile);
     } catch (err) {
-      if (
-        cookiesFile &&
-        isAuthError(err instanceof Error ? err.message : String(err))
-      ) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // A membership wall is not a session problem: replace yt-dlp's paragraph with one line
+      // the queue can recognise, and never flag the account as needing a re-sign-in.
+      if (isMembersOnlyError(msg)) throw new Error(MEMBERS_ONLY_MESSAGE);
+      if (cookiesFile && isAuthError(msg)) {
         this.opts.reportAuthFailure?.(url);
         throw new Error(
-          `${err instanceof Error ? err.message : String(err)} — your ${new URL(url).host} session may have expired. Settings → Accounts → Sign in again.`,
+          `${msg} — your ${new URL(url).host} session may have expired. Settings → Accounts → Sign in again.`,
         );
       }
       throw err;

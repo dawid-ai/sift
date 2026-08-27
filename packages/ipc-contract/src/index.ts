@@ -130,6 +130,7 @@ export const IPC = {
   channelRefresh: "channel:refresh",
   channelRefreshAll: "channel:refreshAll",
   channelListVideos: "channel:listVideos",
+  channelSyncStats: "channel:syncStats",
   channelOpenForMedia: "channel:openForMedia",
   channelDownloadedMedia: "channel:downloadedMedia",
   channelVideoStatuses: "channel:videoStatuses",
@@ -594,6 +595,8 @@ export interface ChannelRecord {
   videoCount: number | null;
   newCount: number;
   lastChecked: number | null;
+  /** When the full-catalogue stats sync last ran, or null if it never has. */
+  statsSyncedAt: number | null;
   createdAt: number;
 }
 export interface ChannelVideo {
@@ -613,6 +616,20 @@ export interface ChannelVideosResult {
   videos: ChannelVideo[];
   viewCountsAvailable: boolean;
   order: ChannelOrder;
+  /** Baseline for outlier scoring. Taken from the synced catalogue when there is one, so a
+   * page of 25 is scored against every video the channel has rather than against itself. */
+  median: number | null;
+  /** Where the list and the median came from: the stored catalogue, or a live yt-dlp fetch. */
+  source: "catalog" | "live";
+  /** How many videos the stored catalogue holds for this content type. 0 when never synced. */
+  catalogSize: number;
+}
+
+/** Outcome of a full-catalogue stats sync: the updated channel plus per-tab video counts. */
+export interface ChannelStatsResult {
+  channel: ChannelRecord;
+  counts: Record<ChannelContentType, number>;
+  failures: { contentType: ChannelContentType; error: string }[];
 }
 /** A library media item downloaded from a channel — the lightweight shape the channel
  * detail's "Downloaded from this channel" list renders and links to its in-app detail page. */
@@ -719,6 +736,10 @@ export interface QueueItem {
    * Read from the joined `media` row, never stored on `queue_item`.
    */
   title: string | null;
+  /** Blocked behind a channel membership. Not a retry-worthy failure: it will refuse the same
+   * way until the account joins that channel, so the UI flags it rather than showing the raw
+   * yt-dlp error and telling you to sign in again. */
+  membersOnly: boolean;
   queueOrder: number;
   error: string | null;
   progress: number | null;
@@ -1165,6 +1186,9 @@ export interface SiftApi {
       id: number,
       query: ChannelVideosQuery,
     ): Promise<ChannelVideosResult>;
+    /** Pulls every video of every content tab and stores its stats. One yt-dlp call per tab —
+     * seconds for a small channel, up to a minute for thousands of videos. */
+    syncStats(id: number): Promise<ChannelStatsResult>;
     openForMedia(mediaId: number): Promise<ChannelRecord>;
     /** For a list of video URLs, which are already queued or already downloaded. Absent = neither. */
     videoStatuses(urls: string[]): Promise<Record<string, ChannelVideoStatus>>;

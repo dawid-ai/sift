@@ -132,6 +132,63 @@ describe("QueueWorker", () => {
     expect(deps.download.start).toHaveBeenCalledTimes(1);
   });
 
+  it("a summarize spec implies a transcript, even with the Transcribe toggle off", async () => {
+    // Ticking Summarize without Transcribe used to finish the item with
+    // summarize:"skipped" / "needs a transcript" — and because nothing errored, the row was
+    // auto-cleared, so the summary never ran and left no trace anywhere.
+    const deps = makeDeps(db);
+    const w = new QueueWorker(deps);
+    w.add(
+      ["https://x/1"],
+      SPEC({
+        transcript: false,
+        summarize: { providerId: "anthropic", model: "m", promptId: 1 },
+      }),
+    );
+    await flush();
+    expect(deps.transcript.get).toHaveBeenCalledTimes(1);
+    expect(deps.summarize.start).toHaveBeenCalledTimes(1);
+    expect(w.list()).toHaveLength(0);
+  });
+
+  it("flags a members-only refusal, keeps the row, and never auto-clears it", async () => {
+    const deps = makeDeps(db, {
+      metadata: {
+        fetch: vi.fn(async () => {
+          throw new Error(
+            "Members-only video — this channel requires a membership to watch it.",
+          );
+        }),
+      },
+    });
+    const w = new QueueWorker(deps);
+    w.add(["https://x/1"], SPEC());
+    await flush();
+
+    const [item] = w.list();
+    // It stays: auto-clear is for items that fully succeeded, and this one downloaded nothing.
+    expect(item).toBeDefined();
+    expect(item!.membersOnly).toBe(true);
+    expect(item!.status).toBe("done");
+    // Retryable for when you actually join the channel.
+    expect(item!.ops!.download).toBe("error");
+    expect(deps.download.start).not.toHaveBeenCalled();
+  });
+
+  it("does not flag an ordinary metadata failure as members-only", async () => {
+    const deps = makeDeps(db, {
+      metadata: {
+        fetch: vi.fn(async () => {
+          throw new Error("ERROR: unable to download webpage: timed out");
+        }),
+      },
+    });
+    const w = new QueueWorker(deps);
+    w.add(["https://x/1"], SPEC());
+    await flush();
+    expect(w.list()[0]!.membersOnly).toBe(false);
+  });
+
   it("applies spec.tags to the produced media after a successful download", async () => {
     const mediaId = seedMedia(db);
     const deps = makeDeps(db, {

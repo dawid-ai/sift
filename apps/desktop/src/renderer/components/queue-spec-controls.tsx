@@ -181,12 +181,16 @@ export function QueueSpecControls({
     setTagsInput(`${prefix}${name}, `);
   }
 
+  // A summary run needs all three of provider, model and prompt. When one is missing the
+  // spec has to carry `summarize: null` — and it used to do that silently, with the toggle
+  // still lit: the batch downloaded, nothing errored, the queue row auto-cleared and no
+  // summary was ever written. The flag is hoisted out of the effect so the panel can say so.
+  const summarizeReady =
+    !!ai.selectedProviderId && !!ai.selectedModel && ai.selectedPromptId !== "";
+
   useEffect(() => {
     const summarize: QueueSpec["summarize"] =
-      wantSummarize &&
-      ai.selectedProviderId &&
-      ai.selectedModel &&
-      ai.selectedPromptId !== ""
+      wantSummarize && summarizeReady
         ? {
             providerId: ai.selectedProviderId,
             model: ai.selectedModel,
@@ -213,6 +217,7 @@ export function QueueSpecControls({
     maxRes,
     wantTranscript,
     wantSummarize,
+    summarizeReady,
     tagsInput,
     ai.selectedProviderId,
     ai.selectedModel,
@@ -335,6 +340,16 @@ export function QueueSpecControls({
               rather than re-declared — only the hue is local, because this group is the AI
               one. A second copy of the rung's spec in the same file is how it drifts. */}
           <p className="field-label text-ai/90">Summary run</p>
+          {!summarizeReady && (
+            <p
+              role="alert"
+              data-testid="queue-summarize-incomplete"
+              className="mt-2.5 rounded-xl border border-warning/25 bg-warning/12 px-3.5 py-2 text-xs text-warning"
+            >
+              Pick a provider, model and prompt. Until all three are set this
+              batch downloads without summarizing.
+            </p>
+          )}
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Provider">
               <SelectShell>

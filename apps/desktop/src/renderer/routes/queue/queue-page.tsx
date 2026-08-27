@@ -12,6 +12,7 @@ import {
   Clock,
   ExternalLink,
   Inbox,
+  Lock,
   Pause,
   Play,
   Plus,
@@ -67,6 +68,8 @@ function cleanErr(m: string): string {
 
 /** One readable line per failed op, e.g. "transcript: ERROR: … Requested format is not available". */
 function issueLines(it: QueueItem): string[] {
+  // The members-only pill already says it, in one line instead of yt-dlp's paragraph.
+  if (it.membersOnly) return [];
   const lines: string[] = [];
   if (it.ops) {
     for (const k of ["download", "transcript", "summarize"] as const) {
@@ -161,36 +164,6 @@ function sourceHost(url: string): string {
   } catch {
     return "link";
   }
-}
-
-/** The part of the URL the source pill does NOT already say.
- *
- * It used to be the whole URL minus its protocol, which made the row's most prominent line
- * open with the same eight characters the neutral pill 30px above it had just stated —
- * "youtube.com" in the pill, "youtube.com/watch?v=…" as the title. The pill owns the host, so
- * the title owns the rest; a bare host (nothing after the slash) keeps the host, because a
- * row reading "/" would say less than nothing. `QueueItem` carries no fetched title, so this
- * is the most specific thing the row can be given without asking the main process for more. */
-function displayUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    const rest = `${u.pathname}${u.search}`;
-    return rest === "" || rest === "/"
-      ? u.hostname.replace(/^www\./, "")
-      : rest;
-  } catch {
-    return url.replace(/^https?:\/\/(www\.)?/, "");
-  }
-}
-
-/** The URL as the row's HEADLINE, used until a title lands.
- *
- * `displayUrl` drops the host because the pill above it already says the host — right for a
- * caption under a title, wrong for the line that IS the item's name. A rule-queued video has
- * no title until its metadata fetch lands, so those rows read as a bare "/watch?v=Iltb4hn8v_Y"
- * with nothing to copy and nothing to recognise. Here the whole address is spelt out. */
-function headlineUrl(url: string): string {
-  return url.replace(/^https?:\/\//, "");
 }
 
 const PILL =
@@ -983,27 +956,52 @@ export function QueuePage() {
                       <span className={NEUTRAL_PILL}>
                         {sourceHost(it.sourceUrl)}
                       </span>
+                      {it.membersOnly && (
+                        <span
+                          data-testid="queue-item-members-only"
+                          title="This channel requires a membership. Join it, then Retry — nothing was downloaded."
+                          className={`${PILL} border-warning/25 bg-warning/12 text-warning`}
+                        >
+                          <Lock aria-hidden className="h-3 w-3" />
+                          Members only
+                        </span>
+                      )}
                     </div>
 
                     {/* The row's headline is the TITLE once the item has resolved one, with
                         the URL demoted to a mono second line. Before, every row printed only
-                        `displayUrl` — so a queue that had already downloaded, transcribed and
+                        a bare path — so a queue that had already downloaded, transcribed and
                         summarised eight talks still read as a stack of opaque IDs
                         ("/watch?v=Qr7dK2mVzXc"), and four rows carrying identical chip sets
                         were indistinguishable from each other. `title` is null until the
                         metadata fetch lands, and for anything that never downloaded, so the
-                        URL keeps the headline slot whenever there is nothing better to say. */}
-                    <p
-                      className="mt-2 truncate text-sm font-medium text-foreground/85 transition-colors group-hover:text-foreground"
-                      title={it.title ?? it.sourceUrl}
-                    >
-                      {it.title ?? headlineUrl(it.sourceUrl)}
-                    </p>
+                        URL line below carries the row on its own until one arrives. */}
                     {it.title && (
-                      <p className="mt-0.5 truncate font-mono text-[11px] leading-4 text-fg-subtle">
-                        {displayUrl(it.sourceUrl)}
+                      <p
+                        className="mt-2 truncate text-sm font-medium text-foreground/85 transition-colors group-hover:text-foreground"
+                        title={it.title}
+                      >
+                        {it.title}
                       </p>
                     )}
+                    {/* The WHOLE address, and a link. It used to print `/watch?v=Qr7dK2mVzXc`
+                        — the one part of the URL you can neither read nor act on — so a row
+                        you wanted to check in a browser gave you nothing to click and nothing
+                        to copy. `stopPropagation` keeps the row's own click from also firing. */}
+                    <button
+                      type="button"
+                      data-testid="queue-item-url"
+                      title={it.sourceUrl}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void window.sift.library.openExternal(it.sourceUrl);
+                      }}
+                      className={`block max-w-full truncate rounded-sm text-left font-mono text-[11px] leading-4 text-fg-subtle underline decoration-transparent underline-offset-2 transition-colors hover:text-primary hover:decoration-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
+                        it.title ? "mt-0.5" : "mt-2"
+                      }`}
+                    >
+                      {it.sourceUrl}
+                    </button>
 
                     {it.spec && (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
