@@ -1,5 +1,27 @@
 # Updates
 
+## v0.8.0 — 2026-08-27
+
+- **Outliers now mean something.** A video's "2x" score was measured against the median of
+  whatever page the channel view had just fetched — usually 25 videos — so it said more about
+  the page size than the channel. Hit **Sync stats** on a channel and Sift stores every
+  video's view count, then scores against the whole catalogue.
+- **Sync stats also makes the channel view fast.** Once synced, "Most viewed" sorts every
+  video instead of the newest 200, "All videos" loads instantly, and subscriber counts stay
+  current on every automatic refresh.
+- **Channel emails.** Any address in a channel's description now shows next to its links.
+- **Fixed: picking a prompt didn't always summarize.** Turning on Summarize without also
+  turning on Transcribe finished the item with no summary and no warning, because a summary
+  needs a transcript. Asking for one now implies the other.
+- **Fixed: an incomplete AI selection silently downloaded without summarizing.** If the
+  provider, model or prompt wasn't set, the batch ran anyway with the Summarize toggle still
+  lit. It says so now, before you queue.
+- **Members-only videos are labelled, not blamed on your login.** These were reported as an
+  expired session telling you to sign in again, which never helped — a valid account that
+  isn't a member gets refused the same way. The row shows a **Members only** tag and stays
+  ready to retry once you join.
+- **Queue rows show the full video address**, as a link you can click.
+
 ## v0.7.1 — 2026-08-25
 
 - **"Remove slide region" removes it.** The outline stayed painted on the video after the
