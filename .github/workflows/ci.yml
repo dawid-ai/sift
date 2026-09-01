@@ -9,9 +9,9 @@ jobs:
   gate:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -27,9 +27,9 @@ jobs:
   audit-dev:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -44,9 +44,9 @@ jobs:
     # Separate job so a slow Electron suite never delays the gate's feedback. The specs run
     # entirely against fixtures — no yt-dlp, ffmpeg, network, or API keys.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -56,7 +56,7 @@ jobs:
       - run: pnpm --filter @sift/desktop run rebuild
       - run: pnpm --filter @sift/desktop exec playwright install --with-deps chromium
       - run: pnpm --filter @sift/desktop run e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
