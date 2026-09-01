@@ -17,18 +17,18 @@
     "dist": "electron-vite build && electron-builder --win --config electron-builder.yml"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.111.0",
+    "@anthropic-ai/sdk": "^0.122.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "electron-updater": "^6",
-    "framer-motion": "^11.5.4",
+    "framer-motion": "^13.1.1",
     "jpeg-js": "^0.4.4",
-    "lucide-react": "^0.445.0",
-    "openai": "^6.46.0",
-    "tailwind-merge": "^2.5.2",
+    "lucide-react": "^1.37.0",
+    "openai": "^7.8.0",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tesseract.js": "^7.0.0"
   },
