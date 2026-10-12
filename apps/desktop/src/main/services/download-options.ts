@@ -28,10 +28,17 @@ function isAudioOnly(f: RawFormat): boolean {
   );
 }
 
-function sizeOf(f: RawFormat): number | null {
+function knownSize(f: RawFormat): number | null {
   if (typeof f.filesize === "number") return f.filesize;
   if (typeof f.filesize_approx === "number") return f.filesize_approx;
   return null;
+}
+
+// HLS formats carry no size, so fall back to bitrate (kbit/s) x duration.
+function sizeOf(f: RawFormat, duration: number): number | null {
+  const known = knownSize(f);
+  if (known !== null) return known;
+  return f.tbr && duration > 0 ? Math.round(f.tbr * 125 * duration) : null;
 }
 
 function tbrOf(f: RawFormat): number {
@@ -53,11 +60,12 @@ const AUDIO_SELECTOR = "ba[ext=m4a]/ba";
 export function computeDownloadOptions(raw: unknown): DownloadOption[] {
   const record =
     typeof raw === "object" && raw !== null
-      ? (raw as { formats?: unknown })
+      ? (raw as { formats?: unknown; duration?: unknown })
       : {};
   const formats: RawFormat[] = Array.isArray(record.formats)
     ? (record.formats as RawFormat[])
     : [];
+  const duration = typeof record.duration === "number" ? record.duration : 0;
 
   const videos = formats.filter(isVideo);
   const audios = formats.filter(isAudioOnly);
@@ -69,7 +77,7 @@ export function computeDownloadOptions(raw: unknown): DownloadOption[] {
     if (am4a !== bm4a) return bm4a - am4a;
     return tbrOf(b) - tbrOf(a);
   })[0];
-  const audioBytes = bestAudio ? sizeOf(bestAudio) : null;
+  const audioBytes = bestAudio ? sizeOf(bestAudio, duration) : null;
 
   const options: DownloadOption[] = [];
   const heights = Array.from(
@@ -79,11 +87,16 @@ export function computeDownloadOptions(raw: unknown): DownloadOption[] {
   for (const h of heights) {
     const atHeight = videos.filter((v) => v.height === h);
     const mp4s = atHeight.filter((v) => v.ext === "mp4");
+    // Sized (direct https) streams first, as yt-dlp prefers them over HLS; then bitrate.
     const chosen = (mp4s.length > 0 ? mp4s : atHeight)
       .slice()
-      .sort((a, b) => tbrOf(b) - tbrOf(a))[0]!;
+      .sort(
+        (a, b) =>
+          Number(knownSize(b) !== null) - Number(knownSize(a) !== null) ||
+          tbrOf(b) - tbrOf(a),
+      )[0]!;
     const isMp4 = chosen.ext === "mp4";
-    const videoBytes = sizeOf(chosen);
+    const videoBytes = sizeOf(chosen, duration);
     const approxBytes =
       videoBytes !== null || audioBytes !== null
         ? (videoBytes ?? 0) + (audioBytes ?? 0)

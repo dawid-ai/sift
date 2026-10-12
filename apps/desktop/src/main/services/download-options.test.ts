@@ -118,4 +118,33 @@ describe("computeDownloadOptions", () => {
       "audio",
     ]);
   });
+
+  it("prefers sized streams over unsized HLS and estimates HLS-only sizes", () => {
+    const opts = computeDownloadOptions({
+      duration: 100,
+      formats: [
+        {
+          ext: "m4a",
+          vcodec: "none",
+          acodec: "mp4a.40.2",
+          tbr: 128,
+          filesize: 1_600_000,
+        },
+        // YouTube lists HLS streams with a higher tbr and no size.
+        { ext: "mp4", vcodec: "avc1", acodec: "none", height: 720, tbr: 3000 },
+        {
+          ext: "mp4",
+          vcodec: "avc1",
+          acodec: "none",
+          height: 720,
+          tbr: 2000,
+          filesize: 20_000_000,
+        },
+        { ext: "mp4", vcodec: "avc1", acodec: "none", height: 360, tbr: 800 },
+      ],
+    });
+    const size = (id: string) => opts.find((o) => o.id === id)!.approxBytes;
+    expect(size("720p")).toBe(20_000_000 + 1_600_000);
+    expect(size("360p")).toBe(800 * 125 * 100 + 1_600_000);
+  });
 });

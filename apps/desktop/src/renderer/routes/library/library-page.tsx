@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   CalendarRange,
   ChevronDown,
@@ -638,7 +632,9 @@ export function LibraryPage({
   // Presentation only: the tag filter is clipped to one row until asked to open. A 20-chip
   // filter that wraps to two rows was costing ~90px of a view whose job is showing rows.
   const [tagsOpen, setTagsOpen] = useState(false);
-  const tagBarRef = useRef<HTMLDivElement>(null);
+  // State, not a ref: the bar mounts late (after the empty state or a detail view), and the
+  // measuring effect must re-run when it does.
+  const [tagBar, setTagBar] = useState<HTMLDivElement | null>(null);
   const [tagsHidden, setTagsHidden] = useState(0);
 
   // The active filter, sent to the DB. Search contributes its matched ids (null = no search).
@@ -790,7 +786,7 @@ export function LibraryPage({
   // `overflow-hidden`, not `display:none`, so every chip still reports a real `offsetTop` and
   // anything below the first row's is off-screen. Purely a label — nothing here filters.
   useEffect(() => {
-    const el = tagBarRef.current;
+    const el = tagBar;
     if (!el) return;
     const measure = () => {
       const kids = Array.from(el.children) as HTMLElement[];
@@ -804,7 +800,7 @@ export function LibraryPage({
     // The observer covers width changes; the deps cover the chip set changing under a clamped
     // height, which the observer cannot see. Neither value is read in the body.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facets.tags, activeTags, excludedTags]);
+  }, [tagBar, facets.tags, activeTags, excludedTags]);
 
   // Facets span the whole library, so they only change when rows are added/removed —
   // refetch on mount and after any mutation (reloadKey), not on every filter change.
@@ -1195,7 +1191,7 @@ export function LibraryPage({
                     active chip needs (ring + offset paint 4px outside the pill), so selecting a
                     tag doesn't shave the top off its own focus ring. */}
                 <div
-                  ref={tagBarRef}
+                  ref={setTagBar}
                   data-testid="tag-filter-bar"
                   className={cn(
                     "-my-1 flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1",

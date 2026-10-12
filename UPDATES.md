@@ -1,5 +1,12 @@
 # Updates
 
+## v0.8.1 — 2026-10-12
+
+- **Download sizes are real again.** The format dropdown showed the same size for every
+  resolution on YouTube; each option now shows its own estimate.
+- **The tag filter's "+N more" button is back.** On a fresh start the Library could hide
+  every tag past the first row with no way to reveal them.
+
 ## v0.8.0 — 2026-08-27
 
 - **Outliers now mean something.** A video's "2x" score was measured against the median of
