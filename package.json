@@ -33,7 +33,7 @@
     ],
     "//overrides": "Transitive advisories with no direct upgrade path: pinned to the patched versions so `pnpm audit --prod` stays clean. Drop an entry once every dependent resolves past it on its own.",
     "overrides": {
-      "js-yaml@>=4.0.0 <4.3.1": ">=4.3.1",
+      "js-yaml@<5.4.1": ">=5.4.1",
       "nanoid@<3.3.18": ">=3.3.18",
       "postcss@<8.5.23": ">=8.5.23"
     }

@@ -1,5 +1,12 @@
 # Updates
 
+## v0.8.2 — 2026-10-14
+
+- Ships the v0.8.1 fixes, which never reached the updater: each YouTube format in the
+  download dropdown shows its own size again, and the Library tag filter's "+N more"
+  button is back.
+- Dependency security updates.
+
 ## v0.8.1 — 2026-10-12
 
 - **Download sizes are real again.** The format dropdown showed the same size for every
