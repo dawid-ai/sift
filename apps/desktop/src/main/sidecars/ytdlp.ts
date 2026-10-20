@@ -1,5 +1,6 @@
 import { execFile, spawn as nodeSpawn } from "node:child_process";
 import { readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -84,8 +85,15 @@ export interface YtDlpRunner {
 
 const execFileAsync = promisify(execFile);
 
+// yt-dlp writes scratch files (the temp download behind "Testing format") to its
+// working directory. An installed app inherits `C:\Program Files\Sift`, which isn't
+// writable, and yt-dlp stalls forever at "Testing format" instead of failing. Run it
+// from the OS temp dir so those writes always succeed.
+const YTDLP_CWD = tmpdir();
+
 const defaultExec: ExecFn = async (file, args) => {
   const { stdout, stderr } = await execFileAsync(file, args, {
+    cwd: YTDLP_CWD,
     maxBuffer: 1024 * 1024 * 64,
     timeout: 60_000,
     killSignal: "SIGKILL",
@@ -93,7 +101,8 @@ const defaultExec: ExecFn = async (file, args) => {
   return { stdout: stdout.toString(), stderr: stderr.toString() };
 };
 
-const defaultSpawn: SpawnFn = (file, args) => nodeSpawn(file, args);
+const defaultSpawn: SpawnFn = (file, args) =>
+  nodeSpawn(file, args, { cwd: YTDLP_CWD });
 
 /** Host of `url` without a `www.` prefix, or the raw url if it doesn't parse. */
 function hostLabel(url: string): string {
