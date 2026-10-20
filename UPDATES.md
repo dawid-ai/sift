@@ -1,5 +1,11 @@
 # Updates
 
+## v0.8.3 — 2026-10-20
+
+- **YouTube previews and downloads work again.** Pasting some YouTube links left the
+  home screen stuck without a preview, and downloads never started. Sift now runs
+  yt-dlp from a folder it can write to.
+
 ## v0.8.2 — 2026-10-14
 
 - Ships the v0.8.1 fixes, which never reached the updater: each YouTube format in the
