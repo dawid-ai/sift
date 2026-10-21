@@ -5,6 +5,8 @@ import { join } from "node:path";
 import type { ExecFn, SpawnedProcess, SpawnFn } from "./ytdlp";
 import {
   createYtDlpRunner,
+  DownloadCanceledError,
+  killProcessTree,
   parseProgressLine,
   YtDlpNotInstalledError,
 } from "./ytdlp";
@@ -676,5 +678,43 @@ describe("parseProgressLine", () => {
 
   it("returns null for an empty line", () => {
     expect(parseProgressLine("")).toBeNull();
+  });
+});
+
+describe("killProcessTree", () => {
+  it("falls back to SIGKILL on the process itself when there is no pid", () => {
+    const kill = vi.fn(() => true);
+    killProcessTree({ kill });
+    expect(kill).toHaveBeenCalledWith("SIGKILL");
+  });
+
+  it("ignores a process that is already gone", () => {
+    const kill = vi.fn(() => {
+      throw new Error("ESRCH");
+    });
+    expect(() => killProcessTree({ kill })).not.toThrow();
+  });
+
+  it("is what a download cancel uses to stop yt-dlp", async () => {
+    const { proc } = createFakeProcess();
+    const kill = vi.fn(() => true);
+    proc.kill = kill;
+    const runner = createYtDlpRunner({
+      getBinaryPath: () => FAKE_PATH,
+      spawn: () => proc,
+    });
+    const controller = new AbortController();
+    const done = runner.download(
+      {
+        url: "https://example.com/v",
+        format: "best",
+        outputTemplate: "/tmp/out.%(ext)s",
+        signal: controller.signal,
+      },
+      () => {},
+    );
+    controller.abort();
+    await expect(done).rejects.toBeInstanceOf(DownloadCanceledError);
+    expect(kill).toHaveBeenCalledWith("SIGKILL");
   });
 });

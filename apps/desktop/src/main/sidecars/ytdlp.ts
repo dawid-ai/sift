@@ -1,8 +1,12 @@
-import { execFile, spawn as nodeSpawn } from "node:child_process";
+import {
+  execFile,
+  spawn as nodeSpawn,
+  type ChildProcess,
+  type ExecFileException,
+} from "node:child_process";
 import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 
 /** Thrown when no yt-dlp binary is installed/registered (see @sift/db `getAsset`). */
 export class YtDlpNotInstalledError extends Error {
@@ -53,7 +57,8 @@ export interface SpawnedProcess {
   stderr: { on(ev: "data", cb: (chunk: Buffer | string) => void): void };
   on(ev: "close", cb: (code: number | null) => void): void;
   on(ev: "error", cb: (err: Error) => void): void;
-  /** Optional so existing test fakes stay valid; the real ChildProcess has it. */
+  /** Optional so existing test fakes stay valid; the real ChildProcess has both. */
+  pid?: number;
   kill?(signal?: NodeJS.Signals | number): boolean;
 }
 
@@ -83,26 +88,114 @@ export interface YtDlpRunner {
   ): Promise<{ subPath: string; format: "json3" | "vtt" } | null>;
 }
 
-const execFileAsync = promisify(execFile);
-
 // yt-dlp writes scratch files (the temp download behind "Testing format") to its
 // working directory. An installed app inherits `C:\Program Files\Sift`, which isn't
 // writable, and yt-dlp stalls forever at "Testing format" instead of failing. Run it
 // from the OS temp dir so those writes always succeed.
 const YTDLP_CWD = tmpdir();
 
-const defaultExec: ExecFn = async (file, args) => {
-  const { stdout, stderr } = await execFileAsync(file, args, {
-    cwd: YTDLP_CWD,
-    maxBuffer: 1024 * 1024 * 64,
-    timeout: 60_000,
-    killSignal: "SIGKILL",
-  });
-  return { stdout: stdout.toString(), stderr: stderr.toString() };
+const EXEC_TIMEOUT_MS = 60_000;
+
+// On POSIX each yt-dlp gets its own process group, so `killProcessTree` can signal the
+// whole group. Not on Windows, where `detached` opens a new console window instead.
+const DETACHED = process.platform !== "win32";
+
+/**
+ * Kills `child` and every process under it. The release builds of yt-dlp are
+ * PyInstaller one-file executables: the process we start is a bootloader that runs the
+ * real yt-dlp as its own child. `child.kill()` stops only the bootloader and orphans
+ * that worker, which then runs until it finishes on its own — forever, if it's stuck.
+ */
+export function killProcessTree(child: {
+  pid?: number;
+  kill?(signal?: NodeJS.Signals | number): boolean;
+}): void {
+  if (child.pid !== undefined) {
+    if (process.platform === "win32") {
+      execFile("taskkill", ["/pid", String(child.pid), "/T", "/F"], () => {
+        // The tree already exited; nothing left to stop.
+      });
+      return;
+    }
+    try {
+      process.kill(-child.pid, "SIGKILL");
+      return;
+    } catch {
+      // Not a process-group leader (not spawned by us); fall back to the single process.
+    }
+  }
+  try {
+    child.kill?.("SIGKILL");
+  } catch {
+    /* already gone */
+  }
+}
+
+/** yt-dlp processes started by the default exec/spawn that haven't exited yet. */
+const liveProcesses = new Set<ChildProcess>();
+
+function track<T extends ChildProcess>(child: T): T {
+  liveProcesses.add(child);
+  const forget = (): void => {
+    liveProcesses.delete(child);
+  };
+  child.once("close", forget);
+  child.once("error", forget);
+  return child;
+}
+
+/**
+ * Stops every yt-dlp process still running, for app quit. Windows doesn't end child
+ * processes with their parent, so an in-flight fetch or download would keep running
+ * after the window closes.
+ */
+export function killAllYtDlp(): void {
+  for (const child of liveProcesses) killProcessTree(child);
+}
+
+// execFile forwards `detached` to spawn, but its options type doesn't declare it. Passing
+// the options as a variable (not a literal) skips the excess-property check.
+const EXEC_OPTIONS = {
+  cwd: YTDLP_CWD,
+  detached: DETACHED,
+  maxBuffer: 1024 * 1024 * 64,
+  encoding: "utf8" as const,
 };
 
+const defaultExec: ExecFn = (file, args) =>
+  new Promise((resolve, reject) => {
+    let timedOut = false;
+    // The callback runs asynchronously, after `timer` below is initialized.
+    const child = track(
+      execFile(
+        file,
+        args,
+        EXEC_OPTIONS,
+        (err: ExecFileException | null, stdout: string, stderr: string) => {
+          clearTimeout(timer);
+          if (err) {
+            // Attach stdout/stderr the way promisified execFile does, since `stderrOf`
+            // reads them. A hung yt-dlp under --no-warnings has usually printed nothing,
+            // so a timeout says so explicitly.
+            const note = timedOut
+              ? `\nERROR: yt-dlp returned nothing within ${EXEC_TIMEOUT_MS / 1000} s and was stopped.`
+              : "";
+            reject(Object.assign(err, { stdout, stderr: stderr + note }));
+            return;
+          }
+          resolve({ stdout, stderr });
+        },
+      ),
+    );
+    // Our own timer rather than execFile's `timeout`, which signals only the bootloader.
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killProcessTree(child);
+    }, EXEC_TIMEOUT_MS);
+  });
+
 const defaultSpawn: SpawnFn = (file, args) =>
-  nodeSpawn(file, args, { cwd: YTDLP_CWD });
+  track(nodeSpawn(file, args, { cwd: YTDLP_CWD, detached: DETACHED }));
 
 /** Host of `url` without a `www.` prefix, or the raw url if it doesn't parse. */
 function hostLabel(url: string): string {
@@ -333,17 +426,12 @@ export function createYtDlpRunner(deps: {
         // human-run tuning pass (see Phase 3 follow-ups).
         const proc = spawnProcess(path, args);
 
-        // ponytail: `kill()` reaches yt-dlp, not the ffmpeg it may have spawned to merge
-        // streams. That child exits on its own once its stdin closes; a process-tree kill
-        // would need a Windows-specific taskkill, which is not worth it for a cancel.
+        // A tree kill also stops the yt-dlp worker behind the bootloader and any ffmpeg
+        // it started to merge streams.
         let canceled = false;
         const onAbort = (): void => {
           canceled = true;
-          try {
-            proc.kill?.();
-          } catch {
-            /* already gone */
-          }
+          killProcessTree(proc);
           reject(new DownloadCanceledError());
         };
         opts.signal?.addEventListener("abort", onAbort, { once: true });

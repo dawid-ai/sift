@@ -116,6 +116,7 @@ import { createYtdlpSubsProvider } from "./transcript/ytdlp-subs-provider";
 import { createWhisperProvider } from "./transcript/whisper-provider";
 import {
   createYtDlpRunner,
+  killAllYtDlp,
   ytdlpFailureMessage,
   type YtDlpRunner,
 } from "./sidecars/ytdlp";
@@ -1681,6 +1682,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  killAllYtDlp();
   try {
     db?.close();
   } catch {
