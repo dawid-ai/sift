@@ -1,5 +1,5 @@
 // apps/desktop/src/main/auth/sign-in-browser.ts
-import { BrowserWindow, session } from "electron";
+import { app, BrowserWindow, session } from "electron";
 
 // The one Electron-heavy piece: a minimal browser (address bar + <webview>) the user
 // drives to log into any site. Cookies land in the shared `persist:auth` partition,
@@ -12,7 +12,8 @@ import { BrowserWindow, session } from "electron";
 //   - downloads are cancelled — this window exists to obtain cookies, not files;
 //   - every permission request (camera, microphone, geolocation, notifications, MIDI,
 //     USB, …) is denied: signing in never needs one;
-//   - popups inherit a locked-down webPreferences instead of the opener's.
+//   - popups inherit a locked-down webPreferences instead of the opener's;
+//   - the user agent omits the Electron and app tokens (see `browserUserAgent`).
 
 const AUTH_PARTITION = "persist:auth";
 
@@ -31,11 +32,27 @@ function isHttp(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
+/**
+ * The default user agent with the `Electron/x` and `<app>/x` tokens removed. Google's
+ * sign-in sniffs for them and serves its "lite" flow, which then refuses to continue
+ * with "JavaScript is disabled". Without them it sees plain Chrome and serves the
+ * normal flow.
+ */
+export function browserUserAgent(defaultUa: string, appName: string): string {
+  const escaped = appName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return defaultUa
+    .replace(new RegExp(`\\s*(?:Electron|${escaped})/\\S+`, "gi"), "")
+    .trim();
+}
+
 /** Denies downloads and permission requests for everything on the auth partition. */
 function applyPartitionPolicy(): void {
   if (partitionPolicyApplied) return;
   partitionPolicyApplied = true;
   const authSession = session.fromPartition(AUTH_PARTITION);
+  authSession.setUserAgent(
+    browserUserAgent(authSession.getUserAgent(), app.getName()),
+  );
   authSession.setPermissionRequestHandler((_wc, _permission, callback) => {
     callback(false);
   });
