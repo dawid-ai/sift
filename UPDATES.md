@@ -1,5 +1,11 @@
 # Updates
 
+## v0.8.4 — 2026-10-21
+
+- **Signing in to YouTube works again.** Google's sign-in page in Sift's sign-in
+  browser stopped with "JavaScript is disabled". It now loads the normal Google
+  sign-in.
+
 ## v0.8.3 — 2026-10-20
 
 - **YouTube previews and downloads work again.** Pasting some YouTube links left the
