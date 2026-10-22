@@ -71,6 +71,8 @@ export const IPC = {
   authOpenBrowser: "auth:openBrowser",
   authListSites: "auth:listSites",
   authRemoveSite: "auth:removeSite",
+  authChromeBrowser: "auth:chromeBrowser",
+  authSignInWithChrome: "auth:signInWithChrome",
   transcriptGet: "transcript:get",
   transcriptProgress: "transcript:progress",
   transcriptGetMethod: "transcript:getMethod",
@@ -415,6 +417,16 @@ export interface DocumentRecord {
 export interface SignedInSite {
   domain: string;
   expired: boolean;
+}
+
+/** Outcome of signing in through the user's installed Chrome or Edge. */
+export interface ChromeSignInResult {
+  /** "Chrome", "Edge", or "Chromium". */
+  browser: string;
+  /** Cookies copied into Sift's saved sessions. */
+  imported: number;
+  /** Whether a Google account session was among them. */
+  youtubeSignedIn: boolean;
 }
 
 /** A media row plus a per-video capture summary, for the Library table (one row, no
@@ -1147,6 +1159,11 @@ export interface SiftApi {
     listSites(): Promise<SignedInSite[]>;
     /** Clears one site's saved cookies. */
     removeSite(domain: string): Promise<void>;
+    /** Name of the installed browser `signInWithChrome` would open, or `null` if none. */
+    chromeBrowser(): Promise<string | null>;
+    /** Opens the user's Chrome/Edge on a Sift-only profile; after the window closes,
+     * copies its cookies into the saved sessions. */
+    signInWithChrome(): Promise<ChromeSignInResult>;
   };
   queue: {
     /** Enqueues one item per URL with a shared spec, skipping URLs already queued or

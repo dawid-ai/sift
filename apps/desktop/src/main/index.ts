@@ -100,6 +100,13 @@ import { registerWhisperIpc } from "./ipc/whisper";
 import { registerDownloadsIpc } from "./ipc/downloads";
 import { createAuthManager, type ManagerCookie } from "./auth/auth-manager";
 import { openSignInBrowser } from "./auth/sign-in-browser";
+import {
+  createChromeSignIn,
+  findChromium,
+  openSignInWindow,
+  readProfileCookies,
+  toSessionCookie,
+} from "./auth/chrome-sign-in";
 import { registrableDomain } from "./auth/status";
 import { BinariesService } from "./services/binaries-service";
 import { MetadataService } from "./services/metadata-service";
@@ -116,6 +123,7 @@ import { createYtdlpSubsProvider } from "./transcript/ytdlp-subs-provider";
 import { createWhisperProvider } from "./transcript/whisper-provider";
 import {
   createYtDlpRunner,
+  killAllYtDlp,
   ytdlpFailureMessage,
   type YtDlpRunner,
 } from "./sidecars/ytdlp";
@@ -151,6 +159,7 @@ import {
   framesRootDir,
   binaryUpdatesConfigFile,
   cookiesFile,
+  chromeProfileDir,
   customConfigFile,
   aiDefaultConfigFile,
   downloadsConfigFile,
@@ -1114,7 +1123,34 @@ app.whenReady().then(() => {
           },
       removeFile: e2eFixtureDir ? () => {} : (p) => rmSync(p, { force: true }),
     });
-    registerAuthIpc(authManager);
+    // Google blocks sign-in from the embedded browser, so YouTube sign-in goes through
+    // the user's installed Chrome/Edge on a Sift-only profile. Its cookies land in the
+    // same `persist:auth` jar, so the saved-sessions list and yt-dlp export work as-is.
+    const chromeSignIn = createChromeSignIn({
+      findBrowser: e2eFixtureDir
+        ? () => null
+        : () => findChromium(process.platform, process.env),
+      profileDir: chromeProfileDir(),
+      openWindow: (browser, dir, url) => openSignInWindow(browser, dir, url),
+      readCookies: (browser, dir) => readProfileCookies(browser, dir),
+      importCookies: async (cookies) => {
+        // Replace, not merge: stale cookies from an earlier sign-in to the same site
+        // would otherwise ride along in the export.
+        const domains = new Set(
+          cookies.map((c) => registrableDomain(c.domain)).filter(Boolean),
+        );
+        for (const domain of domains) await authManager.removeSite(domain);
+        const ses = session.fromPartition("persist:auth");
+        await Promise.all(
+          cookies.map((c) =>
+            ses.cookies.set(toSessionCookie(c)).catch(() => {
+              // One malformed cookie shouldn't sink the rest of the sign-in.
+            }),
+          ),
+        );
+      },
+    });
+    registerAuthIpc(authManager, chromeSignIn);
 
     const channelService = new ChannelService({
       db: getDb(),
@@ -1681,6 +1717,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  killAllYtDlp();
   try {
     db?.close();
   } catch {
