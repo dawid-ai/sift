@@ -1,5 +1,15 @@
 # Updates
 
+## v0.8.5 — 2026-10-22
+
+- **Sign in with Chrome.** Google blocks sign-in from Sift's built-in browser, so
+  Settings → Sign-in can now open your installed Chrome (or Edge) on a profile only
+  Sift uses. Sign in to YouTube, close the window, and Sift picks up the session.
+- **No more yt-dlp processes left running in the background.** A fetch that timed
+  out, a cancelled download, or quitting Sift could leave yt-dlp running
+  indefinitely. Sift now stops it completely, and a timeout says so instead of
+  failing with an empty error.
+
 ## v0.8.4 — 2026-10-21
 
 - **Signing in to YouTube works again.** Google's sign-in page in Sift's sign-in
