@@ -254,6 +254,8 @@ const api: SiftApi = {
   auth: {
     openBrowser: () => ipcRenderer.invoke(IPC.authOpenBrowser),
     listSites: () => ipcRenderer.invoke(IPC.authListSites),
+    chromeBrowser: () => ipcRenderer.invoke(IPC.authChromeBrowser),
+    signInWithChrome: () => ipcRenderer.invoke(IPC.authSignInWithChrome),
     removeSite: (domain: string) =>
       ipcRenderer.invoke(IPC.authRemoveSite, domain),
   },

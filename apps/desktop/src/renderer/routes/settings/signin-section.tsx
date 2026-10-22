@@ -14,10 +14,14 @@ import {
   StatusDot,
 } from "./settings-page";
 
-/** Opens the app-owned sign-in browser and lists sites with a saved session. */
+/** Signs in through the user's Chrome/Edge or the app-owned browser, and lists sites
+ * with a saved session. */
 export function SigninSection() {
   const [sites, setSites] = useState<SignedInSite[]>([]);
   const [busy, setBusy] = useState(false);
+  const [chromeName, setChromeName] = useState<string | null>(null);
+  const [chromeBusy, setChromeBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
@@ -31,7 +35,30 @@ export function SigninSection() {
 
   useEffect(() => {
     void refresh();
+    window.sift.auth
+      .chromeBrowser()
+      .then(setChromeName)
+      .catch(() => setChromeName(null));
   }, []);
+
+  async function signInWithChrome() {
+    setChromeBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await window.sift.auth.signInWithChrome(); // resolves after the window closes
+      setNotice(
+        result.youtubeSignedIn
+          ? `Signed in to YouTube through ${result.browser}.`
+          : `No YouTube sign-in found. Sign in to your Google account in the ${result.browser} window before closing it.`,
+      );
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setChromeBusy(false);
+    }
+  }
 
   async function openBrowser() {
     setBusy(true);
@@ -58,15 +85,41 @@ export function SigninSection() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="signin-section">
+      {chromeName && (
+        <div className="flex flex-col gap-1.5">
+          <div>
+            <Button
+              data-testid="signin-chrome"
+              size="lg"
+              disabled={chromeBusy}
+              onClick={() => void signInWithChrome()}
+            >
+              <LogIn aria-hidden className="h-4 w-4" />
+              {chromeBusy
+                ? `Waiting for ${chromeName} to close…`
+                : `Sign in with ${chromeName}`}
+            </Button>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            {`Use this for YouTube — Google blocks sign-in from the built-in browser. ${chromeName} opens on a profile only Sift uses. Sign in, then close the window.`}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <Button
           data-testid="signin-open-browser"
           size="lg"
+          variant={chromeName ? "outline" : "default"}
           disabled={busy}
           onClick={() => void openBrowser()}
         >
           <LogIn aria-hidden className="h-4 w-4" />
-          {busy ? "Browser open…" : "Open sign-in browser"}
+          {busy
+            ? "Browser open…"
+            : chromeName
+              ? "Open built-in browser"
+              : "Open sign-in browser"}
         </Button>
         <Button
           data-testid="signin-refresh"
@@ -133,6 +186,11 @@ export function SigninSection() {
         </div>
       )}
 
+      {notice && (
+        <p data-testid="signin-notice" className="text-sm text-foreground/85">
+          {notice}
+        </p>
+      )}
       {error && <SettingsError>{error}</SettingsError>}
     </div>
   );

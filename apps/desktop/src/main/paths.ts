@@ -150,3 +150,8 @@ export function tessdataDir(): string {
 export function cookiesFile(): string {
   return join(app.getPath("userData"), "yt-dlp-cookies", "auth.txt");
 }
+
+/** The Chrome/Edge profile used only for "Sign in with Chrome" (see auth/chrome-sign-in). */
+export function chromeProfileDir(): string {
+  return join(app.getPath("userData"), "browser-profile");
+}

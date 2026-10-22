@@ -1299,6 +1299,41 @@ actually deleting the cookies. The manager's own seams
 `openSignInBrowser`/`fs` calls once in `main/index.ts`, so the Vitest suite
 exercises the manager without Electron.
 
+### Sign in with Chrome (Google accounts)
+
+Google refuses sign-in from embedded browsers ("This browser or app may not be
+secure"), so the `<webview>` above can't reach YouTube. Stripping `Electron/x`
+and the app token from the `persist:auth` user agent (`browserUserAgent`)
+gets past the first "JavaScript is disabled" page but not that block.
+`auth/chrome-sign-in.ts` signs in through the user's installed browser
+instead. `findChromium` picks Chrome, then Edge (then Chromium on Linux).
+`openSignInWindow` launches it **normally** — no debugging flag, no
+automation — on a Sift-only profile (`paths.ts` `chromeProfileDir()`,
+`userData/browser-profile`) at `SIGN_IN_URL`, and resolves when the browser
+exits. `readProfileCookies` then restarts the same browser `--headless=new`
+with `--remote-debugging-pipe` (fds 3/4, NUL-delimited JSON; no TCP port
+for other local processes to reach) and calls `Storage.getCookies`. The
+browser decrypts its own store, so Chrome's app-bound cookie encryption —
+which breaks yt-dlp's `--cookies-from-browser` on Windows — doesn't apply.
+A locked profile (the window still shutting down) makes the headless launch
+hand off and exit, which is retried. A dedicated profile is required: browsers
+refuse remote debugging on their default profile.
+
+`createChromeSignIn` drops partitioned (CHIPS) cookies, and `main/index.ts`
+`importCookies` replaces each registrable domain's cookies in `persist:auth`
+with the profile's (`toSessionCookie` maps CDP fields to
+`session.cookies.set`; host-only cookies omit `domain`). Everything
+downstream — `listSites`, `removeSite`, the `cookies.txt` export — is
+unchanged. `hasGoogleSession` (`SID`/`__Secure-3PSID` on google.com or
+youtube.com) drives the "signed in" vs "no YouTube sign-in found" notice.
+IPC: `auth:chromeBrowser` (button label, or hidden when null — always null
+under `SIFT_E2E_FIXTURE_DIR`) and `auth:signInWithChrome`. UI:
+`signin-section.tsx`, `data-testid="signin-chrome"` / `signin-notice`.
+
+Human-test caveat: no e2e covers this (it needs a real browser and Google
+account). If Google ever binds session cookies to the device (DBSC), the
+exported copy may stop working sooner and need a re-sign-in.
+
 ## Batch queue (Phase 7)
 
 Phase 7 adds a `Queue` page for bulk processing many URLs unattended, on top of
